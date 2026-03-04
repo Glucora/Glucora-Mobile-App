@@ -1,25 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/features/user/patient_navigation.dart';
-import 'package:flutter_application_1/features/doctor/doctor_navigation.dart';
+import 'package:flutter/services.dart';
+import 'features/user/patient_navigation.dart';
+import 'features/doctor/screens/doctor_main_screen.dart';
 
-void main() {
-  runApp(GlucoraApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  runApp(const GlucoraApp());
 }
 
 class GlucoraApp extends StatelessWidget {
+  const GlucoraApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Glucora',
       theme: ThemeData(
-        primarySwatch: Colors.teal,
+        primaryColor: const Color(0xFF2BB6A3),
+        scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
       ),
-      home: RoleSelectionScreen(),
+      home: const RoleSelectionScreen(),
     );
   }
 }
-
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -31,21 +44,25 @@ class RoleSelectionScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              child: Text("Patient Side"),
+              child: const Text("Patient Side"),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => PatientNavigation()),
+                  MaterialPageRoute(
+                    builder: (_) => const PatientNavigation(),
+                  ),
                 );
               },
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
-              child: Text("Doctor Side"),
+              child: const Text("Doctor Side"),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => DoctorNavigation()),
+                  MaterialPageRoute(
+                    builder: (_) => const DoctorMainScreen(),
+                  ),
                 );
               },
             ),
