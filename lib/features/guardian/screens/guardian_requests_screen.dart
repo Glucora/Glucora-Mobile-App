@@ -149,9 +149,9 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
       color: Colors.white,
       child: TabBar(
         controller: _tabController,
-        labelColor: const Color(0xFFE76F51),
+        labelColor: const Color(0xFF2A9D8F),
         unselectedLabelColor: Colors.grey,
-        indicatorColor: const Color(0xFFE76F51),
+        indicatorColor: const Color(0xFF2A9D8F),
         indicatorWeight: 3,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
@@ -162,7 +162,7 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFFE76F51), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: const Color(0xFF2A9D8F), borderRadius: BorderRadius.circular(10)),
                 child: Text('${_pending.length}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
               ),
             ],
@@ -224,8 +224,8 @@ class _RequestCard extends StatelessWidget {
           child: Row(children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: const Color(0xFFE76F51).withValues(alpha: 0.15),
-              child: Text(request.avatarInitials, style: const TextStyle(color: Color(0xFFE76F51), fontWeight: FontWeight.w800, fontSize: 15)),
+              backgroundColor: const Color(0xFF2A9D8F).withValues(alpha: 0.15),
+              child: Text(request.avatarInitials, style: const TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w800, fontSize: 15)),
             ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

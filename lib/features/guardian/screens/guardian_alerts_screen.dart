@@ -162,8 +162,8 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
       _unreadCount > 0
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFE63946).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-              child: Text('$_unreadCount new', style: const TextStyle(color: Color(0xFFE63946), fontWeight: FontWeight.w700, fontSize: 12)),
+              decoration: BoxDecoration(color: const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text('$_unreadCount new', style: const TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700, fontSize: 12)),
             )
           : Text('All caught up ', style: TextStyle(color: Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.w500)),
       const SizedBox(height: 4),
@@ -180,7 +180,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFE76F51) : Colors.white,
+          color: isActive ? const Color(0xFF2A9D8F) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
         ),
