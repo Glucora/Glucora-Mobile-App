@@ -283,15 +283,7 @@ class _OverviewTab extends StatelessWidget {
     ]);
   }
 
-  Widget _mealCard() {
-    return _card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _label('Last Meal'),
-      const SizedBox(height: 10),
-      const Text('Lunch', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
-      const SizedBox(height: 2),
-      Text('Logged at 1:05 PM', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-    ]));
-  }
+ 
 
   Widget _insulinDetailCard() {
     return _card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
