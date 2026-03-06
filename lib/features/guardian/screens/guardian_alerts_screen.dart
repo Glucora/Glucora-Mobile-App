@@ -24,7 +24,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
     GuardianAlert(id: '1', title: "Ahmed's sugar is dangerously high", description: 'His blood sugar went very high and the device gave him extra insulin automatically. Keep an eye on him and consider calling.', timeAgo: '3 min ago', urgency: 'emergency', emoji: 'Emergency'),
     GuardianAlert(id: '2', title: "Ahmed's sugar dropped too low", description: "His blood sugar fell quite low. The device paused insulin to help. He may need to eat or drink something sweet right away.", timeAgo: '8 min ago', urgency: 'emergency', emoji: 'Low Sugar'),
     GuardianAlert(id: '3', title: 'Pump lost connection', description: 'The insulin pump got disconnected for a short time. It has been working in manual mode. This is being monitored.', timeAgo: '25 min ago', urgency: 'warning', emoji: 'Device'),
-    GuardianAlert(id: '4', title: "Ahmed didn't log lunch", description: 'No meal was recorded around lunchtime. His sugar rose a little afterwards. You might want to check in with him.', timeAgo: '1 hour ago', urgency: 'warning', emoji: 'Meal'),
+    GuardianAlert(id: '4', title: "Ahmed is having a dr appointment soon", description: 'There is an appointment scheduled. You might want to check in with him.', timeAgo: '1 hour ago', urgency: 'warning', emoji: 'Appointment'),
     GuardianAlert(id: '5', title: 'Sensor disconnected briefly', description: 'The glucose sensor lost signal for about 38 minutes but reconnected on its own. Everything is back to normal now.', timeAgo: '3 hours ago', urgency: 'warning', emoji: 'Sensor', isRead: true),
     GuardianAlert(id: '6', title: 'Sugar has been a bit high today', description: 'Ahmed spent more time than usual with high sugar levels today. His doctor has been informed and may adjust his plan.', timeAgo: '5 hours ago', urgency: 'info', emoji: 'Report', isRead: true),
     GuardianAlert(id: '7', title: 'No reading for 4 hours', description: "The sensor hasn't sent a reading in a while. The sensor might be old or fell off. Ahmed may need to replace it.", timeAgo: '6 hours ago', urgency: 'info', emoji: 'Inactivity', isRead: true),
@@ -54,7 +54,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
     switch (u) {
       case 'emergency': return const Color(0xFFE63946);
       case 'warning':   return const Color(0xFFE76F51);
-      default:          return const Color(0xFF5B8CF5);
+      default:          return const Color(0xFF2A9D8F);
     }
   }
 

@@ -267,24 +267,24 @@ class GuardianHomeScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFE76F51).withValues(alpha: 0.1),
+                color: const Color(0xFF2A9D8F).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFE76F51).withValues(alpha: 0.3),
+                  color: const Color(0xFF2A9D8F).withValues(alpha: 0.3),
                 ),
               ),
               child: const Row(
                 children: [
                   Text('View Details',
                     style: TextStyle(
-                      color: Color(0xFFE76F51),
+                      color: Color(0xFF2A9D8F),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
                   ),
                   SizedBox(width: 4),
                   Icon(Icons.chevron_right_rounded,
-                      color: Color(0xFFE76F51), size: 16),
+                      color: Color(0xFF2A9D8F), size: 16),
                 ],
               ),
             ),
