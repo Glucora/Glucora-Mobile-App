@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart'; // for TapGestureRecognizer
 import 'login_screen.dart';
+import 'terms_screen.dart'; // the new terms screen
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -55,7 +57,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: ListView(
             children: [
               const SizedBox(height: 10),
-              // Name field with alphabetical validation
+              // Name field
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -77,7 +79,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your name';
                   }
-                  // Allow only letters and spaces
                   final nameRegex = RegExp(r'^[a-zA-Z ]+$');
                   if (!nameRegex.hasMatch(value)) {
                     return 'Please enter a valid name (letters and spaces only)';
@@ -193,7 +194,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              // Terms & Conditions checkbox
+              // Terms & Conditions checkbox with clickable links
               Row(
                 children: [
                   Checkbox(
@@ -209,15 +210,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _agreeToTerms = !_agreeToTerms;
-                        });
-                      },
-                      child: const Text(
-                        'I agree to the medidoc Terms of Service and Privacy Policy',
-                        style: TextStyle(fontSize: 14),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF555555)),
+                        children: [
+                          const TextSpan(text: 'I agree to the '),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: const TextStyle(
+                              color: Color(0xFF2BB6A3),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const TermsScreen()),
+                                );
+                              },
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: const TextStyle(
+                              color: Color(0xFF2BB6A3),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const TermsScreen()),
+                                );
+                              },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -245,7 +274,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const Text("Already have an account? "),
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context); // go back to login
                     },
                     child: const Text(
                       'Login',
