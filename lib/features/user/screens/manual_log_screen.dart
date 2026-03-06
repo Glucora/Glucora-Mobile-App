@@ -77,7 +77,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                     Border.all(color: const Color(0xFFE8E8E8), width: 1),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha:0.05),
                       blurRadius: 12,
                       offset: const Offset(0, 4))
                 ],
@@ -262,7 +262,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           border: Border.all(color: const Color(0xFFEEEEEE)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha:0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
@@ -272,7 +272,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-                color: const Color(0xFF199A8E).withOpacity(0.10),
+                color: const Color(0xFF199A8E).withValues(alpha:0.10),
                 borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.water_drop_rounded,
                 color: Color(0xFF199A8E), size: 20),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'guardian_patient_model.dart';
-import 'guardian_home_screen.dart' show GuardianHomeScreen;
 
 class GuardianPatientDetailScreen extends StatefulWidget {
   final GuardianPatient patient;

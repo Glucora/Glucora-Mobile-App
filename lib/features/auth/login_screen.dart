@@ -51,10 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -85,7 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/landing',
+              (Route<dynamic> route) =>
+                  false,
+            );
+          },
         ),
         title: const Text('Login'),
       ),
@@ -93,7 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(   // <-- Added to make content scrollable
+          child: SingleChildScrollView(
+            // <-- Added to make content scrollable
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -114,7 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF2BB6A3),
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {
@@ -137,7 +144,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -154,7 +163,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF2BB6A3),
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {

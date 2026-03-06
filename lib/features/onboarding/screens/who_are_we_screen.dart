@@ -148,7 +148,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
-                              color: accent.withOpacity(0.1),
+                              color: accent.withValues(alpha:0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(

@@ -8,7 +8,6 @@ class FAQScreen extends StatefulWidget {
 }
 
 class _FAQScreenState extends State<FAQScreen> {
-  static const Color _teal = Color(0xFF2BB6A3);
   static const Color _bg = Color(0xFFF5FFFE);
 
   int _expandedIndex = -1;
@@ -250,7 +249,7 @@ class _FAQScreenState extends State<FAQScreen> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isOpen
-                              ? accent.withOpacity(0.4)
+                              ? accent.withValues(alpha:0.4)
                               : const Color(0xFFE8F0EF),
                           width: 1.5,
                         ),

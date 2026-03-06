@@ -9,12 +9,10 @@ class AIExplainScreen extends StatefulWidget {
 
 class _AIExplainScreenState extends State<AIExplainScreen>
     with SingleTickerProviderStateMixin {
-  final PageController _pageController =
-      PageController(viewportFraction: 0.85);
+  final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentPage = 0;
 
   late AnimationController _animController;
-  late Animation<double> _fadeAnim;
 
   static const Color _teal = Color(0xFF2BB6A3);
   static const Color _bg = Color(0xFFF5FFFE);
@@ -61,9 +59,9 @@ class _AIExplainScreenState extends State<AIExplainScreen>
   void initState() {
     super.initState();
     _animController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     _animController.forward();
   }
 
@@ -77,8 +75,9 @@ class _AIExplainScreenState extends State<AIExplainScreen>
   void _next() {
     if (_currentPage < _steps.length - 1) {
       _pageController.nextPage(
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut);
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
     } else {
       Navigator.pushReplacementNamed(context, '/landing');
     }
@@ -117,7 +116,9 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                       Text(
                         'Here is what happens at every step.',
                         style: TextStyle(
-                            fontSize: 13, color: Color(0xFF6B7C7C)),
+                          fontSize: 13,
+                          color: Color(0xFF6B7C7C),
+                        ),
                       ),
                     ],
                   ),
@@ -127,9 +128,10 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                     child: const Text(
                       'Skip',
                       style: TextStyle(
-                          color: Color(0xFF6B7C7C),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500),
+                        color: Color(0xFF6B7C7C),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -170,7 +172,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                             style: TextStyle(
                               fontSize: 64,
                               fontWeight: FontWeight.w900,
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               height: 1,
                             ),
                           ),
@@ -189,7 +191,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                             s['body'] as String,
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                               height: 1.6,
                             ),
                           ),
@@ -236,14 +238,17 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: Text(
                     _currentPage == _steps.length - 1
                         ? 'Let\'s get started'
                         : 'Next',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

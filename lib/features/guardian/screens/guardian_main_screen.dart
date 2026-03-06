@@ -32,10 +32,12 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade100, width: 1)),
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade100, width: 1),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -47,10 +49,27 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _item(0, Icons.home_rounded,             Icons.home_outlined,             'Home'),
-                _item(1, Icons.notifications_rounded,    Icons.notifications_outlined,    'Alerts',    badge: _unreadAlerts),
-                _item(2, Icons.people_rounded,           Icons.people_outline_rounded,    'Requests',  badge: _pendingRequests),
-                _item(3, Icons.person_rounded,           Icons.person_outline_rounded,    'Profile'),
+                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
+                _item(
+                  1,
+                  Icons.notifications_rounded,
+                  Icons.notifications_outlined,
+                  'Alerts',
+                  badge: _unreadAlerts,
+                ),
+                _item(
+                  2,
+                  Icons.people_rounded,
+                  Icons.people_outline_rounded,
+                  'Requests',
+                  badge: _pendingRequests,
+                ),
+                _item(
+                  3,
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                ),
               ],
             ),
           ),
@@ -59,7 +78,13 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
     );
   }
 
-  Widget _item(int idx, IconData active, IconData inactive, String label, {int badge = 0}) {
+  Widget _item(
+    int idx,
+    IconData active,
+    IconData inactive,
+    String label, {
+    int badge = 0,
+  }) {
     final sel = _index == idx;
     return GestureDetector(
       onTap: () => setState(() => _index = idx),
@@ -68,33 +93,59 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color.fromARGB(255, 255, 255, 255).withOpacity(0.12)
+          color:
+              sel
+              ? const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Stack(clipBehavior: Clip.none, children: [
-            Icon(sel ? active : inactive,
-                color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400, size: 26),
-            if (badge > 0)
-              Positioned(
-                top: -4, right: -6,
-                child: Container(
-                  width: 16, height: 16,
-                  decoration: const BoxDecoration(color: Color(0xFFE63946), shape: BoxShape.circle),
-                  child: Center(child: Text('$badge',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  sel ? active : inactive,
+                  color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
+                  size: 26,
                 ),
+                if (badge > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE63946),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$badge',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
               ),
-          ]),
-          const SizedBox(height: 3),
-          Text(label, style: TextStyle(
-            fontSize: 11,
-            fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-            color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
-          )),
-        ]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -117,10 +168,12 @@ class _EditGuardianProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditGuardianProfileScreen> createState() => _EditGuardianProfileScreenState();
+  State<_EditGuardianProfileScreen> createState() =>
+      _EditGuardianProfileScreenState();
 }
 
-class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> {
+class _EditGuardianProfileScreenState
+    extends State<_EditGuardianProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ageController;
   late TextEditingController _emailController;
@@ -142,8 +195,10 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A1A2E),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -174,22 +229,36 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
           children: [
             _buildField('Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField('Age', _ageController, Icons.cake_outlined,
-                keyboardType: TextInputType.number),
+            _buildField(
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            _buildField('Email', _emailController, Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress),
+            _buildField(
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            _buildField('Phone Number', _phoneController, Icons.phone_outlined,
-                keyboardType: TextInputType.phone),
+            _buildField(
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller,
-      IconData icon, {
+  Widget _buildField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
@@ -204,7 +273,10 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
         ),
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -315,8 +387,11 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                       color: Color(0xFF199A8E),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person_rounded,
-                        size: 48, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -325,15 +400,19 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                       Text(
                         _name,
                         style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E)),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(Icons.edit,
-                            size: 18, color: Color(0xFF199A8E)),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: Color(0xFF199A8E),
+                        ),
                       ),
                     ],
                   ),
@@ -354,9 +433,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Row(
@@ -420,10 +500,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   Widget _infoColumn(String label, String value) {
     return Column(
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-        ),
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
         const SizedBox(height: 4),
         Text(
           value,

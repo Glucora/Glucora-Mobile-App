@@ -26,9 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_formKey.currentState!.validate() && _agreeToTerms) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => const SignUpSuccessScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
       );
     } else if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -46,7 +44,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/landing',
+              (Route<dynamic> route) => false,
+            );
+          },
         ),
         title: const Text('Sign Up'),
       ),
@@ -72,7 +75,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2BB6A3),
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (value) {
@@ -103,7 +109,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2BB6A3),
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (value) {
@@ -126,7 +135,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -143,7 +154,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2BB6A3),
+                      width: 2,
+                    ),
                   ),
                 ),
                 validator: (value) {
@@ -172,14 +186,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2BB6A3),
+                      width: 2,
+                    ),
                   ),
                 ),
                 items: _roles.map((role) {
-                  return DropdownMenuItem(
-                    value: role,
-                    child: Text(role),
-                  );
+                  return DropdownMenuItem(value: role, child: Text(role));
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -212,7 +226,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF555555)),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF555555),
+                        ),
                         children: [
                           const TextSpan(text: 'I agree to the '),
                           TextSpan(
@@ -226,7 +243,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ..onTap = () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const TermsScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsScreen(),
+                                  ),
                                 );
                               },
                           ),
@@ -242,7 +261,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ..onTap = () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const TermsScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsScreen(),
+                                  ),
                                 );
                               },
                           ),

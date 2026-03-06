@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/features/auth/signup_screen.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter_application_1/features/auth/terms_screen.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
   static const Color _teal = Color(0xFF2BB6A3);
 
-  void _go(BuildContext context) =>
-      Navigator.pushReplacementNamed(context, '/role-selection');
+  void _goToLogin(BuildContext context) =>
+      Navigator.pushNamed(context, '/login-screen');
+
+  void _goToSignUp(BuildContext context) => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const SignUpScreen()),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -55,55 +61,107 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Create an account button
                     SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: () => _go(context),
+                        onPressed: () => _goToSignUp(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _teal,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: const Text(
                           'Create an account',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 12),
 
+                    // Log in button
                     SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: OutlinedButton(
-                        onPressed: () => _go(context),
+                        onPressed: () => _goToLogin(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _teal,
                           side: const BorderSide(
-                              color: Color(0xFFB2DFDB), width: 1.5),
+                            color: Color(0xFFB2DFDB),
+                            width: 1.5,
+                          ),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: const Text(
                           'Log in',
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    Text(
-                      'By continuing you agree to our Terms & Privacy Policy.',
+                    // Clickable Terms & Privacy Policy text
+                    RichText(
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[400]),
+                      text: TextSpan(
+                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        children: [
+                          const TextSpan(
+                            text: 'By continuing you agree to our ',
+                          ),
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: const TextStyle(
+                              color: Color(0xFF2BB6A3),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsScreen(),
+                                  ),
+                                );
+                              },
+                          ),
+                          const TextSpan(text: ' & '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: const TextStyle(
+                              color: Color(0xFF2BB6A3),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const TermsScreen(),
+                                  ),
+                                );
+                              },
+                          ),
+                          const TextSpan(text: '.'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
