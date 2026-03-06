@@ -192,6 +192,7 @@ class _ProfileTab extends StatelessWidget {
             _tile(Icons.notifications_outlined, "Notifications"),
             _tile(Icons.lock_outline_rounded, "Privacy & Security"),
             _tile(Icons.help_outline_rounded, "Help & Support"),
+            _tile(Icons.quiz_outlined, "FAQs"),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,

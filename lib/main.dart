@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 import 'features/user/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';
 import 'features/guardian/screens/guardian_main_screen.dart';
+import 'features/onboarding/screens/ai_explain_screen.dart';
+import 'features/onboarding/screens/landing_screen.dart';
+import 'features/onboarding/screens/who_are_we_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,10 +34,17 @@ class GlucoraApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      home: const RoleSelectionScreen(),
+      initialRoute: '/who-we-are',
+      routes: {
+        '/who-we-are': (context) => const WhoWeAreScreen(),
+        '/ai-explain': (context) => const AIExplainScreen(),
+        '/landing': (context) => const LandingScreen(),
+        '/role-selection': (context) => const RoleSelectionScreen(),
+      },
     );
   }
 }
+
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -66,7 +77,8 @@ class RoleSelectionScreen extends StatelessWidget {
                   ),
                 );
               },
-            ),            const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
               child: const Text("Guardian Side"),
               onPressed: () {
