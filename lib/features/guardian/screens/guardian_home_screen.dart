@@ -12,7 +12,7 @@ class GuardianHomeScreen extends StatefulWidget {
 class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
-  String? _filterStatus; // null=all | 'good' | 'attention' | 'emergency'
+  String? _filterStatus;
 
   @override
   void dispose() { _searchCtrl.dispose(); super.dispose(); }
@@ -33,28 +33,39 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   int get _emergencyCount => GuardianMockData.patients.where((p) => p.overallStatus == 'emergency').length;
   int get _attentionCount => GuardianMockData.patients.where((p) => p.overallStatus == 'attention').length;
 
+  // ── Calm color system ─────────────────────────────────────────────────────
+  // No red anywhere. Amber for urgent, blue for attention, teal for good.
   static Color statusColor(String s) {
     switch (s) {
-      case 'emergency': return const Color(0xFFE63946);
-      case 'attention': return const Color(0xFFE76F51);
-      default:          return const Color(0xFF2A9D8F);
+      case 'emergency': return const Color.fromARGB(255, 192, 0, 0); // deep amber — serious but not scary
+      case 'attention': return const Color(0xFFC07A00); // soft blue — informational
+      default:          return const Color(0xFF2A9D8F); // teal — calm
     }
   }
 
+  static Color statusBg(String s) {
+    switch (s) {
+      case 'emergency': return const Color.fromARGB(255, 255, 239, 236);
+      case 'attention': return const Color(0xFFFFF4E0);
+      default:          return const Color(0xFFE8F5F3);
+    }
+  }
+
+  // Friendly, non-alarming language
   static String statusLabel(String s) {
     switch (s) {
-      case 'emergency': return 'Needs help now';
-      case 'attention': return 'Needs attention';
+      case 'emergency': return 'Check on them';
+      case 'attention': return 'Worth a look';
       default:          return 'Doing well';
     }
   }
 
   static Color glucoseColor(GuardianPatient p) {
     switch (p.glucoseLabel) {
-      case 'Too high': case 'Very high': case 'Too low': case 'Very low':
-        return const Color(0xFFE63946);
-      case 'A bit high': return const Color(0xFFE76F51);
-      default:           return const Color(0xFF2A9D8F);
+      case 'Too high': case 'Very high':
+      case 'Too low':  case 'Very low':  return const Color(0xFFE63946);
+      case 'A bit high':                 return const Color(0xFFC07A00);
+      default:                           return const Color(0xFF2A9D8F);
     }
   }
 
@@ -63,14 +74,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       case 'up':   return Icons.trending_up_rounded;
       case 'down': return Icons.trending_down_rounded;
       default:     return Icons.trending_flat_rounded;
-    }
-  }
-
-  static String trendLabel(String t) {
-    switch (t) {
-      case 'up':   return 'Rising';
-      case 'down': return 'Falling';
-      default:     return 'Steady';
     }
   }
 
@@ -126,33 +129,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ),
               ),
 
-              // ── Emergency alert bar ──────────────────────────────────────
-              if (_emergencyCount > 0)
-                SliverToBoxAdapter(
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE63946).withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE63946).withValues(alpha: 0.35), width: 1.5),
-                    ),
-                    child: Row(children: [
-                      const Icon(Icons.warning_rounded, color: Color(0xFFE63946), size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          GuardianMockData.patients
-                              .where((p) => p.overallStatus == 'emergency')
-                              .map((p) => p.name)
-                              .join(', ') +
-                              ' need${_emergencyCount == 1 ? 's' : ''} help right now',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE63946)),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ),
+              // ── Soft nudge bar — only when someone needs attention ───────
+              if (_emergencyCount > 0 || _attentionCount > 0)
+                SliverToBoxAdapter(child: _nudgeBar()),
 
               // ── Search + filter ──────────────────────────────────────────
               SliverToBoxAdapter(
@@ -197,11 +176,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                                 : const Color(0xFFF4F7FA),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Icon(
-                            Icons.tune_rounded,
-                            color: _filterStatus != null ? Colors.white : Colors.grey.shade500,
-                            size: 20,
-                          ),
+                          child: Icon(Icons.tune_rounded,
+                              color: _filterStatus != null ? Colors.white : Colors.grey.shade500,
+                              size: 20),
                         ),
                       ),
                       if (_filterStatus != null)
@@ -209,8 +186,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           top: -4, right: -4,
                           child: Container(
                             width: 14, height: 14,
-                            decoration: const BoxDecoration(color: Color(0xFFE63946), shape: BoxShape.circle),
-                            child: const Center(child: Text('1', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
+                            decoration: const BoxDecoration(
+                                color: Color(0xFF2A9D8F), shape: BoxShape.circle),
+                            child: const Center(
+                              child: Text('1',
+                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                            ),
                           ),
                         ),
                     ]),
@@ -223,8 +204,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Row(children: [
-                    Text('Your Patients',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
+                    const Text('Your Patients',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
                     const Spacer(),
                     Text('${list.length} of ${GuardianMockData.patients.length}',
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
@@ -243,8 +224,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
                       if (_filterStatus != null || _query.isNotEmpty)
                         TextButton(
-                          onPressed: () => setState(() { _filterStatus = null; _query = ''; _searchCtrl.clear(); }),
-                          child: const Text('Clear filters', style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
+                          onPressed: () => setState(() {
+                            _filterStatus = null; _query = ''; _searchCtrl.clear();
+                          }),
+                          child: const Text('Clear filters',
+                              style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
                         ),
                     ]),
                   ),
@@ -283,44 +267,91 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   }
 
   // ── Title block ────────────────────────────────────────────────────────────
-  Widget _titleBlock() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    const Text('Hello, Guardian',
-        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
-    const SizedBox(height: 2),
-    Text('Watching over ${GuardianMockData.patients.length} patients',
-        style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-  ]);
+  Widget _titleBlock() {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(greeting,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+              color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
+      const SizedBox(height: 3),
+      Text('Watching over ${GuardianMockData.patients.length} people',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w400)),
+    ]);
+  }
 
-  // ── Status pills ───────────────────────────────────────────────────────────
-  Widget _statusPills() => Wrap(spacing: 8, children: [
-    _pill('${GuardianMockData.patients.length} Total', const Color(0xFF2A9D8F)),
-    if (_emergencyCount > 0) _pill('$_emergencyCount Emergency', const Color(0xFFE63946)),
-    if (_attentionCount > 0) _pill('$_attentionCount Attention', const Color(0xFFE76F51)),
-  ]);
+  // ── Status pills — calm palette, no red ───────────────────────────────────
+  Widget _statusPills() {
+    final good = GuardianMockData.patients.where((p) => p.overallStatus == 'good').length;
+    return Wrap(spacing: 8, children: [
+      _pill('$good Doing well',       const Color(0xFF2A9D8F), const Color(0xFFE8F5F3)),
+      if (_attentionCount > 0)
+        _pill('$_attentionCount Worth a look', const Color(0xFFC07A00), const Color(0xFFFFF4E0)),
+      if (_emergencyCount > 0)
+        _pill('$_emergencyCount Check on them', const Color(0xFFE63946), const Color.fromARGB(255, 255, 224, 224)),
+    ]);
+  }
 
-  Widget _pill(String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+  Widget _pill(String label, Color color, Color bg) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
   );
+
+  // ── Soft nudge bar — friendly tone, no warning icons ─────────────────────
+  Widget _nudgeBar() {
+    final urgentNames = GuardianMockData.patients
+        .where((p) => p.overallStatus == 'emergency')
+        .map((p) => p.name).toList();
+    final attnNames = GuardianMockData.patients
+        .where((p) => p.overallStatus == 'attention')
+        .map((p) => p.name).toList();
+
+    final bool isUrgent = urgentNames.isNotEmpty;
+    final names = isUrgent ? urgentNames : attnNames;
+    final color = isUrgent ? const Color(0xFFE63946) : const Color(0xFF2A9D8F);
+    final bg    = isUrgent ? const Color.fromARGB(255, 255, 236, 236) : const Color(0xFFFFF8EC);
+
+    final message = isUrgent
+        ? 'It might be a good time to check on ${names.join(' and ')}'
+        : "${names.join(' and ')}'s sugar is slightly off — nothing urgent";
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [
+        Icon(Icons.favorite_border_rounded, color: color, size: 17),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(message,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                  color: color, height: 1.4)),
+        ),
+      ]),
+    );
+  }
 
   // ── Patient card ───────────────────────────────────────────────────────────
   Widget _buildCard(GuardianPatient p) {
     final sColor = statusColor(p.overallStatus);
+    final sBg    = statusBg(p.overallStatus);
     final gColor = glucoseColor(p);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: p.overallStatus != 'good'
-            ? Border.all(color: sColor.withValues(alpha: 0.4), width: 1.5)
-            : Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
+        // Only a very subtle tinted border for non-good — never a harsh red outline
+        border: Border.all(
+          color: p.overallStatus == 'good'
+              ? Colors.grey.shade100
+              : sColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14, offset: const Offset(0, 4))],
       ),
       child: Column(children: [
 
@@ -330,25 +361,24 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           child: Row(children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: sColor.withValues(alpha: 0.12),
+              backgroundColor: sBg,
               child: Text(p.name.substring(0, 1),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: sColor)),
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(p.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
+              Text(p.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
               const SizedBox(height: 2),
               Text('${p.relationship}  ·  Age ${p.age}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
             ])),
+            // Calm status badge — soft background, no border
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: sColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: sBg, borderRadius: BorderRadius.circular(20)),
               child: Text(statusLabel(p.overallStatus),
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sColor)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: sColor)),
             ),
           ]),
         ),
@@ -358,19 +388,24 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F7FA),
+            color: const Color(0xFFF7F9FC),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(children: [
             Text('${p.glucoseValue}',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: gColor, letterSpacing: -1)),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900,
+                    color: gColor, letterSpacing: -1)),
             const SizedBox(width: 4),
-            Text('mg/dL', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('mg/dL',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+            ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: gColor.withValues(alpha: 0.1),
+                color: gColor.withValues(alpha: 0.09),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -381,23 +416,25 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ]),
             ),
             const Spacer(),
-            // Device dots
-            _dot(p.sensorConnected, 'Sensor'),
-            const SizedBox(width: 4),
-            _dot(p.pumpActive, 'Pump'),
-            const SizedBox(width: 8),
-            Text(p.lastSeenTime, style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+            // Device status — quiet text, no alarming dots
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              _deviceLine(Icons.sensors, 'Sensor', p.sensorConnected),
+              const SizedBox(height: 2),
+              _deviceLine(Icons.water_drop_outlined, 'Pump', p.pumpActive),
+            ]),
           ]),
         ),
 
-        // ── Devices legend (only when something offline) ──
+        // ── Offline notice — soft, not alarming ──
         if (!p.sensorConnected || !p.pumpActive)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Row(children: [
-              if (!p.sensorConnected) _warningChip('Sensor offline'),
+              if (!p.sensorConnected)
+                _softChip('Sensor is off', const Color(0xFFE63946), const Color.fromARGB(255, 255, 238, 238)),
               if (!p.sensorConnected && !p.pumpActive) const SizedBox(width: 6),
-              if (!p.pumpActive) _warningChip('Pump paused'),
+              if (!p.pumpActive)
+                _softChip('Pump is paused', const Color(0xFFE63946), const Color.fromARGB(255, 255, 238, 238)),
             ]),
           ),
 
@@ -408,8 +445,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             _actionBtn(Icons.call_rounded, 'Call', const Color(0xFF2A9D8F),
                 () { HapticFeedback.mediumImpact(); _snack('Calling ${p.name}...', const Color(0xFF2A9D8F)); }),
             const SizedBox(width: 8),
-            _actionBtn(Icons.sms_rounded, 'SMS', const Color(0xFFE76F51),
-                () => _snack('Opening SMS for ${p.name}...', const Color(0xFFE76F51))),
+            _actionBtn(Icons.sms_rounded, 'SMS', const Color(0xFF5B8CF5),
+                () => _snack('Opening SMS for ${p.name}...', const Color(0xFF5B8CF5))),
             const Spacer(),
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(
@@ -417,8 +454,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               )),
               child: Row(children: [
                 Text('View details',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade500)),
-                Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade400),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade400)),
+                Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade300),
               ]),
             ),
           ]),
@@ -427,30 +465,30 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _dot(bool ok, String _) => Container(
-    width: 8, height: 8,
-    decoration: BoxDecoration(
-      color: ok ? const Color(0xFF2A9D8F) : const Color(0xFFE63946),
-      shape: BoxShape.circle,
-    ),
-  );
+  Widget _deviceLine(IconData icon, String label, bool ok) => Row(
+    mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 11,
+        color: ok ? const Color(0xFF2A9D8F) : Colors.grey.shade400),
+    const SizedBox(width: 3),
+    Text(ok ? '$label on' : '$label off',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
+            color: ok ? const Color(0xFF2A9D8F) : Colors.grey.shade400)),
+  ]);
 
-  Widget _warningChip(String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE63946).withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFFE63946), fontWeight: FontWeight.w700)),
+  Widget _softChip(String label, Color color, Color bg) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+    child: Text(label,
+        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
   );
 
   Widget _actionBtn(IconData icon, String label, Color color, VoidCallback onTap) =>
       GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -487,7 +525,8 @@ class _FilterSheetState extends State<_FilterSheet> {
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+            decoration: BoxDecoration(color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 20),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Filter by Status',
@@ -495,17 +534,18 @@ class _FilterSheetState extends State<_FilterSheet> {
           if (_sel != null)
             TextButton(
               onPressed: () { setState(() => _sel = null); widget.onApply(null); Navigator.pop(context); },
-              child: const Text('Clear', style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
+              child: const Text('Clear',
+                  style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
             ),
         ]),
         const SizedBox(height: 16),
-        _opt(null,          'All Patients',      'Show everyone',                     Colors.grey),
+        _opt(null,        'All Patients',    'Show everyone',                           Colors.grey,             const Color(0xFFF4F7FA)),
         const SizedBox(height: 8),
-        _opt('good',        'Doing Well',        'Sugar is in the normal range',      const Color(0xFF2A9D8F)),
+        _opt('good',      'Doing Well',      'Sugar is in the normal range',            const Color(0xFF2A9D8F),  const Color(0xFFE8F5F3)),
         const SizedBox(height: 8),
-        _opt('attention',   'Needs Attention',   'Sugar slightly out of range',       const Color(0xFFE76F51)),
+        _opt('attention', 'Worth a Look',    'Sugar slightly off — nothing to worry',   const Color(0xFFC07A00),  const Color(0xFFFFF4E0)),
         const SizedBox(height: 8),
-        _opt('emergency',   'Needs Help Now',    'Urgent — act immediately',          const Color(0xFFE63946)),
+        _opt('emergency', 'Check on Them',   'May be a good time to reach out',         const Color(0xFFE63946),  const Color.fromARGB(255, 255, 224, 224)),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
@@ -524,7 +564,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _opt(String? value, String title, String subtitle, Color color) {
+  Widget _opt(String? value, String title, String subtitle, Color color, Color bg) {
     final active = _sel == value;
     return GestureDetector(
       onTap: () => setState(() => _sel = (active && value != null) ? null : value),
@@ -532,10 +572,10 @@ class _FilterSheetState extends State<_FilterSheet> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: active ? color.withValues(alpha: 0.06) : Colors.white,
+          color: active ? bg : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? color.withValues(alpha: 0.5) : Colors.grey.shade200,
+            color: active ? color.withValues(alpha: 0.35) : Colors.grey.shade100,
             width: active ? 1.5 : 1,
           ),
         ),
@@ -544,9 +584,11 @@ class _FilterSheetState extends State<_FilterSheet> {
               decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
-                color: active ? color : const Color(0xFF1A2B3C))),
-            Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            Text(title,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                    color: active ? color : const Color(0xFF1A2B3C))),
+            Text(subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
           ])),
           if (active) Icon(Icons.check_circle_rounded, color: color, size: 20),
         ]),
