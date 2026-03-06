@@ -516,10 +516,10 @@ class _LocationTab extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start, children: [
     _secLabel('Last Known Location'),
     const SizedBox(height: 12),
-    const Text('Cairo University Area',
+    const Text('Misr International University',
         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
     const SizedBox(height: 3),
-    Text('Giza, Egypt', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+    Text('Cairo, Egypt', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
     const SizedBox(height: 10),
     Row(children: [
       Icon(Icons.access_time_rounded, size: 14, color: Colors.grey.shade400),
@@ -535,7 +535,7 @@ class _LocationTab extends StatelessWidget {
       ('On the move', '10:15 AM', Icons.directions_walk_rounded),
       ('University', '11:00 AM', Icons.school_rounded),
       ('On the move', '2:30 PM', Icons.directions_walk_rounded),
-      ('Cairo University Area', '3:10 PM', Icons.location_on_rounded),
+      ('Misr International University', '3:10 PM', Icons.location_on_rounded),
     ];
     return _card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _secLabel("Today's Journey"),
