@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/features/user/screens/calorie_log_screen.dart';
 import 'package:flutter_application_1/features/user/screens/home_screen.dart';
 import 'package:flutter_application_1/features/user/screens/manual_log_screen.dart';
+import 'package:flutter_application_1/features/auth/login_screen.dart';
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -202,7 +203,13 @@ class _ProfileTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
                 child: const Text(
                   "Log Out",
                   style: TextStyle(
