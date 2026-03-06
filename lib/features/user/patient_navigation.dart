@@ -40,7 +40,7 @@ class _PatientNavigationState extends State<PatientNavigation> {
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha:0.04),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -349,7 +349,7 @@ class _SettingsScreen extends StatelessWidget {
           border: Border.all(color: const Color(0xFFEEEEEE)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -361,7 +361,7 @@ class _SettingsScreen extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 26),
@@ -495,7 +495,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF199A8E).withOpacity(0.1),
+                color: const Color(0xFF199A8E).withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
@@ -619,7 +619,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha:0.04),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -671,7 +671,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
         border: Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha:0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -684,7 +684,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: const Color(0xFF199A8E).withOpacity(0.15),
+                backgroundColor: const Color(0xFF199A8E).withValues(alpha:0.15),
                 child: Text(
                   doctor['name']!.split(' ').map((e) => e[0]).take(2).join(),
                   style: const TextStyle(
@@ -708,7 +708,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF199A8E).withOpacity(0.1),
+                  color: const Color(0xFF199A8E).withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
@@ -889,7 +889,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha:0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2))
                 ],
