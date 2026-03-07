@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/features/patient/screens/patient_history_screen.dart';
+import 'package:flutter_application_1/features/patient/screens/weekly_report_screen.dart';
 import 'package:flutter_application_1/features/user/screens/calorie_log_screen.dart';
 import 'package:flutter_application_1/features/user/screens/home_screen.dart';
 import 'package:flutter_application_1/features/user/screens/manual_log_screen.dart';
+import 'package:flutter_application_1/features/patient/screens/medication_screen.dart';
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -25,10 +28,7 @@ class _PatientNavigationState extends State<PatientNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: _buildNavBar(),
     );
   }
@@ -100,8 +100,7 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFF199A8E) : const Color(0xFF9E9E9E);
+    final color = active ? const Color(0xFF199A8E) : const Color(0xFF9E9E9E);
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -116,8 +115,7 @@ class _NavTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 color: color,
-                fontWeight:
-                    active ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
             const SizedBox(height: 2),
@@ -159,36 +157,71 @@ class _ProfileTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Center(
-              child: Column(children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF199A8E),
-                    shape: BoxShape.circle,
+              child: Column(
+                children: [
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF199A8E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(Icons.person_rounded,
-                      size: 48, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  "Malak",
-                  style: TextStyle(
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Malak",
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E)),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "malak@example.com",
-                  style:
-                      TextStyle(fontSize: 13, color: Colors.grey[500]),
-                ),
-              ]),
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "malak@example.com",
+                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
-            _tile(Icons.monitor_heart_rounded, "Health Summary"),
-            _tile(Icons.history_rounded, "Glucose History"),
+            _tile(
+              Icons.monitor_heart_rounded,
+              "Health Summary",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WeeklyReportScreen()),
+                );
+              },
+            ),
+            _tile(
+              Icons.history_rounded,
+              "Logs",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PatientHistoryScreen(),
+                  ),
+                );
+              },
+            ),
+            _tile(
+              Icons.medication_rounded,
+              "Medication",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MedicationScreen()),
+                );
+              },
+            ),
             _tile(Icons.notifications_outlined, "Notifications"),
             _tile(Icons.lock_outline_rounded, "Privacy & Security"),
             _tile(Icons.help_outline_rounded, "Help & Support"),
@@ -197,8 +230,7 @@ class _ProfileTab extends StatelessWidget {
               width: double.infinity,
               height: 50,
               decoration: BoxDecoration(
-                border:
-                    Border.all(color: const Color(0xFFEF1616)),
+                border: Border.all(color: const Color(0xFFEF1616)),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: TextButton(
@@ -206,9 +238,10 @@ class _ProfileTab extends StatelessWidget {
                 child: const Text(
                   "Log Out",
                   style: TextStyle(
-                      color: Color(0xFFEF1616),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600),
+                    color: Color(0xFFEF1616),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -219,35 +252,46 @@ class _ProfileTab extends StatelessWidget {
     );
   }
 
-  Widget _tile(IconData icon, String label) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [
-          BoxShadow(
+  Widget _tile(IconData icon, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+          boxShadow: [
+            BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(children: [
-        Icon(icon, size: 22, color: const Color(0xFF199A8E)),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: const Color(0xFF199A8E)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF1A1A2E),
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Colors.grey[400],
+            ),
+          ],
         ),
-        Icon(Icons.chevron_right_rounded,
-            size: 20, color: Colors.grey[400]),
-      ]),
+      ),
     );
   }
 }
