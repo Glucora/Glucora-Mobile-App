@@ -94,7 +94,13 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       final glucoseBarsBytes = await _captureWidget(_glucoseBarsKey);
       final insulinBarsBytes = await _captureWidget(_insulinBarsKey);
 
-      final doc = pw.Document();
+      // Use built-in PDF fonts (no external TTF files needed).
+      final doc = pw.Document(
+        theme: pw.ThemeData.withFont(
+          base: pw.Font.helvetica(),
+          bold: pw.Font.helveticaBold(),
+        ),
+      );
       final stats = _stats;
       final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
 
@@ -358,13 +364,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                   height: 200,
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 180,
+                      Flexible(
+                        flex: 2,
                         child: CustomPaint(
                           painter: _TIRDonutPainter(stats: stats),
+                          child: const SizedBox.expand(),
                         ),
                       ),
-                      Expanded(child: _TIRLegend(stats: stats)),
+                      Flexible(flex: 3, child: _TIRLegend(stats: stats)),
                     ],
                   ),
                 ),
@@ -589,14 +596,22 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       ),
     ];
 
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.0,
-      children: cards,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate aspect ratio dynamically to avoid overflow.
+        // Each cell needs ~120px height for icon + value + label + sub.
+        final cellWidth = (constraints.maxWidth - 20) / 3; // minus spacing
+        final aspectRatio = cellWidth / 120;
+        return GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: aspectRatio.clamp(0.6, 1.2),
+          children: cards,
+        );
+      },
     );
   }
 
@@ -679,12 +694,15 @@ IconData _eventIcon(HistoryEntry e) {
   }
 }
 
-/// Replaces non-Latin-1 characters that Helvetica cannot render in PDF.
+/// Replaces non-Latin-1 characters that Helvetica cannot render.
 String _pdfSafe(String s) => s
     .replaceAll('\u2013', '-') // en-dash
     .replaceAll('\u2014', '-') // em-dash
-    .replaceAll('\u2265', '>=') // >=
-    .replaceAll('\u2264', '<='); // <=
+    .replaceAll('\u2265', '>=') // ≥
+    .replaceAll('\u2264', '<=') // ≤
+    .replaceAll('\u2019', "'") // right single quote
+    .replaceAll('\u201C', '"') // left double quote
+    .replaceAll('\u201D', '"'); // right double quote
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small widgets
@@ -720,40 +738,47 @@ class _StatCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 18, color: color),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+          Icon(icon, size: 16, color: color),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                sub,
-                style: TextStyle(fontSize: 9, color: Colors.grey[500]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                Text(
+                  sub,
+                  style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -859,6 +884,8 @@ class _TIRLegend extends StatelessWidget {
                       fontSize: 11,
                       color: Color(0xFF444444),
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
                 Text(
