@@ -33,6 +33,7 @@ class GlucoraApp extends StatelessWidget {
     );
   }
 }
+
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -48,9 +49,7 @@ class RoleSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const PatientNavigation(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const PatientNavigation()),
                 );
               },
             ),
@@ -60,9 +59,7 @@ class RoleSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const DoctorMainScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const DoctorMainScreen()),
                 );
               },
             ),
