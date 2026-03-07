@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'features/user/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';
+import 'features/admin/screens/admin_main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +61,16 @@ class RoleSelectionScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const DoctorMainScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              child: const Text("Admin Side"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminMainScreen()),
                 );
               },
             ),
