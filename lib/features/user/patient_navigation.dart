@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/features/patient/screens/patient_history_screen.dart';
-import 'package:flutter_application_1/features/patient/screens/weekly_report_screen.dart';
 import 'package:flutter_application_1/features/user/screens/calorie_log_screen.dart';
 import 'package:flutter_application_1/features/user/screens/home_screen.dart';
 import 'package:flutter_application_1/features/user/screens/manual_log_screen.dart';
 import 'package:flutter_application_1/features/auth/login_screen.dart';
-import 'package:flutter_application_1/features/patient/screens/medication_screen.dart';
+import 'package:flutter_application_1/features/patient/screens/weekly_report_screen.dart';
+import 'package:flutter_application_1/features/patient/screens/patient_history_screen.dart';
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -952,6 +951,134 @@ class _ProfileTabState extends State<_ProfileTab> {
                   _infoColumn("Weight", _weight),
                 ],
               ),
+            ),
+            const SizedBox(height: 24),
+            // Reports & History section
+            const Text(
+              "Reports & History",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const WeeklyReportScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF199A8E,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.insert_chart_outlined_rounded,
+                              color: Color(0xFF199A8E),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Weekly Report',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PatientHistoryScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF5B8CF5,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.history_rounded,
+                              color: Color(0xFF5B8CF5),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'History & Export',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             // FAQs heading
