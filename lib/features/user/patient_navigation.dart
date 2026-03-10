@@ -5,6 +5,7 @@ import 'package:flutter_application_1/features/user/screens/manual_log_screen.da
 import 'package:flutter_application_1/features/auth/login_screen.dart';
 import 'package:flutter_application_1/features/patient/screens/weekly_report_screen.dart';
 import 'package:flutter_application_1/features/patient/screens/patient_history_screen.dart';
+import 'package:flutter_application_1/features/guardian/screens/guardian_main_screen.dart'; // <-- IMPORT ADDED
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -1096,6 +1097,30 @@ class _ProfileTabState extends State<_ProfileTab> {
             _faqItem("What do the glucose ranges mean?"),
             _faqItem("Can I share data with my doctor?"),
             _faqItem("How accurate are the predictions?"),
+            
+            // --- NEW: Switch to Guardian button ---
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF199A8E),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(200, 45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Switch to Guardian View'),
+              ),
+            ),
+            // --- END NEW ---
+
             const SizedBox(height: 24),
             // Logout button
             Center(
