@@ -160,7 +160,7 @@ class HomeScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE8E8E8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -269,7 +269,7 @@ class HomeScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE8E8E8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -393,7 +393,7 @@ class HomeScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE8E8E8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -580,7 +580,7 @@ class _ChartPainter extends CustomPainter {
     final s = w / 5;
 
     final grid = Paint()
-      ..color = Colors.grey.withOpacity(0.15)
+      ..color = Colors.grey.withValues(alpha: 0.15)
       ..strokeWidth = 1;
     for (int i = 0; i <= 3; i++) {
       canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
@@ -619,7 +619,7 @@ class _ChartPainter extends CustomPainter {
     canvas.drawPath(
       fill,
       Paint()
-        ..color = const Color(0xFF199A8E).withOpacity(0.10)
+        ..color = const Color(0xFF199A8E).withValues(alpha: 0.10)
         ..style = PaintingStyle.fill,
     );
 

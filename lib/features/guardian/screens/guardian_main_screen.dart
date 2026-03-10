@@ -1,91 +1,183 @@
 import 'package:flutter/material.dart';
-import 'doctor_patients_screen.dart';
-import 'doctor_requests_screen.dart';
-import 'doctor_alerts_screen.dart';
+import 'guardian_home_screen.dart';
+import 'guardian_alerts_screen.dart';
+import 'guardian_requests_screen.dart';
 import 'package:flutter_application_1/features/auth/login_screen.dart'; // for logout
 
-class DoctorMainScreen extends StatefulWidget {
-  const DoctorMainScreen({super.key});
-
+class GuardianMainScreen extends StatefulWidget {
+  const GuardianMainScreen({super.key});
   @override
-  State<DoctorMainScreen> createState() => _DoctorMainScreenState();
+  State<GuardianMainScreen> createState() => _GuardianMainScreenState();
 }
 
-class _DoctorMainScreenState extends State<DoctorMainScreen> {
-  int _currentIndex = 0;
+class _GuardianMainScreenState extends State<GuardianMainScreen> {
+  int _index = 0;
+
+  // Replace with real counts from backend
+  static const int _unreadAlerts = 3;
+  static const int _pendingRequests = 2;
 
   final List<Widget> _screens = [
-    const DoctorPatientsScreen(),
-    const DoctorRequestsScreen(),
-    const DoctorAlertsScreen(),
-    const _DoctorProfileTab(),
+    const GuardianHomeScreen(),
+    const GuardianAlertsScreen(),
+    const GuardianRequestsScreen(),
+    const _GuardianProfileTab(), // replaced placeholder
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF2BB6A3),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            label: 'Patients',
+      backgroundColor: Colors.white,
+      body: _screens[_index],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade100, width: 1),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add_alt_1_outlined),
-            label: 'Requests',
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
+                _item(
+                  1,
+                  Icons.notifications_rounded,
+                  Icons.notifications_outlined,
+                  'Alerts',
+                  badge: _unreadAlerts,
+                ),
+                _item(
+                  2,
+                  Icons.people_rounded,
+                  Icons.people_outline_rounded,
+                  'Requests',
+                  badge: _pendingRequests,
+                ),
+                _item(
+                  3,
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                ),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            label: 'Alerts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _item(
+    int idx,
+    IconData active,
+    IconData inactive,
+    String label, {
+    int badge = 0,
+  }) {
+    final sel = _index == idx;
+    return GestureDetector(
+      onTap: () => setState(() => _index = idx),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              sel
+              ? const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  sel ? active : inactive,
+                  color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
+                  size: 26,
+                ),
+                if (badge > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE63946),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$badge',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────
-// Edit Doctor Profile Screen (with Address)
+// Edit Guardian Profile Screen
 // ─────────────────────────────────────────────────────
-class _EditDoctorProfileScreen extends StatefulWidget {
+class _EditGuardianProfileScreen extends StatefulWidget {
   final String name;
   final int age;
   final String email;
   final String phone;
-  final String address;
 
-  const _EditDoctorProfileScreen({
+  const _EditGuardianProfileScreen({
     required this.name,
     required this.age,
     required this.email,
     required this.phone,
-    required this.address,
   });
 
   @override
-  State<_EditDoctorProfileScreen> createState() => _EditDoctorProfileScreenState();
+  State<_EditGuardianProfileScreen> createState() =>
+      _EditGuardianProfileScreenState();
 }
 
-class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
+class _EditGuardianProfileScreenState
+    extends State<_EditGuardianProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ageController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  late TextEditingController _addressController;
 
   @override
   void initState() {
@@ -94,7 +186,6 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     _ageController = TextEditingController(text: widget.age.toString());
     _emailController = TextEditingController(text: widget.email);
     _phoneController = TextEditingController(text: widget.phone);
-    _addressController = TextEditingController(text: widget.address);
   }
 
   @override
@@ -104,8 +195,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A1A2E),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -132,29 +225,40 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: ListView(
+        child: Column(
           children: [
             _buildField('Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField('Age', _ageController, Icons.cake_outlined,
-                keyboardType: TextInputType.number),
+            _buildField(
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            _buildField('Email', _emailController, Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress),
+            _buildField(
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            _buildField('Phone Number', _phoneController, Icons.phone_outlined,
-                keyboardType: TextInputType.phone),
-            const SizedBox(height: 16),
-            _buildField('Address', _addressController, Icons.location_on_outlined,
-                keyboardType: TextInputType.streetAddress),
+            _buildField(
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller,
-      IconData icon, {
+  Widget _buildField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
@@ -169,7 +273,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         ),
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -179,14 +286,12 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     final updatedAge = int.tryParse(_ageController.text.trim()) ?? widget.age;
     final updatedEmail = _emailController.text.trim();
     final updatedPhone = _phoneController.text.trim();
-    final updatedAddress = _addressController.text.trim();
 
     Navigator.pop(context, {
       'name': updatedName.isEmpty ? widget.name : updatedName,
       'age': updatedAge,
       'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
       'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
-      'address': updatedAddress.isEmpty ? widget.address : updatedAddress,
     });
   }
 
@@ -196,27 +301,25 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     _ageController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 }
 
 // ─────────────────────────────────────────────────────
-// Doctor's Profile Tab (editable, with address)
+// Guardian's Profile Tab (editable)
 // ─────────────────────────────────────────────────────
-class _DoctorProfileTab extends StatefulWidget {
-  const _DoctorProfileTab();
+class _GuardianProfileTab extends StatefulWidget {
+  const _GuardianProfileTab();
 
   @override
-  State<_DoctorProfileTab> createState() => _DoctorProfileTabState();
+  State<_GuardianProfileTab> createState() => _GuardianProfileTabState();
 }
 
-class _DoctorProfileTabState extends State<_DoctorProfileTab> {
-  String _name = "Dr. Nouran";
-  int _age = 45;
-  String _email = "Nouran@gmail.com";
-  String _phone = "01118027001";
-  String _address = "123 Medical Center, Cairo";
+class _GuardianProfileTabState extends State<_GuardianProfileTab> {
+  String _name = "Guardian Name";
+  int _age = 40;
+  String _email = "guardian@example.com";
+  String _phone = "01234567890";
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
@@ -284,8 +387,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                       color: Color(0xFF199A8E),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person_rounded,
-                        size: 48, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -294,15 +400,19 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                       Text(
                         _name,
                         style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E)),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(Icons.edit,
-                            size: 18, color: Color(0xFF199A8E)),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: Color(0xFF199A8E),
+                        ),
                       ),
                     ],
                   ),
@@ -315,7 +425,6 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               ),
             ),
             const SizedBox(height: 24),
-            // Contact information card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -324,18 +433,22 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha:0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoRow(Icons.email_outlined, "Email", _email),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.phone_outlined, "Phone", _phone),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.location_on_outlined, "Address", _address),
+                  _infoColumn("Email", _email),
+                  Container(
+                    height: 30,
+                    width: 1,
+                    color: const Color(0xFFEEEEEE),
+                  ),
+                  _infoColumn("Phone", _phone),
                 ],
               ),
             ),
@@ -384,26 +497,17 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Row(
+  Widget _infoColumn(String label, String value) {
+    return Column(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF199A8E)),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 70,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
-            ),
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A2E),
           ),
         ),
       ],
@@ -438,12 +542,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _EditDoctorProfileScreen(
+        builder: (_) => _EditGuardianProfileScreen(
           name: _name,
           age: _age,
           email: _email,
           phone: _phone,
-          address: _address,
         ),
       ),
     );
@@ -454,7 +557,6 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         _age = result['age'];
         _email = result['email'];
         _phone = result['phone'];
-        _address = result['address'];
       });
     }
   }

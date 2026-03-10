@@ -195,7 +195,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                                     value: _progress,
                                     strokeWidth: 7,
                                     backgroundColor:
-                                        Colors.white.withOpacity(0.25),
+                                        Colors.white.withValues(alpha: 0.5),
                                     valueColor:
                                         const AlwaysStoppedAnimation(
                                             Colors.white),
@@ -211,7 +211,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                                   Text("of goal",
                                       style: TextStyle(
                                           color: Colors.white
-                                              .withOpacity(0.75),
+                                              .withValues(alpha:0.75),
                                           fontSize: 10)),
                                 ]),
                               ],
@@ -229,7 +229,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                             value: _progress,
                             minHeight: 6,
                             backgroundColor:
-                                Colors.white.withOpacity(0.25),
+                                Colors.white.withValues(alpha:0.25),
                             valueColor: const AlwaysStoppedAnimation(
                                 Colors.white),
                           ),
@@ -237,7 +237,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                         const SizedBox(height: 8),
                         Text("Daily goal: $_dailyGoal kcal",
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha:0.8),
                                 fontSize: 12)),
                       ],
                     ),
@@ -309,7 +309,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
   Widget _chip(String label, String value, String unit) => Column(children: [
         Text(label,
             style: TextStyle(
-                fontSize: 11, color: Colors.white.withOpacity(0.75))),
+                fontSize: 11, color: Colors.white.withValues(alpha:0.75))),
         const SizedBox(height: 4),
         Text(value,
             style: const TextStyle(
@@ -318,7 +318,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                 color: Colors.white)),
         Text(unit,
             style: TextStyle(
-                fontSize: 11, color: Colors.white.withOpacity(0.75))),
+                fontSize: 11, color: Colors.white.withValues(alpha:0.75))),
       ]);
 
   Widget _macro(String emoji, String label, String value, Color bg) =>
@@ -353,7 +353,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
           border: Border.all(color: const Color(0xFFEEEEEE)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha:0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
@@ -363,7 +363,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-                color: const Color(0xFF199A8E).withOpacity(0.10),
+                color: const Color(0xFF199A8E).withValues(alpha:0.10),
                 borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.restaurant_rounded,
                 color: Color(0xFF199A8E), size: 20),
