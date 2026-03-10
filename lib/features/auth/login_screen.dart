@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../features/admin/screens/admin_main_screen.dart';
 import '../../features/doctor/screens/doctor_main_screen.dart';
 import '../../features/guardian/screens/guardian_main_screen.dart';
 import '../../features/user/patient_navigation.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
     'patient@test.com': 'patient123',
     'doctor@test.com': 'doctor123',
     'guardian@test.com': 'guardian123',
+    'admin@test.com': 'admin123',
   };
 
   void _login() {
@@ -35,6 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
           nextScreen = const PatientNavigation();
         } else if (email.startsWith('doctor')) {
           nextScreen = const DoctorMainScreen();
+        } else if (email.startsWith('admin')) {
+          nextScreen = const AdminMainScreen();
         } else {
           nextScreen = const GuardianMainScreen();
         }
@@ -64,7 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
           'For demo, use one of these:\n'
           'patient@test.com / patient123\n'
           'doctor@test.com / doctor123\n'
-          'guardian@test.com / guardian123',
+          'guardian@test.com / guardian123\n'
+          'admin@test.com / admin123',
         ),
         actions: [
           TextButton(
@@ -85,8 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () {
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/landing',
-              (Route<dynamic> route) =>
-                  false,
+              (Route<dynamic> route) => false,
             );
           },
         ),
