@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_more_screen.dart';
+import 'admin_account_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
@@ -15,6 +16,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   final List<Widget> _screens = const [
     AdminDashboardScreen(),
     AdminMoreScreen(),
+    AdminAccountScreen(),
   ];
 
   @override
@@ -37,6 +39,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
             icon: Icon(Icons.more_horiz),
             activeIcon: Icon(Icons.more_horiz),
             label: 'More',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Account',
           ),
         ],
       ),
