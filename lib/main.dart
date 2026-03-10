@@ -4,6 +4,7 @@ import 'package:flutter_application_1/features/auth/signup_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/user/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';
+import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/screens/guardian_main_screen.dart';
 import 'features/onboarding/screens/ai_explain_screen.dart';
 import 'features/onboarding/screens/landing_screen.dart';
@@ -40,8 +41,8 @@ class GlucoraApp extends StatelessWidget {
         '/who-we-are': (context) => const WhoWeAreScreen(),
         '/ai-explain': (context) => const AIExplainScreen(),
         '/landing': (context) => const LandingScreen(),
-        '/login-screen':(context) => const LoginScreen(),
-        '/sign-up':(context) => const SignUpScreen(),
+        '/login-screen': (context) => const LoginScreen(),
+        '/sign-up': (context) => const SignUpScreen(),
         '/role-selection': (context) => const RoleSelectionScreen(),
       },
     );
@@ -63,9 +64,7 @@ class RoleSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const PatientNavigation(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const PatientNavigation()),
                 );
               },
             ),
@@ -75,9 +74,17 @@ class RoleSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const DoctorMainScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const DoctorMainScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              child: const Text("Admin Side"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminMainScreen()),
                 );
               },
             ),
@@ -87,12 +94,20 @@ class RoleSelectionScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const GuardianMainScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const DoctorMainScreen()),
                 );
               },
-            )
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              child: const Text("Guardian Side"),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
+                );
+              },
+            ),
           ],
         ),
       ),
