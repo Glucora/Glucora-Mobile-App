@@ -3,6 +3,7 @@ import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
 import 'guardian_requests_screen.dart';
 import 'package:glucora_ai_companion/features/auth/login_screen.dart'; // for logout
+import 'package:glucora_ai_companion/features/user/patient_navigation.dart'; // <-- IMPORT ADDED
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -465,6 +466,30 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             _faqItem("What do the glucose ranges mean?"),
             _faqItem("Can I share data with my doctor?"),
             _faqItem("How accurate are the predictions?"),
+
+            // --- NEW: Switch to Patient button ---
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PatientNavigation()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF199A8E),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(200, 45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Switch to Patient View'),
+              ),
+            ),
+            // --- END NEW ---
+
             const SizedBox(height: 24),
             Center(
               child: SizedBox(
