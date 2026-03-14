@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
 import 'guardian_requests_screen.dart';
-import 'package:flutter_application_1/features/auth/login_screen.dart'; // for logout
+import 'package:glucora_ai_companion/features/auth/login_screen.dart'; // for logout
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -93,8 +93,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              sel
+          color: sel
               ? const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
