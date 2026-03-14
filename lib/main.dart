@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_application_1/features/auth/signup_screen.dart';
+import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/user/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';

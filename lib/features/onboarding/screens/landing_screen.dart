@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/features/auth/signup_screen.dart';
+import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter_application_1/features/auth/terms_screen.dart';
+import 'package:glucora_ai_companion/features/auth/terms_screen.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/features/doctor/screens/care_plan.dart';
+import 'package:glucora_ai_companion/features/doctor/screens/care_plan.dart';
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 

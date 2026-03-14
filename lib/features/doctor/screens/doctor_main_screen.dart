@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'doctor_patients_screen.dart';
 import 'doctor_requests_screen.dart';
 import 'doctor_alerts_screen.dart';
-import 'package:flutter_application_1/features/auth/login_screen.dart'; // for logout
+import 'package:glucora_ai_companion/features/auth/login_screen.dart'; // for logout
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({super.key});
@@ -77,7 +77,8 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditDoctorProfileScreen> createState() => _EditDoctorProfileScreenState();
+  State<_EditDoctorProfileScreen> createState() =>
+      _EditDoctorProfileScreenState();
 }
 
 class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
@@ -104,8 +105,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A1A2E),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -136,25 +139,43 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
           children: [
             _buildField('Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField('Age', _ageController, Icons.cake_outlined,
-                keyboardType: TextInputType.number),
+            _buildField(
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            _buildField('Email', _emailController, Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress),
+            _buildField(
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            _buildField('Phone Number', _phoneController, Icons.phone_outlined,
-                keyboardType: TextInputType.phone),
+            _buildField(
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 16),
-            _buildField('Address', _addressController, Icons.location_on_outlined,
-                keyboardType: TextInputType.streetAddress),
+            _buildField(
+              'Address',
+              _addressController,
+              Icons.location_on_outlined,
+              keyboardType: TextInputType.streetAddress,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller,
-      IconData icon, {
+  Widget _buildField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
@@ -169,7 +190,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         ),
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -284,8 +308,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                       color: Color(0xFF199A8E),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person_rounded,
-                        size: 48, color: Colors.white),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -294,15 +321,19 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                       Text(
                         _name,
                         style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E)),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A2E),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(Icons.edit,
-                            size: 18, color: Color(0xFF199A8E)),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: Color(0xFF199A8E),
+                        ),
                       ),
                     ],
                   ),
@@ -324,9 +355,10 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha:0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Column(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_application_1/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 

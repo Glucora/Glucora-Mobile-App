@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/features/user/screens/calorie_log_screen.dart';
-import 'package:flutter_application_1/features/user/screens/home_screen.dart';
-import 'package:flutter_application_1/features/user/screens/manual_log_screen.dart';
-import 'package:flutter_application_1/features/auth/login_screen.dart';
-import 'package:flutter_application_1/features/patient/screens/weekly_report_screen.dart';
-import 'package:flutter_application_1/features/patient/screens/patient_history_screen.dart';
-import 'package:flutter_application_1/features/guardian/screens/guardian_main_screen.dart'; // <-- IMPORT ADDED
+import 'package:glucora_ai_companion/features/user/screens/calorie_log_screen.dart';
+import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
+import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
+import 'package:glucora_ai_companion/features/auth/login_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
