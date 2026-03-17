@@ -171,6 +171,38 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 },
               ),
               const SizedBox(height: 16),
+                    TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Enter your phone number',
+                  prefixIcon: const Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF2BB6A3),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your number';
+                  }
+                  final nameRegex = RegExp(r'^[0-9]+$');
+                  if (!nameRegex.hasMatch(value)) {
+                    return 'Please enter a valid number (numbers only)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               // Role dropdown
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
