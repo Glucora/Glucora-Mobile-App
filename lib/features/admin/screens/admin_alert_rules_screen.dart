@@ -250,10 +250,12 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _ruleDescription(AdminAlertRule rule) {
     final parts = <String>[];
     parts.add(rule.conditionType);
-    if (rule.thresholdValue != null)
+    if (rule.thresholdValue != null) {
       parts.add('Threshold: ${rule.thresholdValue!.toInt()} mg/dL');
-    if (rule.durationMinutes != null)
+    }
+    if (rule.durationMinutes != null) {
       parts.add('Duration: ${rule.durationMinutes} min');
+    }
     return parts.join('  •  ');
   }
 }

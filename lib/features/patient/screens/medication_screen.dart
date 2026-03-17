@@ -144,7 +144,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
                       // Type dropdown
                       DropdownButtonFormField<MedicationType>(
-                        value: type,
+                        initialValue: type,
                         decoration: _inputDecoration('Type'),
                         items: MedicationType.values
                             .map(
@@ -173,7 +173,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
                       // Frequency dropdown
                       DropdownButtonFormField<String>(
-                        value: frequency,
+                        initialValue: frequency,
                         decoration: _inputDecoration('Frequency'),
                         items: frequencies
                             .map(
@@ -296,7 +296,7 @@ class _MedicationCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -308,7 +308,7 @@ class _MedicationCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: const Color(0xFF2BB6A3).withOpacity(0.1),
+              color: const Color(0xFF2BB6A3).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(

@@ -88,7 +88,9 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
   }
 
   void _markRead(_Alert a)  => setState(() => a.isRead = true);
-  void _markAllRead()       => setState(() { for (final a in _alerts) a.isRead = true; });
+  void _markAllRead()       => setState(() { for (final a in _alerts) {
+    a.isRead = true;
+  } });
 
   void _call(String name) {
     HapticFeedback.mediumImpact();

@@ -23,8 +23,9 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
         return false;
       }
       if (_typeFilter == 'CGM' && d.deviceType != 'CGM') return false;
-      if (_typeFilter == 'Micropump' && d.deviceType != 'Micropump')
+      if (_typeFilter == 'Micropump' && d.deviceType != 'Micropump') {
         return false;
+      }
       return true;
     }).toList();
   }

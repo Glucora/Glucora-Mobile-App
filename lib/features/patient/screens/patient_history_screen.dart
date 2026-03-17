@@ -553,8 +553,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       case _GraphType.insulin:
         final data = _insulinBuckets(start, end);
         final hasData = data.values.any((v) => v > 0);
-        if (!hasData)
+        if (!hasData) {
           return _emptyChart('No insulin deliveries in this period');
+        }
         return CustomPaint(
           painter: _InsulinBarPainter(values: data.values, labels: data.labels),
           child: const SizedBox.expand(),

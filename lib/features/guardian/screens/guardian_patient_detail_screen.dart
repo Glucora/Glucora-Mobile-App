@@ -763,10 +763,12 @@ class _MapPainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bg);
 
     final grid = Paint()..color = const Color(0xFFCCE8E3).withValues(alpha: 0.6)..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 36)
+    for (double x = 0; x < size.width; x += 36) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    for (double y = 0; y < size.height; y += 36)
+    }
+    for (double y = 0; y < size.height; y += 36) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
 
     final road = Paint()..color = Colors.white.withValues(alpha: 0.8)..strokeWidth = 9;
     canvas.drawLine(Offset(0, size.height * 0.55), Offset(size.width, size.height * 0.45), road);
