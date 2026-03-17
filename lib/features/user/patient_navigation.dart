@@ -5,6 +5,7 @@ import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dar
 import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
+import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
