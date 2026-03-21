@@ -4,6 +4,7 @@ import '../../features/doctor/screens/doctor_main_screen.dart';
 import '../../features/guardian/screens/guardian_main_screen.dart';
 import '../../features/user/patient_navigation.dart';
 import 'signup_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,10 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: colors.textPrimary),
           onPressed: () {
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/landing',
@@ -94,14 +96,15 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
         ),
-        title: const Text('Login'),
+        title: Text('Login', style: TextStyle(color: colors.textPrimary)),
+        backgroundColor: colors.surface,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
-            // <-- Added to make content scrollable
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -112,21 +115,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Enter your email',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelStyle: TextStyle(color: colors.textSecondary),
+                    prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF2BB6A3),
-                        width: 2,
-                      ),
+                      borderSide: BorderSide(color: colors.accent, width: 2),
                     ),
+                    filled: true,
+                    fillColor: colors.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -145,12 +149,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Enter your password',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelStyle: TextStyle(color: colors.textSecondary),
+                    prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: colors.textSecondary,
                       ),
                       onPressed: () {
                         setState(() {
@@ -160,18 +164,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF2BB6A3),
-                        width: 2,
-                      ),
+                      borderSide: BorderSide(color: colors.accent, width: 2),
                     ),
+                    filled: true,
+                    fillColor: colors.surface,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -189,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _forgotPassword,
-                    child: const Text('Forgot Password?'),
+                    child: Text('Forgot Password?', style: TextStyle(color: colors.accent)),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -197,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ElevatedButton(
                   onPressed: _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2BB6A3),
+                    backgroundColor: colors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -211,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? "),
+                    Text("Don't have an account? ", style: TextStyle(color: colors.textSecondary)),
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -221,10 +225,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: const Text(
+                      child: Text(
                         'Sign Up',
                         style: TextStyle(
-                          color: Color(0xFF2BB6A3),
+                          color: colors.accent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -232,20 +236,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'OR',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: colors.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 // Social buttons
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                  label: const Text('Sign in with Google'),
+                  label: Text('Sign in with Google', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -255,10 +259,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.apple, color: Colors.black),
-                  label: const Text('Sign in with Apple'),
+                  label: Text('Sign in with Apple', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -268,16 +272,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.facebook, color: Colors.blue),
-                  label: const Text('Sign in with Facebook'),
+                  label: Text('Sign in with Facebook', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20), // Extra space at bottom
+                const SizedBox(height: 20),
               ],
             ),
           ),

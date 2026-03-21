@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';  // ADDED
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';  // ADDED
 import 'package:glucora_ai_companion/features/user/screens/calorie_log_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
@@ -6,6 +8,7 @@ import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
+
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -784,7 +787,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
 }
 
 // ─────────────────────────────────────────────────────
-// Profile tab (Stateful)
+// Profile tab (Stateful) – with Dark Mode Toggle
 // ─────────────────────────────────────────────────────
 class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
@@ -840,6 +843,9 @@ class _ProfileTabState extends State<_ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme provider to toggle dark mode
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1081,6 +1087,18 @@ class _ProfileTabState extends State<_ProfileTab> {
                 ),
               ],
             ),
+
+            // ========== DARK MODE TOGGLE ==========
+            const SizedBox(height: 24),
+            SwitchListTile(
+              title: const Text('Dark Mode'),
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (_) => themeProvider.toggleTheme(),
+              activeColor: const Color(0xFF199A8E),
+              contentPadding: EdgeInsets.zero,
+            ),
+            // ========== END DARK MODE TOGGLE ==========
+
             const SizedBox(height: 24),
             // FAQs heading
             const Text(

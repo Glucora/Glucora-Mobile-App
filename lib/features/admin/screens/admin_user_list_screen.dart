@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'admin_user_form_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});
@@ -59,6 +60,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final filtered = _filtered;
 
     return Scaffold(
@@ -67,7 +69,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           'Users',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -82,7 +84,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Column(
         children: [
           // Search bar
@@ -92,10 +94,11 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search by name or email…',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintStyle: TextStyle(color: colors.textSecondary),
+                prefixIcon: Icon(Icons.search, color: colors.textSecondary),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: Icon(Icons.clear, color: colors.textSecondary),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _query = '');
@@ -103,7 +106,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colors.surface,
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 0,
                   horizontal: 16,
@@ -127,12 +130,10 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(label),
+                    label: Text(label, style: TextStyle(color: colors.textPrimary)),
                     selected: selected,
-                    selectedColor: const Color(
-                      0xFF2BB6A3,
-                    ).withValues(alpha: 0.2),
-                    checkmarkColor: const Color(0xFF2BB6A3),
+                    selectedColor: colors.accent.withValues(alpha: 0.2),
+                    checkmarkColor: colors.accent,
                     onSelected: (_) => setState(() => _roleFilter = label),
                   ),
                 );
@@ -146,7 +147,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 ? Center(
                     child: Text(
                       'No users found',
-                      style: TextStyle(color: Colors.grey[500]),
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -158,7 +159,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     separatorBuilder: (_, a2) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final user = filtered[index];
-                      return _userCard(user);
+                      return _userCard(context, user);
                     },
                   ),
           ),
@@ -167,11 +168,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     );
   }
 
-  Widget _userCard(AdminUser user) {
+  Widget _userCard(BuildContext context, AdminUser user) {
+    final colors = context.colors;
     final roleColor = _roleColor(user.role);
 
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -205,15 +207,16 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   children: [
                     Text(
                       user.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       user.email,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -245,12 +248,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
+                    color: colors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Inactive',
-                    style: TextStyle(fontSize: 10, color: Colors.red),
+                    style: TextStyle(fontSize: 10, color: colors.error),
                   ),
                 ),
               PopupMenuButton<String>(

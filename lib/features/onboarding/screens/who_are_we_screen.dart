@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class WhoWeAreScreen extends StatefulWidget {
   const WhoWeAreScreen({super.key});
@@ -14,9 +16,6 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
-
-  static const Color _teal = Color(0xFF2BB6A3);
-  static const Color _bg = Color(0xFFF5FFFE);
 
   final List<Map<String, dynamic>> _pages = [
     {
@@ -88,12 +87,12 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
-            // Top bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
               child: Row(
@@ -101,16 +100,15 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pushReplacementNamed(context, '/ai-explain'),
-                    child: const Text(
+                    child: Text(
                       'Skip',
-                      style: TextStyle(color: Color(0xFF6B7C7C), fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Pages
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -130,7 +128,6 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Logo centered
                           ClipRRect(
                             borderRadius: BorderRadius.circular(22),
                             child: Image.asset(
@@ -143,12 +140,11 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           const SizedBox(height: 36),
 
-                          // Accent tag
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
-                              color: accent.withValues(alpha:0.1),
+                              color: accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -164,27 +160,25 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           const SizedBox(height: 28),
 
-                          // Big title
                           Text(
                             p['title'] as String,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A2B2B),
+                              color: colors.textPrimary,
                               height: 1.2,
                             ),
                           ),
 
                           const SizedBox(height: 20),
 
-                          // Subtitle
                           Text(
                             p['subtitle'] as String,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
-                              color: Color(0xFF6B7C7C),
+                              color: colors.textSecondary,
                               height: 1.65,
                             ),
                           ),
@@ -196,7 +190,6 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
               ),
             ),
 
-            // Bottom
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
               child: Column(
@@ -211,7 +204,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                         width: active ? 22 : 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: active ? _teal : const Color(0xFFB2DFDB),
+                          color: active ? colors.accent : colors.textSecondary.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
@@ -224,7 +217,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                     child: ElevatedButton(
                       onPressed: _next,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _teal,
+                        backgroundColor: colors.accent,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/features/auth/login_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart'; // Fixed import
 
 class AdminAccountScreen extends StatefulWidget {
   const AdminAccountScreen({super.key});
@@ -15,11 +18,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   String _phone = "01012345678";
   String _address = "Glucora HQ, Cairo";
 
-  // Settings state
   bool _notificationsEnabled = true;
-  bool _darkMode = false;
-
-  // FAQ expand state (-1 = none expanded)
   int _expandedFaqIndex = -1;
 
   static const List<Map<String, String>> _faqs = [
@@ -46,6 +45,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   ];
 
   void _showLogoutDialog(BuildContext context) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -55,10 +55,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Color(0xFF888888)),
-            ),
+            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -69,12 +66,10 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF1616),
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Logout'),
           ),
@@ -85,6 +80,9 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = context.colors;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -92,35 +90,21 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            // Header with title and settings icon
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "My Account",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ),
+                Text("My Account", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary)),
                 IconButton(
-                  icon: const Icon(
-                    Icons.settings_outlined,
-                    color: Color(0xFF555555),
-                  ),
+                  icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => _AdminSettingsScreen(
                           notificationsEnabled: _notificationsEnabled,
-                          darkMode: _darkMode,
-                          onSettingsChanged: (notifications, dark) {
-                            setState(() {
-                              _notificationsEnabled = notifications;
-                              _darkMode = dark;
-                            });
+                          onSettingsChanged: (notifications) {
+                            setState(() => _notificationsEnabled = notifications);
                           },
                         ),
                       ),
@@ -130,134 +114,81 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            // Profile picture and basic info with edit icon
+            // Profile
             Center(
               child: Column(
                 children: [
                   Container(
                     width: 90,
                     height: 90,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF199A8E),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_rounded,
-                      size: 48,
-                      color: Colors.white,
-                    ),
+                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
+                    child: const Icon(Icons.admin_panel_settings_rounded, size: 48, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        _name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
-                        ),
-                      ),
+                      Text(_name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(
-                          Icons.edit,
-                          size: 18,
-                          color: Color(0xFF199A8E),
-                        ),
+                        child: Icon(Icons.edit, size: 18, color: colors.primary),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    "$_age years",
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
+                  Text("$_age years", style: TextStyle(fontSize: 14, color: colors.textSecondary)),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF199A8E).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      "Administrator",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF199A8E),
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text("Administrator", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary)),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Contact information card
+            // Contact card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFEEEEEE)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.email_outlined, "Email", _email),
+                  _infoRow(context, Icons.email_outlined, "Email", _email),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.phone_outlined, "Phone", _phone),
+                  _infoRow(context, Icons.phone_outlined, "Phone", _phone),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.location_on_outlined, "Address", _address),
+                  _infoRow(context, Icons.location_on_outlined, "Address", _address),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // FAQs heading
-            const Text(
-              "FAQs",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
-              ),
+            SwitchListTile(
+              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (_) => themeProvider.toggleTheme(),
+              activeColor: colors.primary,
+              contentPadding: EdgeInsets.zero,
             ),
+            const SizedBox(height: 24),
+            Text("FAQs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary)),
             const SizedBox(height: 12),
             for (int i = 0; i < _faqs.length; i++)
-              _faqItem(i, _faqs[i]['q']!, _faqs[i]['a']!),
+              _faqItem(context, i, _faqs[i]['q']!, _faqs[i]['a']!),
             const SizedBox(height: 24),
-            // Logout button
             Center(
               child: SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
                   onPressed: () => _showLogoutDialog(context),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFEF1616)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text(
-                    "Log Out",
-                    style: TextStyle(
-                      color: Color(0xFFEF1616),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: colors.error), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  child: Text("Log Out", style: TextStyle(color: colors.error, fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
             ),
@@ -268,52 +199,31 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF199A8E)),
+        Icon(icon, size: 16, color: colors.primary),
         const SizedBox(width: 12),
-        SizedBox(
-          width: 70,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-        ),
+        SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary))),
+        Expanded(child: Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary))),
       ],
     );
   }
 
-  Widget _faqItem(int index, String question, String answer) {
+  Widget _faqItem(BuildContext context, int index, String question, String answer) {
+    final colors = context.colors;
     final isExpanded = _expandedFaqIndex == index;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _expandedFaqIndex = isExpanded ? -1 : index;
-        });
-      },
+      onTap: () => setState(() => _expandedFaqIndex = isExpanded ? -1 : index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isExpanded
-                ? const Color(0xFF199A8E).withValues(alpha: 0.3)
-                : const Color(0xFFEEEEEE),
-          ),
+          border: Border.all(color: isExpanded ? colors.primary.withValues(alpha: 0.3) : const Color(0xFFEEEEEE)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,31 +231,17 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    question,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
+                Expanded(child: Text(question, style: TextStyle(fontSize: 14, color: colors.textPrimary))),
                 AnimatedRotation(
                   turns: isExpanded ? 0.25 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.grey[400],
-                  ),
+                  child: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
                 ),
               ],
             ),
             if (isExpanded) ...[
               const SizedBox(height: 10),
-              Text(
-                answer,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
+              Text(answer, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
             ],
           ],
         ),
@@ -357,16 +253,9 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _EditAdminProfileScreen(
-          name: _name,
-          age: _age,
-          email: _email,
-          phone: _phone,
-          address: _address,
-        ),
+        builder: (_) => _EditAdminProfileScreen(name: _name, age: _age, email: _email, phone: _phone, address: _address),
       ),
     );
-
     if (result != null) {
       setState(() {
         _name = result['name'];
@@ -398,8 +287,7 @@ class _EditAdminProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditAdminProfileScreen> createState() =>
-      _EditAdminProfileScreenState();
+  State<_EditAdminProfileScreen> createState() => _EditAdminProfileScreenState();
 }
 
 class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
@@ -421,36 +309,21 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
-          ),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text('Edit Profile', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: Color(0xFF199A8E),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text('Save', style: TextStyle(color: colors.primary, fontSize: 16, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -458,34 +331,15 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildField('Name', _nameController, Icons.person_outline),
+            _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField(
-              'Age',
-              _ageController,
-              Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-            ),
+            _buildField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
             const SizedBox(height: 16),
-            _buildField(
-              'Email',
-              _emailController,
-              Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
+            _buildField(context, 'Email', _emailController, Icons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 16),
-            _buildField(
-              'Phone',
-              _phoneController,
-              Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-            ),
+            _buildField(context, 'Phone', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
             const SizedBox(height: 16),
-            _buildField(
-              'Address',
-              _addressController,
-              Icons.location_on_outlined,
-            ),
+            _buildField(context, 'Address', _addressController, Icons.location_on_outlined),
           ],
         ),
       ),
@@ -493,29 +347,25 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
   }
 
   Widget _buildField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
     String? hint,
   }) {
+    final colors = context.colors;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF199A8E)),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
@@ -552,12 +402,10 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
 // ─────────────────────────────────────────────────────
 class _AdminSettingsScreen extends StatefulWidget {
   final bool notificationsEnabled;
-  final bool darkMode;
-  final void Function(bool notifications, bool dark) onSettingsChanged;
+  final void Function(bool notifications) onSettingsChanged;
 
   const _AdminSettingsScreen({
     required this.notificationsEnabled,
-    required this.darkMode,
     required this.onSettingsChanged,
   });
 
@@ -567,35 +415,28 @@ class _AdminSettingsScreen extends StatefulWidget {
 
 class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
   late bool _notifications;
-  late bool _darkMode;
 
   @override
   void initState() {
     super.initState();
     _notifications = widget.notificationsEnabled;
-    _darkMode = widget.darkMode;
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
-          ),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text('Settings', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Padding(
@@ -603,27 +444,26 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
         child: Column(
           children: [
             _settingsToggle(
+              context,
               icon: Icons.notifications_outlined,
               title: 'Notifications',
               subtitle: 'Receive system alerts and updates',
-              color: const Color(0xFF199A8E),
+              color: colors.primary,
               value: _notifications,
               onChanged: (val) {
                 setState(() => _notifications = val);
-                widget.onSettingsChanged(_notifications, _darkMode);
+                widget.onSettingsChanged(_notifications);
               },
             ),
             const SizedBox(height: 16),
             _settingsToggle(
+              context,
               icon: Icons.dark_mode_outlined,
               title: 'Dark Mode',
               subtitle: 'Switch to dark theme',
               color: const Color(0xFF5B8CF5),
-              value: _darkMode,
-              onChanged: (val) {
-                setState(() => _darkMode = val);
-                widget.onSettingsChanged(_notifications, _darkMode);
-              },
+              value: isDarkMode,
+              onChanged: (_) => themeProvider.toggleTheme(),
             ),
           ],
         ),
@@ -631,7 +471,8 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
     );
   }
 
-  Widget _settingsToggle({
+  Widget _settingsToggle(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -639,29 +480,21 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             width: 50,
             height: 50,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: color, size: 26),
           ),
           const SizedBox(width: 16),
@@ -669,26 +502,16 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                ),
+                Text(subtitle, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
               ],
             ),
           ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF199A8E),
+            activeThumbColor: colors.primary,
           ),
         ],
       ),

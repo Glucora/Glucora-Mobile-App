@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E)),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Terms & Privacy',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
       ),
-      body: const Padding(
-        padding: EdgeInsets.all(20.0),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,10 +35,10 @@ class TermsScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colors.textPrimary,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 'This is a placeholder for the Terms of Service. '
                 'In a real app, this would contain detailed legal terms about '
@@ -46,24 +47,24 @@ class TermsScreen extends StatelessWidget {
                 'health data regulations (e.g., HIPAA, GDPR). Your glucose '
                 'readings and personal information will be encrypted and never '
                 'shared without your explicit consent.\n\n',
-                style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF555555)),
+                style: TextStyle(fontSize: 14, height: 1.5, color: colors.textSecondary),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               Text(
                 'Privacy Policy',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colors.textPrimary,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 'easrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg '
                 'ceasrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg '
                 'easrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg\n\n'
                 'easrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg',
-                style: TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF555555)),
+                style: TextStyle(fontSize: 14, height: 1.5, color: colors.textSecondary),
               ),
             ],
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class AIExplainScreen extends StatefulWidget {
   const AIExplainScreen({super.key});
@@ -13,9 +15,6 @@ class _AIExplainScreenState extends State<AIExplainScreen>
   int _currentPage = 0;
 
   late AnimationController _animController;
-
-  static const Color _teal = Color(0xFF2BB6A3);
-  static const Color _bg = Color(0xFFF5FFFE);
 
   final List<Map<String, dynamic>> _steps = [
     {
@@ -85,15 +84,15 @@ class _AIExplainScreenState extends State<AIExplainScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
               child: Row(
@@ -102,22 +101,22 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'You are always\nin the loop.',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A2B2B),
+                          color: colors.textPrimary,
                           height: 1.25,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
                         'Here is what happens at every step.',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF6B7C7C),
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -125,10 +124,10 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                   TextButton(
                     onPressed: () =>
                         Navigator.pushReplacementNamed(context, '/landing'),
-                    child: const Text(
+                    child: Text(
                       'Skip',
                       style: TextStyle(
-                        color: Color(0xFF6B7C7C),
+                        color: colors.textSecondary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -140,7 +139,6 @@ class _AIExplainScreenState extends State<AIExplainScreen>
 
             const SizedBox(height: 32),
 
-            // Cards
             SizedBox(
               height: size.height * 0.48,
               child: PageView.builder(
@@ -205,7 +203,6 @@ class _AIExplainScreenState extends State<AIExplainScreen>
 
             const SizedBox(height: 28),
 
-            // Dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(_steps.length, (i) {
@@ -216,7 +213,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                   width: active ? 22 : 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: active ? _teal : const Color(0xFFB2DFDB),
+                    color: active ? colors.accent : colors.textSecondary.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -225,7 +222,6 @@ class _AIExplainScreenState extends State<AIExplainScreen>
 
             const Spacer(),
 
-            // Button
             Padding(
               padding: const EdgeInsets.fromLTRB(28, 0, 28, 36),
               child: SizedBox(
@@ -234,7 +230,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                 child: ElevatedButton(
                   onPressed: _next,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _teal,
+                    backgroundColor: colors.accent,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
 import 'guardian_requests_screen.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart'; // for logout
-import 'package:glucora_ai_companion/features/user/patient_navigation.dart'; // <-- IMPORT ADDED
+import 'package:glucora_ai_companion/features/auth/login_screen.dart';
+import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
+import 'package:provider/provider.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -14,7 +18,6 @@ class GuardianMainScreen extends StatefulWidget {
 class _GuardianMainScreenState extends State<GuardianMainScreen> {
   int _index = 0;
 
-  // Replace with real counts from backend
   static const int _unreadAlerts = 3;
   static const int _pendingRequests = 2;
 
@@ -22,19 +25,20 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
     const GuardianHomeScreen(),
     const GuardianAlertsScreen(),
     const GuardianRequestsScreen(),
-    const _GuardianProfileTab(), // replaced placeholder
+    const _GuardianProfileTab(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       body: _screens[_index],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           border: Border(
-            top: BorderSide(color: Colors.grey.shade100, width: 1),
+            top: BorderSide(color: colors.textSecondary.withOpacity(0.2), width: 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -50,12 +54,13 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home'),
+                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home', colors),
                 _item(
                   1,
                   Icons.notifications_rounded,
                   Icons.notifications_outlined,
                   'Alerts',
+                  colors,
                   badge: _unreadAlerts,
                 ),
                 _item(
@@ -63,6 +68,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                   Icons.people_rounded,
                   Icons.people_outline_rounded,
                   'Requests',
+                  colors,
                   badge: _pendingRequests,
                 ),
                 _item(
@@ -70,6 +76,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                   Icons.person_rounded,
                   Icons.person_outline_rounded,
                   'Profile',
+                  colors,
                 ),
               ],
             ),
@@ -83,7 +90,8 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
     int idx,
     IconData active,
     IconData inactive,
-    String label, {
+    String label,
+    GlucoraColors colors, {
     int badge = 0,
   }) {
     final sel = _index == idx;
@@ -95,7 +103,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         decoration: BoxDecoration(
           color: sel
-              ? const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.12)
+              ? colors.accent.withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
@@ -107,7 +115,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
               children: [
                 Icon(
                   sel ? active : inactive,
-                  color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
+                  color: sel ? colors.accent : colors.textSecondary,
                   size: 26,
                 ),
                 if (badge > 0)
@@ -141,7 +149,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                color: sel ? const Color(0xFF2A9D8F) : Colors.grey.shade400,
+                color: sel ? colors.accent : colors.textSecondary,
               ),
             ),
           ],
@@ -190,21 +198,22 @@ class _EditGuardianProfileScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Edit Profile',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -212,10 +221,10 @@ class _EditGuardianProfileScreenState
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text(
+            child: Text(
               'Save',
               style: TextStyle(
-                color: Color(0xFF199A8E),
+                color: colors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -227,9 +236,10 @@ class _EditGuardianProfileScreenState
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildField('Name', _nameController, Icons.person_outline),
+            _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Age',
               _ageController,
               Icons.cake_outlined,
@@ -237,6 +247,7 @@ class _EditGuardianProfileScreenState
             ),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Email',
               _emailController,
               Icons.email_outlined,
@@ -244,6 +255,7 @@ class _EditGuardianProfileScreenState
             ),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Phone Number',
               _phoneController,
               Icons.phone_outlined,
@@ -256,17 +268,19 @@ class _EditGuardianProfileScreenState
   }
 
   Widget _buildField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final colors = context.colors;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF199A8E)),
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -322,6 +336,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   String _phone = "01234567890";
 
   void _showLogoutDialog(BuildContext context) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -331,9 +346,9 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Color(0xFF888888)),
+              style: TextStyle(color: colors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -345,7 +360,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF1616),
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -361,6 +376,9 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = context.colors;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -368,12 +386,12 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Profile",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -383,8 +401,8 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   Container(
                     width: 90,
                     height: 90,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF199A8E),
+                    decoration: BoxDecoration(
+                      color: colors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -399,19 +417,19 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                     children: [
                       Text(
                         _name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit,
                           size: 18,
-                          color: Color(0xFF199A8E),
+                          color: colors.primary,
                         ),
                       ),
                     ],
@@ -419,7 +437,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   const SizedBox(height: 4),
                   Text(
                     "$_age years",
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -428,7 +446,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
@@ -442,32 +460,41 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoColumn("Email", _email),
+                  _infoColumn(context, "Email", _email),
                   Container(
                     height: 30,
                     width: 1,
                     color: const Color(0xFFEEEEEE),
                   ),
-                  _infoColumn("Phone", _phone),
+                  _infoColumn(context, "Phone", _phone),
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
-            const Text(
+            SwitchListTile(
+              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (_) => themeProvider.toggleTheme(),
+              activeColor: colors.primary,
+              contentPadding: EdgeInsets.zero,
+            ),
+
+            const SizedBox(height: 24),
+            Text(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
-            _faqItem("How do I connect my glucose monitor?"),
-            _faqItem("What do the glucose ranges mean?"),
-            _faqItem("Can I share data with my doctor?"),
-            _faqItem("How accurate are the predictions?"),
+            _faqItem(context, "How do I connect my glucose monitor?"),
+            _faqItem(context, "What do the glucose ranges mean?"),
+            _faqItem(context, "Can I share data with my doctor?"),
+            _faqItem(context, "How accurate are the predictions?"),
 
-            // --- NEW: Switch to Patient button ---
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
@@ -478,7 +505,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF199A8E),
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(200, 45),
                   shape: RoundedRectangleBorder(
@@ -488,7 +515,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                 child: const Text('Switch to Patient View'),
               ),
             ),
-            // --- END NEW ---
 
             const SizedBox(height: 24),
             Center(
@@ -498,15 +524,15 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                 child: OutlinedButton(
                   onPressed: () => _showLogoutDialog(context),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFEF1616)),
+                    side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     "Log Out",
                     style: TextStyle(
-                      color: Color(0xFFEF1616),
+                      color: colors.error,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -521,29 +547,31 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     );
   }
 
-  Widget _infoColumn(String label, String value) {
+  Widget _infoColumn(BuildContext context, String label, String value) {
+    final colors = context.colors;
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
         ),
       ],
     );
   }
 
-  Widget _faqItem(String question) {
+  Widget _faqItem(BuildContext context, String question) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -553,10 +581,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           Expanded(
             child: Text(
               question,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A2E)),
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+          Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
         ],
       ),
     );

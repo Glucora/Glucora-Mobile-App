@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
@@ -33,25 +35,22 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   int get _emergencyCount => GuardianMockData.patients.where((p) => p.overallStatus == 'emergency').length;
   int get _attentionCount => GuardianMockData.patients.where((p) => p.overallStatus == 'attention').length;
 
-  // ── Calm color system ─────────────────────────────────────────────────────
-  // No red anywhere. Amber for urgent, blue for attention, teal for good.
-  static Color statusColor(String s) {
+  static Color statusColor(String s, GlucoraColors colors) {
     switch (s) {
-      case 'emergency': return const Color.fromARGB(255, 192, 0, 0); // deep amber — serious but not scary
-      case 'attention': return const Color(0xFFC07A00); // soft blue — informational
-      default:          return const Color(0xFF2A9D8F); // teal — calm
+      case 'emergency': return colors.error;
+      case 'attention': return colors.warning;
+      default:          return colors.accent;
     }
   }
 
-  static Color statusBg(String s) {
+  static Color statusBg(String s, GlucoraColors colors) {
     switch (s) {
-      case 'emergency': return const Color.fromARGB(255, 255, 239, 236);
-      case 'attention': return const Color(0xFFFFF4E0);
-      default:          return const Color(0xFFE8F5F3);
+      case 'emergency': return colors.error.withValues(alpha: 0.1);
+      case 'attention': return colors.warning.withValues(alpha: 0.1);
+      default:          return colors.accent.withValues(alpha: 0.1);
     }
   }
 
-  // Friendly, non-alarming language
   static String statusLabel(String s) {
     switch (s) {
       case 'emergency': return 'Check on them';
@@ -60,12 +59,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
-  static Color glucoseColor(GuardianPatient p) {
+  static Color glucoseColor(GuardianPatient p, GlucoraColors colors) {
     switch (p.glucoseLabel) {
       case 'Too high': case 'Very high':
-      case 'Too low':  case 'Very low':  return const Color(0xFFE63946);
-      case 'A bit high':                 return const Color(0xFFC07A00);
-      default:                           return const Color(0xFF2A9D8F);
+      case 'Too low':  case 'Very low':  return colors.error;
+      case 'A bit high':                 return colors.warning;
+      default:                           return colors.accent;
     }
   }
 
@@ -87,7 +86,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     ));
   }
 
-  void _showFilter() {
+  void _showFilter(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -101,9 +100,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final list = _filtered;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(builder: (ctx, orientation) {
           final isLandscape = orientation == Orientation.landscape;
@@ -111,29 +111,26 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             physics: const ClampingScrollPhysics(),
             slivers: [
 
-              // ── Header ──────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(20, isLandscape ? 10 : 24, 20, 0),
                   child: isLandscape
                       ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                          Expanded(child: _titleBlock()),
+                          Expanded(child: _titleBlock(context)),
                           const SizedBox(width: 16),
-                          _statusPills(),
+                          _statusPills(context),
                         ])
                       : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          _titleBlock(),
+                          _titleBlock(context),
                           const SizedBox(height: 10),
-                          _statusPills(),
+                          _statusPills(context),
                         ]),
                 ),
               ),
 
-              // ── Soft nudge bar — only when someone needs attention ───────
               if (_emergencyCount > 0 || _attentionCount > 0)
-                SliverToBoxAdapter(child: _nudgeBar()),
+                SliverToBoxAdapter(child: _nudgeBar(context)),
 
-              // ── Search + filter ──────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -141,7 +138,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4F7FA),
+                          color: colors.surface,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: TextField(
@@ -149,13 +146,13 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           onChanged: (v) => setState(() => _query = v),
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                            prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+                            prefixIcon: Icon(Icons.search, color: colors.textSecondary, size: 20),
                             hintText: 'Search by name or relationship...',
-                            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                            hintStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
                             border: InputBorder.none,
                             suffixIcon: _query.isNotEmpty
                                 ? IconButton(
-                                    icon: Icon(Icons.close, color: Colors.grey.shade400, size: 18),
+                                    icon: Icon(Icons.close, color: colors.textSecondary, size: 18),
                                     onPressed: () => setState(() { _query = ''; _searchCtrl.clear(); }),
                                   )
                                 : null,
@@ -166,18 +163,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     const SizedBox(width: 10),
                     Stack(clipBehavior: Clip.none, children: [
                       GestureDetector(
-                        onTap: _showFilter,
+                        onTap: () => _showFilter(context),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(13),
                           decoration: BoxDecoration(
                             color: _filterStatus != null
-                                ? const Color(0xFF2A9D8F)
-                                : const Color(0xFFF4F7FA),
+                                ? colors.accent
+                                : colors.surface,
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(Icons.tune_rounded,
-                              color: _filterStatus != null ? Colors.white : Colors.grey.shade500,
+                              color: _filterStatus != null ? Colors.white : colors.textSecondary,
                               size: 20),
                         ),
                       ),
@@ -186,8 +183,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           top: -4, right: -4,
                           child: Container(
                             width: 14, height: 14,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFF2A9D8F), shape: BoxShape.circle),
+                            decoration: BoxDecoration(
+                                color: colors.accent, shape: BoxShape.circle),
                             child: const Center(
                               child: Text('1',
                                   style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
@@ -199,42 +196,39 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ),
               ),
 
-              // ── Patient count row ────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Row(children: [
-                    const Text('Your Patients',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
+                    Text('Your Patients',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: colors.textPrimary)),
                     const Spacer(),
                     Text('${list.length} of ${GuardianMockData.patients.length}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ]),
                 ),
               ),
 
-              // ── Empty state ──────────────────────────────────────────────
               if (list.isEmpty)
                 SliverFillRemaining(
                   child: Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade300),
+                      Icon(Icons.search_off_rounded, size: 48, color: colors.textSecondary),
                       const SizedBox(height: 12),
                       Text('No patients match your search.',
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14)),
                       if (_filterStatus != null || _query.isNotEmpty)
                         TextButton(
                           onPressed: () => setState(() {
                             _filterStatus = null; _query = ''; _searchCtrl.clear();
                           }),
-                          child: const Text('Clear filters',
-                              style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
+                          child: Text('Clear filters',
+                              style: TextStyle(color: colors.accent, fontWeight: FontWeight.w700)),
                         ),
                     ]),
                   ),
                 ),
 
-              // ── Patient cards ────────────────────────────────────────────
               if (list.isNotEmpty)
                 isLandscape
                     ? SliverPadding(
@@ -245,7 +239,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                             mainAxisSpacing: 0, mainAxisExtent: 230,
                           ),
                           delegate: SliverChildBuilderDelegate(
-                            (_, i) => _buildCard(list[i]),
+                            (_, i) => _buildCard(context, list[i]),
                             childCount: list.length,
                           ),
                         ),
@@ -254,7 +248,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
-                            (_, i) => _buildCard(list[i]),
+                            (_, i) => _buildCard(context, list[i]),
                             childCount: list.length,
                           ),
                         ),
@@ -266,40 +260,40 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  // ── Title block ────────────────────────────────────────────────────────────
-  Widget _titleBlock() {
+  Widget _titleBlock(BuildContext context) {
+    final colors = context.colors;
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(greeting,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
-              color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+              color: colors.textPrimary, letterSpacing: -0.5)),
       const SizedBox(height: 3),
       Text('Watching over ${GuardianMockData.patients.length} people',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w400)),
+          style: TextStyle(fontSize: 13, color: colors.textSecondary, fontWeight: FontWeight.w400)),
     ]);
   }
 
-  // ── Status pills — calm palette, no red ───────────────────────────────────
-  Widget _statusPills() {
+  Widget _statusPills(BuildContext context) {
+    final colors = context.colors;
     final good = GuardianMockData.patients.where((p) => p.overallStatus == 'good').length;
     return Wrap(spacing: 8, children: [
-      _pill('$good Doing well',       const Color(0xFF2A9D8F), const Color(0xFFE8F5F3)),
+      _pill(context, '$good Doing well',       colors.accent, colors.accent.withValues(alpha: 0.1)),
       if (_attentionCount > 0)
-        _pill('$_attentionCount Worth a look', const Color(0xFFC07A00), const Color(0xFFFFF4E0)),
+        _pill(context, '$_attentionCount Worth a look', colors.warning, colors.warning.withValues(alpha: 0.1)),
       if (_emergencyCount > 0)
-        _pill('$_emergencyCount Check on them', const Color(0xFFE63946), const Color.fromARGB(255, 255, 224, 224)),
+        _pill(context, '$_emergencyCount Check on them', colors.error, colors.error.withValues(alpha: 0.1)),
     ]);
   }
 
-  Widget _pill(String label, Color color, Color bg) => Container(
+  Widget _pill(BuildContext context, String label, Color color, Color bg) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
     child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
   );
 
-  // ── Soft nudge bar — friendly tone, no warning icons ─────────────────────
-  Widget _nudgeBar() {
+  Widget _nudgeBar(BuildContext context) {
+    final colors = context.colors;
     final urgentNames = GuardianMockData.patients
         .where((p) => p.overallStatus == 'emergency')
         .map((p) => p.name).toList();
@@ -309,8 +303,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
     final bool isUrgent = urgentNames.isNotEmpty;
     final names = isUrgent ? urgentNames : attnNames;
-    final color = isUrgent ? const Color(0xFFE63946) : const Color(0xFF2A9D8F);
-    final bg    = isUrgent ? const Color.fromARGB(255, 255, 236, 236) : const Color(0xFFFFF8EC);
+    final color = isUrgent ? colors.error : colors.accent;
+    final bg    = isUrgent ? colors.error.withValues(alpha: 0.1) : colors.accent.withValues(alpha: 0.1);
 
     final message = isUrgent
         ? 'It might be a good time to check on ${names.join(' and ')}'
@@ -332,21 +326,20 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  // ── Patient card ───────────────────────────────────────────────────────────
-  Widget _buildCard(GuardianPatient p) {
-    final sColor = statusColor(p.overallStatus);
-    final sBg    = statusBg(p.overallStatus);
-    final gColor = glucoseColor(p);
+  Widget _buildCard(BuildContext context, GuardianPatient p) {
+    final colors = context.colors;
+    final sColor = statusColor(p.overallStatus, colors);
+    final sBg    = statusBg(p.overallStatus, colors);
+    final gColor = glucoseColor(p, colors);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        // Only a very subtle tinted border for non-good — never a harsh red outline
         border: Border.all(
           color: p.overallStatus == 'good'
-              ? Colors.grey.shade100
+              ? colors.textSecondary.withOpacity(0.2)
               : sColor.withValues(alpha: 0.2),
           width: 1,
         ),
@@ -355,7 +348,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       ),
       child: Column(children: [
 
-        // ── Identity row ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Row(children: [
@@ -368,12 +360,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: colors.textPrimary)),
               const SizedBox(height: 2),
               Text('${p.relationship}  ·  Age ${p.age}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary)),
             ])),
-            // Calm status badge — soft background, no border
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(color: sBg, borderRadius: BorderRadius.circular(20)),
@@ -383,12 +374,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           ]),
         ),
 
-        // ── Glucose strip ──
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F9FC),
+            color: colors.background,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(children: [
@@ -399,7 +389,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text('mg/dL',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary)),
             ),
             const SizedBox(width: 8),
             Container(
@@ -416,37 +406,34 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ]),
             ),
             const Spacer(),
-            // Device status — quiet text, no alarming dots
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              _deviceLine(Icons.sensors, 'Sensor', p.sensorConnected),
+              _deviceLine(Icons.sensors, 'Sensor', p.sensorConnected, colors),
               const SizedBox(height: 2),
-              _deviceLine(Icons.water_drop_outlined, 'Pump', p.pumpActive),
+              _deviceLine(Icons.water_drop_outlined, 'Pump', p.pumpActive, colors),
             ]),
           ]),
         ),
 
-        // ── Offline notice — soft, not alarming ──
         if (!p.sensorConnected || !p.pumpActive)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Row(children: [
               if (!p.sensorConnected)
-                _softChip('Sensor is off', const Color(0xFFE63946), const Color.fromARGB(255, 255, 238, 238)),
+                _softChip('Sensor is off', colors.error, colors.error.withValues(alpha: 0.1)),
               if (!p.sensorConnected && !p.pumpActive) const SizedBox(width: 6),
               if (!p.pumpActive)
-                _softChip('Pump is paused', const Color(0xFFE63946), const Color.fromARGB(255, 255, 238, 238)),
+                _softChip('Pump is paused', colors.error, colors.error.withValues(alpha: 0.1)),
             ]),
           ),
 
-        // ── Actions ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
           child: Row(children: [
-            _actionBtn(Icons.call_rounded, 'Call', const Color(0xFF2A9D8F),
-                () { HapticFeedback.mediumImpact(); _snack('Calling ${p.name}...', const Color(0xFF2A9D8F)); }),
+            _actionBtn(Icons.call_rounded, 'Call', colors.accent,
+                () { HapticFeedback.mediumImpact(); _snack('Calling ${p.name}...', colors.accent); }, colors),
             const SizedBox(width: 8),
             _actionBtn(Icons.sms_rounded, 'SMS', const Color(0xFF5B8CF5),
-                () => _snack('Opening SMS for ${p.name}...', const Color(0xFF5B8CF5))),
+                () => _snack('Opening SMS for ${p.name}...', const Color(0xFF5B8CF5)), colors),
             const Spacer(),
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(
@@ -455,8 +442,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               child: Row(children: [
                 Text('View details',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade400)),
-                Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey.shade300),
+                        color: colors.textSecondary)),
+                Icon(Icons.chevron_right_rounded, size: 16, color: colors.textSecondary),
               ]),
             ),
           ]),
@@ -465,14 +452,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _deviceLine(IconData icon, String label, bool ok) => Row(
+  Widget _deviceLine(IconData icon, String label, bool ok, GlucoraColors colors) => Row(
     mainAxisSize: MainAxisSize.min, children: [
     Icon(icon, size: 11,
-        color: ok ? const Color(0xFF2A9D8F) : Colors.grey.shade400),
+        color: ok ? colors.accent : colors.textSecondary),
     const SizedBox(width: 3),
     Text(ok ? '$label on' : '$label off',
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-            color: ok ? const Color(0xFF2A9D8F) : Colors.grey.shade400)),
+            color: ok ? colors.accent : colors.textSecondary)),
   ]);
 
   Widget _softChip(String label, Color color, Color bg) => Container(
@@ -482,7 +469,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
   );
 
-  Widget _actionBtn(IconData icon, String label, Color color, VoidCallback onTap) =>
+  Widget _actionBtn(IconData icon, String label, Color color, VoidCallback onTap, GlucoraColors colors) =>
       GestureDetector(
         onTap: onTap,
         child: Container(
@@ -500,8 +487,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       );
 }
 
-// ─── FILTER BOTTOM SHEET ──────────────────────────────────────────────────────
-
 class _FilterSheet extends StatefulWidget {
   final String? current;
   final ValueChanged<String?> onApply;
@@ -517,42 +502,43 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade200,
+            decoration: BoxDecoration(color: colors.textSecondary,
                 borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 20),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Filter by Status',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C))),
+          Text('Filter by Status',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary)),
           if (_sel != null)
             TextButton(
               onPressed: () { setState(() => _sel = null); widget.onApply(null); Navigator.pop(context); },
-              child: const Text('Clear',
-                  style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700)),
+              child: Text('Clear',
+                  style: TextStyle(color: colors.accent, fontWeight: FontWeight.w700)),
             ),
         ]),
         const SizedBox(height: 16),
-        _opt(null,        'All Patients',    'Show everyone',                           Colors.grey,             const Color(0xFFF4F7FA)),
+        _opt(context, null,        'All Patients',    'Show everyone',                           colors.textSecondary, colors.background),
         const SizedBox(height: 8),
-        _opt('good',      'Doing Well',      'Sugar is in the normal range',            const Color(0xFF2A9D8F),  const Color(0xFFE8F5F3)),
+        _opt(context, 'good',      'Doing Well',      'Sugar is in the normal range',            colors.accent, colors.accent.withValues(alpha: 0.1)),
         const SizedBox(height: 8),
-        _opt('attention', 'Worth a Look',    'Sugar slightly off — nothing to worry',   const Color(0xFFC07A00),  const Color(0xFFFFF4E0)),
+        _opt(context, 'attention', 'Worth a Look',    'Sugar slightly off — nothing to worry',   colors.warning, colors.warning.withValues(alpha: 0.1)),
         const SizedBox(height: 8),
-        _opt('emergency', 'Check on Them',   'May be a good time to reach out',         const Color(0xFFE63946),  const Color.fromARGB(255, 255, 224, 224)),
+        _opt(context, 'emergency', 'Check on Them',   'May be a good time to reach out',         colors.error, colors.error.withValues(alpha: 0.1)),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () { widget.onApply(_sel); Navigator.pop(context); },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2A9D8F), foregroundColor: Colors.white,
+              backgroundColor: colors.accent, foregroundColor: Colors.white,
               elevation: 0, padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -564,7 +550,8 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _opt(String? value, String title, String subtitle, Color color, Color bg) {
+  Widget _opt(BuildContext context, String? value, String title, String subtitle, Color color, Color bg) {
+    final colors = context.colors;
     final active = _sel == value;
     return GestureDetector(
       onTap: () => setState(() => _sel = (active && value != null) ? null : value),
@@ -572,10 +559,10 @@ class _FilterSheetState extends State<_FilterSheet> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: active ? bg : Colors.white,
+          color: active ? bg : colors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? color.withValues(alpha: 0.35) : Colors.grey.shade100,
+            color: active ? color.withValues(alpha: 0.35) : colors.textSecondary.withOpacity(0.2),
             width: active ? 1.5 : 1,
           ),
         ),
@@ -586,9 +573,9 @@ class _FilterSheetState extends State<_FilterSheet> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
-                    color: active ? color : const Color(0xFF1A2B3C))),
+                    color: active ? color : colors.textPrimary)),
             Text(subtitle,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary)),
           ])),
           if (active) Icon(Icons.check_circle_rounded, color: color, size: 20),
         ]),

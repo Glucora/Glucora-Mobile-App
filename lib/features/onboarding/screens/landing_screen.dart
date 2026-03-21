@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:glucora_ai_companion/features/auth/terms_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
-
-  static const Color _teal = Color(0xFF2BB6A3);
 
   void _goToLogin(BuildContext context) =>
       Navigator.pushNamed(context, '/login-screen');
@@ -18,12 +18,12 @@ class LandingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
-            // Top half — logo centered
             Expanded(
               flex: 6,
               child: Column(
@@ -40,12 +40,12 @@ class LandingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Your glucose. Your insulin.\nAlways under control.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
-                      color: Color(0xFF6B7C7C),
+                      color: colors.textSecondary,
                       height: 1.6,
                     ),
                   ),
@@ -53,7 +53,6 @@ class LandingScreen extends StatelessWidget {
               ),
             ),
 
-            // Bottom half — buttons
             Expanded(
               flex: 4,
               child: Padding(
@@ -61,14 +60,13 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Create an account button
                     SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
                         onPressed: () => _goToSignUp(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _teal,
+                          backgroundColor: colors.accent,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -87,16 +85,15 @@ class LandingScreen extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // Log in button
                     SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: OutlinedButton(
                         onPressed: () => _goToLogin(context),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _teal,
-                          side: const BorderSide(
-                            color: Color(0xFFB2DFDB),
+                          foregroundColor: colors.accent,
+                          side: BorderSide(
+                            color: colors.accent.withOpacity(0.5),
                             width: 1.5,
                           ),
                           shape: RoundedRectangleBorder(
@@ -115,19 +112,18 @@ class LandingScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Clickable Terms & Privacy Policy text
                     RichText(
                       textAlign: TextAlign.center,
                       text: TextSpan(
-                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
                         children: [
                           const TextSpan(
                             text: 'By continuing you agree to our ',
                           ),
                           TextSpan(
                             text: 'Terms of Service',
-                            style: const TextStyle(
-                              color: Color(0xFF2BB6A3),
+                            style: TextStyle(
+                              color: colors.accent,
                               fontWeight: FontWeight.w600,
                               decoration: TextDecoration.underline,
                             ),
@@ -144,8 +140,8 @@ class LandingScreen extends StatelessWidget {
                           const TextSpan(text: ' & '),
                           TextSpan(
                             text: 'Privacy Policy',
-                            style: const TextStyle(
-                              color: Color(0xFF2BB6A3),
+                            style: TextStyle(
+                              color: colors.accent,
                               fontWeight: FontWeight.w600,
                               decoration: TextDecoration.underline,
                             ),

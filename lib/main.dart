@@ -1,7 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
+import 'package:provider/provider.dart';                         
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart'; 
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';       
+import 'features/auth/signup_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/user/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';
@@ -12,7 +15,7 @@ import 'features/onboarding/screens/landing_screen.dart';
 import 'features/onboarding/screens/who_are_we_screen.dart';
 
 void main() async {
-   WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
     url: "https://yzmkzfqgigsaqhnbsiyn.supabase.co",
@@ -27,23 +30,28 @@ class GlucoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Glucora',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF2BB6A3),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
+    return ChangeNotifierProvider(                     
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(                 
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Glucora',
+            theme: lightTheme,                        
+            darkTheme: darkTheme,                      
+            themeMode: themeProvider.themeMode,        
+            initialRoute: '/who-we-are',
+            routes: {
+              '/who-we-are': (context) => const WhoWeAreScreen(),
+              '/ai-explain': (context) => const AIExplainScreen(),
+              '/landing': (context) => const LandingScreen(),
+              '/login-screen': (context) => const LoginScreen(),
+              '/sign-up': (context) => const SignUpScreen(),
+              '/role-selection': (context) => const RoleSelectionScreen(),
+            },
+          );
+        },
       ),
-      initialRoute: '/who-we-are',
-      routes: {
-        '/who-we-are': (context) => const WhoWeAreScreen(),
-        '/ai-explain': (context) => const AIExplainScreen(),
-        '/landing': (context) => const LandingScreen(),
-        '/login-screen': (context) => const LoginScreen(),
-        '/sign-up': (context) => const SignUpScreen(),
-        '/role-selection': (context) => const RoleSelectionScreen(),
-      },
     );
   }
 }
@@ -84,16 +92,6 @@ class RoleSelectionScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AdminMainScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              child: const Text("Guardian Side"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DoctorMainScreen()),
                 );
               },
             ),

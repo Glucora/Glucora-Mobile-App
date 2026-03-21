@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminUserFormScreen extends StatefulWidget {
   final AdminUser? user;
@@ -40,8 +41,6 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
-
-    // Simulate API call
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (_isEditing) {
@@ -70,6 +69,7 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -79,27 +79,27 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _label('Full Name'),
+            _label(context, 'Full Name'),
             TextFormField(
               controller: _nameController,
-              decoration: _inputDecoration('Enter full name'),
+              decoration: _inputDecoration(context, 'Enter full name'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Name is required' : null,
             ),
             const SizedBox(height: 16),
-            _label('Email'),
+            _label(context, 'Email'),
             TextFormField(
               controller: _emailController,
-              decoration: _inputDecoration('Enter email address'),
+              decoration: _inputDecoration(context, 'Enter email address'),
               keyboardType: TextInputType.emailAddress,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Email is required';
@@ -108,10 +108,10 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
               },
             ),
             const SizedBox(height: 16),
-            _label('Role'),
+            _label(context, 'Role'),
             DropdownButtonFormField<UserRole>(
               initialValue: _selectedRole,
-              decoration: _inputDecoration('Select role'),
+              decoration: _inputDecoration(context, 'Select role'),
               items: UserRole.values
                   .map(
                     (r) =>
@@ -124,14 +124,15 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Active'),
+              title: Text('Active', style: TextStyle(color: colors.textPrimary)),
               subtitle: Text(
                 _isActive
                     ? 'User can access the app'
                     : 'User account is deactivated',
+                style: TextStyle(color: colors.textSecondary),
               ),
               value: _isActive,
-              activeThumbColor: const Color(0xFF2BB6A3),
+              activeThumbColor: colors.accent,
               onChanged: (v) => setState(() => _isActive = v),
               contentPadding: EdgeInsets.zero,
             ),
@@ -141,7 +142,7 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2BB6A3),
+                  backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -168,37 +169,40 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
     );
   }
 
-  Widget _label(String text) {
+  Widget _label(BuildContext context, String text) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1A7A6E),
+          color: colors.primaryDark,
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(color: colors.textSecondary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: colors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+        borderSide: BorderSide(color: colors.accent, width: 1.5),
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-// ─── DATA MODEL ──────────────────────────────────────────────────────────────
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 enum RequestStatus { pending, accepted, declined }
 
@@ -23,8 +22,6 @@ class ConnectionRequest {
     this.status = RequestStatus.pending,
   });
 }
-
-// ─── SCREEN ──────────────────────────────────────────────────────────────────
 
 class DoctorRequestsScreen extends StatefulWidget {
   const DoctorRequestsScreen({super.key});
@@ -63,19 +60,20 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
 
   void _accept(ConnectionRequest request) {
     setState(() => request.status = RequestStatus.accepted);
-    _showSnackbar('${request.patientName} accepted', const Color(0xFF2BB6A3));
+    _showSnackbar('${request.patientName} accepted', context);
   }
 
   void _decline(ConnectionRequest request) {
     setState(() => request.status = RequestStatus.declined);
-    _showSnackbar('${request.patientName} declined', Colors.redAccent);
+    _showSnackbar('${request.patientName} declined', context);
   }
 
-  void _showSnackbar(String message, Color color) {
+  void _showSnackbar(String message, BuildContext context) {
+    final colors = context.colors;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
-      backgroundColor: color,
+      backgroundColor: colors.accent,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       duration: const Duration(seconds: 2),
@@ -84,27 +82,25 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(
           builder: (context, orientation) {
             final isLandscape = orientation == Orientation.landscape;
             return Column(
               children: [
-                // ── Header (always visible, never scrolls away) ──
-                _buildHeader(isLandscape),
-                // ── Tab bar ──
-                _buildTabBar(),
-                // ── Tab content — each tab is its own scrollable ──
+                _buildHeader(context, isLandscape),
+                _buildTabBar(context),
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
                     physics: const ClampingScrollPhysics(),
                     children: [
-                      _buildRequestList(_pending,  showActions: true,  isLandscape: isLandscape),
-                      _buildRequestList(_accepted, showActions: false, isLandscape: isLandscape),
-                      _buildRequestList(_declined, showActions: false, isLandscape: isLandscape),
+                      _buildRequestList(context, _pending,  showActions: true,  isLandscape: isLandscape),
+                      _buildRequestList(context, _accepted, showActions: false, isLandscape: isLandscape),
+                      _buildRequestList(context, _declined, showActions: false, isLandscape: isLandscape),
                     ],
                   ),
                 ),
@@ -116,36 +112,35 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     );
   }
 
-  Widget _buildHeader(bool isLandscape) {
+  Widget _buildHeader(BuildContext context, bool isLandscape) {
+    final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, isLandscape ? 10 : 20, 16, 0),
       child: isLandscape
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Title + subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Connection Requests',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text('Connection Requests',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
                       Text(
                         '${_pending.length} pending request${_pending.length == 1 ? '' : 's'}',
-                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                        style: TextStyle(fontSize: 13, color: colors.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Summary chips inline
                 Row(
                   children: [
-                    _summaryChip('Pending',  _pending.length,  const Color(0xFF2BB6A3)),
+                    _summaryChip(context, 'Pending',  _pending.length,  colors.accent),
                     const SizedBox(width: 8),
-                    _summaryChip('Accepted', _accepted.length, Colors.green),
+                    _summaryChip(context, 'Accepted', _accepted.length, Colors.green),
                     const SizedBox(width: 8),
-                    _summaryChip('Declined', _declined.length, Colors.redAccent),
+                    _summaryChip(context, 'Declined', _declined.length, colors.error),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -154,21 +149,21 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Connection Requests',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text('Connection Requests',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary)),
                 const SizedBox(height: 4),
                 Text(
                   '${_pending.length} pending request${_pending.length == 1 ? '' : 's'}',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: colors.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    _summaryChip('Pending',  _pending.length,  const Color(0xFF2BB6A3)),
+                    _summaryChip(context, 'Pending',  _pending.length,  colors.accent),
                     const SizedBox(width: 10),
-                    _summaryChip('Accepted', _accepted.length, Colors.green),
+                    _summaryChip(context, 'Accepted', _accepted.length, Colors.green),
                     const SizedBox(width: 10),
-                    _summaryChip('Declined', _declined.length, Colors.redAccent),
+                    _summaryChip(context, 'Declined', _declined.length, colors.error),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -177,7 +172,7 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     );
   }
 
-  Widget _summaryChip(String label, int count, Color color) {
+  Widget _summaryChip(BuildContext context, String label, int count, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -196,14 +191,15 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      color: Colors.white,
+      color: colors.surface,
       child: TabBar(
         controller: _tabController,
-        labelColor: const Color(0xFF1A7A6E),
-        unselectedLabelColor: Colors.grey,
-        indicatorColor: const Color(0xFF2BB6A3),
+        labelColor: colors.primaryDark,
+        unselectedLabelColor: colors.textSecondary,
+        indicatorColor: colors.accent,
         indicatorWeight: 3,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
@@ -215,7 +211,7 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
                 const Text('Pending'),
                 if (_pending.isNotEmpty) ...[
                   const SizedBox(width: 6),
-                  _tabBadge(_pending.length, const Color(0xFF2BB6A3)),
+                  _tabBadge(_pending.length, colors.accent),
                 ],
               ],
             ),
@@ -236,33 +232,34 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
   }
 
   Widget _buildRequestList(
+    BuildContext context,
     List<ConnectionRequest> requests, {
     required bool showActions,
     required bool isLandscape,
   }) {
+    final colors = context.colors;
     if (requests.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(showActions ? Icons.inbox_outlined : Icons.check_circle_outline,
-                size: 52, color: Colors.grey.shade300),
+                size: 52, color: colors.textSecondary),
             const SizedBox(height: 12),
             Text(showActions ? 'No pending requests' : 'Nothing here yet',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 15)),
+                style: TextStyle(color: colors.textSecondary, fontSize: 15)),
           ],
         ),
       );
     }
 
-    // Both orientations: natural-height list.
-    // In landscape we add horizontal padding so cards don't stretch full width.
     final hPad = isLandscape ? 60.0 : 16.0;
     return ListView.builder(
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 16),
       itemCount: requests.length,
       itemBuilder: (context, index) => _RequestCard(
+        context: context,
         request: requests[index],
         showActions: showActions,
         onAccept: () => _accept(requests[index]),
@@ -272,15 +269,15 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
   }
 }
 
-// ─── REQUEST CARD ─────────────────────────────────────────────────────────────
-
 class _RequestCard extends StatelessWidget {
   final ConnectionRequest request;
   final bool showActions;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final BuildContext context;
 
   const _RequestCard({
+    required this.context,
     required this.request,
     required this.showActions,
     required this.onAccept,
@@ -289,11 +286,12 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = this.context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
@@ -304,9 +302,9 @@ class _RequestCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFF2BB6A3).withValues(alpha: 0.15),
+                backgroundColor: colors.accent.withValues(alpha: 0.15),
                 child: Text(request.avatarInitials,
-                    style: const TextStyle(color: Color(0xFF1A7A6E), fontWeight: FontWeight.bold, fontSize: 14)),
+                    style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.bold, fontSize: 14)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -314,14 +312,14 @@ class _RequestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(request.patientName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: colors.textPrimary)),
                     const SizedBox(height: 3),
                     Text('Age ${request.age} • ${request.diabetesType} Diabetes',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
-              Text(request.sentAgo, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(request.sentAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
             ],
           ),
           if (showActions) ...[
@@ -334,8 +332,8 @@ class _RequestCard extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onDecline,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.redAccent,
-                      side: const BorderSide(color: Colors.redAccent),
+                      foregroundColor: colors.error,
+                      side: BorderSide(color: colors.error),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
@@ -347,7 +345,7 @@ class _RequestCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onAccept,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2BB6A3),
+                      backgroundColor: colors.accent,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -367,7 +365,7 @@ class _RequestCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: request.status == RequestStatus.accepted
                       ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.redAccent.withValues(alpha: 0.1),
+                      : colors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -375,7 +373,7 @@ class _RequestCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: request.status == RequestStatus.accepted ? Colors.green : Colors.redAccent,
+                    color: request.status == RequestStatus.accepted ? Colors.green : colors.error,
                   ),
                 ),
               ),

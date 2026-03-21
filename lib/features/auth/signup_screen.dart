@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // for TapGestureRecognizer
+import 'package:flutter/gestures.dart';
 import 'login_screen.dart';
-import 'terms_screen.dart'; // the new terms screen
+import 'terms_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,6 +16,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController(); // separate controller for phone
 
   bool _obscurePassword = true;
   String? _selectedRole;
@@ -40,10 +42,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: colors.textPrimary),
           onPressed: () {
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/landing',
@@ -51,7 +54,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             );
           },
         ),
-        title: const Text('Sign Up'),
+        title: Text('Sign Up', style: TextStyle(color: colors.textPrimary)),
+        backgroundColor: colors.surface,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -65,21 +70,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Enter your name',
-                  prefixIcon: const Icon(Icons.person_outline),
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.person_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2BB6A3),
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
                   ),
+                  filled: true,
+                  fillColor: colors.surface,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -99,21 +105,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Enter your email',
-                  prefixIcon: const Icon(Icons.email_outlined),
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2BB6A3),
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
                   ),
+                  filled: true,
+                  fillColor: colors.surface,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -132,12 +139,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Enter your password',
-                  prefixIcon: const Icon(Icons.lock_outline),
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: colors.textSecondary,
                     ),
                     onPressed: () {
                       setState(() {
@@ -147,18 +154,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2BB6A3),
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
                   ),
+                  filled: true,
+                  fillColor: colors.surface,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -171,32 +178,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 },
               ),
               const SizedBox(height: 16),
-                    TextFormField(
-                controller: _nameController,
+              // Phone number field
+              TextFormField(
+                controller: _phoneController,
                 decoration: InputDecoration(
                   labelText: 'Enter your phone number',
-                  prefixIcon: const Icon(Icons.phone),
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.phone, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2BB6A3),
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
                   ),
+                  filled: true,
+                  fillColor: colors.surface,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your number';
                   }
-                  final nameRegex = RegExp(r'^[0-9]+$');
-                  if (!nameRegex.hasMatch(value)) {
+                  final numberRegex = RegExp(r'^[0-9]+$');
+                  if (!numberRegex.hasMatch(value)) {
                     return 'Please enter a valid number (numbers only)';
                   }
                   return null;
@@ -208,21 +217,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 initialValue: _selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Select your role',
-                  prefixIcon: const Icon(Icons.people_outline),
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.people_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2BB6A3),
-                      width: 2,
-                    ),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
                   ),
+                  filled: true,
+                  fillColor: colors.surface,
                 ),
                 items: _roles.map((role) {
                   return DropdownMenuItem(value: role, child: Text(role));
@@ -250,7 +260,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         _agreeToTerms = value ?? false;
                       });
                     },
-                    activeColor: const Color(0xFF2BB6A3),
+                    activeColor: colors.accent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -258,16 +268,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF555555),
+                          color: colors.textSecondary,
                         ),
                         children: [
                           const TextSpan(text: 'I agree to the '),
                           TextSpan(
                             text: 'Terms of Service',
-                            style: const TextStyle(
-                              color: Color(0xFF2BB6A3),
+                            style: TextStyle(
+                              color: colors.accent,
                               fontWeight: FontWeight.w600,
                               decoration: TextDecoration.underline,
                             ),
@@ -284,8 +294,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           const TextSpan(text: ' and '),
                           TextSpan(
                             text: 'Privacy Policy',
-                            style: const TextStyle(
-                              color: Color(0xFF2BB6A3),
+                            style: TextStyle(
+                              color: colors.accent,
                               fontWeight: FontWeight.w600,
                               decoration: TextDecoration.underline,
                             ),
@@ -310,7 +320,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ElevatedButton(
                 onPressed: _signUp,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2BB6A3),
+                  backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -324,15 +334,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Already have an account? "),
+                  Text("Already have an account? ", style: TextStyle(color: colors.textSecondary)),
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context); // go back to login
                     },
-                    child: const Text(
+                    child: Text(
                       'Login',
                       style: TextStyle(
-                        color: Color(0xFF2BB6A3),
+                        color: colors.accent,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -351,34 +361,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 }
 
-// Success screen (unchanged)
+// Success screen – now uses context.colors
 class SignUpSuccessScreen extends StatelessWidget {
   const SignUpSuccessScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.check_circle_outline,
-              color: Color(0xFF2BB6A3),
+              color: colors.accent,
               size: 100,
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Success!',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2BB6A3),
+                color: colors.accent,
               ),
             ),
             const SizedBox(height: 16),
@@ -397,7 +409,7 @@ class SignUpSuccessScreen extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2BB6A3),
+                backgroundColor: colors.accent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(

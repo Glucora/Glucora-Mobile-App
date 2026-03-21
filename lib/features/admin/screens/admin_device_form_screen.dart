@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminDeviceFormScreen extends StatefulWidget {
   final AdminDevice? device;
@@ -88,6 +89,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -97,27 +99,27 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _label('Device Name'),
+            _label(context, 'Device Name'),
             TextFormField(
               controller: _nameController,
-              decoration: _inputDecoration('e.g. Dexcom G7 #4'),
+              decoration: _inputDecoration(context, 'e.g. Dexcom G7 #4'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-            _label('Device Type'),
+            _label(context, 'Device Type'),
             DropdownButtonFormField<String>(
               initialValue: _deviceType,
-              decoration: _inputDecoration('Select type'),
+              decoration: _inputDecoration(context, 'Select type'),
               items: const [
                 DropdownMenuItem(value: 'CGM', child: Text('CGM')),
                 DropdownMenuItem(value: 'Micropump', child: Text('Micropump')),
@@ -127,26 +129,26 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
               },
             ),
             const SizedBox(height: 16),
-            _label('Model'),
+            _label(context, 'Model'),
             TextFormField(
               controller: _modelController,
-              decoration: _inputDecoration('e.g. Dexcom G7'),
+              decoration: _inputDecoration(context, 'e.g. Dexcom G7'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-            _label('Serial Number'),
+            _label(context, 'Serial Number'),
             TextFormField(
               controller: _serialController,
-              decoration: _inputDecoration('e.g. DX7-2025-0004'),
+              decoration: _inputDecoration(context, 'e.g. DX7-2025-0004'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-            _label('Assigned To (Patient)'),
+            _label(context, 'Assigned To (Patient)'),
             DropdownButtonFormField<String>(
               initialValue: _assignedToUserId,
-              decoration: _inputDecoration('Select patient'),
+              decoration: _inputDecoration(context, 'Select patient'),
               items: _patients
                   .map(
                     (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
@@ -163,7 +165,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
                 _isActive ? 'Device is operating' : 'Device is deactivated',
               ),
               value: _isActive,
-              activeThumbColor: const Color(0xFF2BB6A3),
+              activeThumbColor: colors.accent,
               onChanged: (v) => setState(() => _isActive = v),
               contentPadding: EdgeInsets.zero,
             ),
@@ -173,7 +175,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2BB6A3),
+                  backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -200,37 +202,40 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
     );
   }
 
-  Widget _label(String text) {
+  Widget _label(BuildContext context, String text) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1A7A6E),
+          color: colors.primaryDark,
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(color: colors.textSecondary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: colors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+        borderSide: BorderSide(color: colors.accent, width: 1.5),
       ),
     );
   }
