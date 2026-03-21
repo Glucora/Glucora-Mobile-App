@@ -339,7 +339,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: p.overallStatus == 'good'
-              ? colors.textSecondary.withOpacity(0.2)
+              ? colors.textSecondary.withValues(alpha: 0.2)
               : sColor.withValues(alpha: 0.2),
           width: 1,
         ),
@@ -562,7 +562,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           color: active ? bg : colors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? color.withValues(alpha: 0.35) : colors.textSecondary.withOpacity(0.2),
+            color: active ? color.withValues(alpha: 0.35) : colors.textSecondary.withValues(alpha:0.2),
             width: active ? 1.5 : 1,
           ),
         ),

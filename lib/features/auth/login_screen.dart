@@ -119,11 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -164,11 +164,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: Text('Sign in with Google', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    side: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -262,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: Text('Sign in with Apple', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    side: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -275,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: Text('Sign in with Facebook', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    side: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

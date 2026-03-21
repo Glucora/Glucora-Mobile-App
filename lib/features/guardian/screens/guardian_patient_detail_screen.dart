@@ -151,7 +151,7 @@ class _GuardianPatientDetailScreenState
 
             Container(
               decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: colors.textSecondary.withOpacity(0.2)))),
+                  border: Border(bottom: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)))),
               child: TabBar(
                 controller: _tab,
                 labelColor: colors.accent,
@@ -386,7 +386,7 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _divider(BuildContext context) {
     final colors = context.colors;
-    return Container(height: 36, width: 1, color: colors.textSecondary.withOpacity(0.2), margin: const EdgeInsets.symmetric(horizontal: 4));
+    return Container(height: 36, width: 1, color: colors.textSecondary.withValues(alpha: 0.2), margin: const EdgeInsets.symmetric(horizontal: 4));
   }
 
   Widget _todayCard(BuildContext context) {
@@ -435,7 +435,7 @@ class _OverviewTab extends StatelessWidget {
       width: double.infinity, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: colors.surface, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: child,
@@ -495,7 +495,7 @@ class _LocationTab extends StatelessWidget {
       height: isLandscape ? 260 : 280,
       decoration: BoxDecoration(
         color: colors.background, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       clipBehavior: Clip.antiAlias,
@@ -594,7 +594,7 @@ class _LocationTab extends StatelessWidget {
                   color: isLast ? colors.warning : colors.accent),
             ),
             if (!isLast)
-              Container(width: 2, height: 20, color: colors.textSecondary.withOpacity(0.2)),
+              Container(width: 2, height: 20, color: colors.textSecondary.withValues(alpha: 0.2)),
           ]),
           const SizedBox(width: 12),
           Expanded(child: Padding(
@@ -616,7 +616,7 @@ class _LocationTab extends StatelessWidget {
       width: double.infinity, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: colors.surface, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: child,
@@ -746,7 +746,7 @@ class _DoctorPlanTab extends StatelessWidget {
       width: double.infinity, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: colors.surface, borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

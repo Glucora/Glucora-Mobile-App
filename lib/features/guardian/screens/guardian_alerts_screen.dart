@@ -294,7 +294,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: a.isRead
-            ? Border.all(color: colors.textSecondary.withOpacity(0.2))
+            ? Border.all(color: colors.textSecondary.withValues(alpha:0.2))
             : Border.all(color: uc.withValues(alpha: 0.45), width: 1.5),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),

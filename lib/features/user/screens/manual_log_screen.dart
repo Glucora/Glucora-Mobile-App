@@ -73,7 +73,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: colors.textSecondary.withOpacity(0.2), width: 1),
+                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2), width: 1),
                 boxShadow: [
                   BoxShadow(
                       color: Colors.black.withValues(alpha: 0.05),
@@ -103,7 +103,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                       decoration: BoxDecoration(
                           color: colors.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.textSecondary.withOpacity(0.2))),
+                          border: Border.all(color: colors.textSecondary.withValues(alpha:0.2))),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _unit,
@@ -251,7 +251,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

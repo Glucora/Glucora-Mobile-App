@@ -93,7 +93,7 @@ class LandingScreen extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: colors.accent,
                           side: BorderSide(
-                            color: colors.accent.withOpacity(0.5),
+                            color: colors.accent.withValues(alpha: 0.5),
                             width: 1.5,
                           ),
                           shape: RoundedRectangleBorder(

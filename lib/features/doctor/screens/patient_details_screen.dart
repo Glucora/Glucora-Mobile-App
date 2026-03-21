@@ -350,7 +350,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                     onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                      side: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

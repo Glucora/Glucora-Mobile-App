@@ -50,7 +50,7 @@ class HomeScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: colors.textSecondary.withOpacity(0.5),
+                      color: colors.textSecondary.withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                   ),
@@ -158,7 +158,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -227,7 +227,7 @@ class HomeScreen extends StatelessWidget {
 
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, thickness: 1, color: colors.textSecondary.withOpacity(0.2)),
+            child: Divider(height: 1, thickness: 1, color: colors.textSecondary.withValues(alpha:0.2)),
           ),
 
           Row(
@@ -266,7 +266,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -390,7 +390,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -481,7 +481,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),

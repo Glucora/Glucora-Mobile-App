@@ -432,7 +432,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                  border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
@@ -480,7 +480,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -599,7 +599,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -613,7 +613,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           for (int i = 0; i < events.length; i++) ...[
             _EventTile(entry: events[i]),
             if (i < events.length - 1)
-              Divider(height: 1, color: colors.textSecondary.withOpacity(0.2)),
+              Divider(height: 1, color: colors.textSecondary.withValues(alpha: 0.2)),
           ],
         ],
       ),
@@ -702,7 +702,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),

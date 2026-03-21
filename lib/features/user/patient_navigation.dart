@@ -43,7 +43,7 @@ class _PatientNavigationState extends State<PatientNavigation> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withOpacity(0.2))),
+        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -367,7 +367,7 @@ class _SettingsScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -486,7 +486,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -623,7 +623,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -676,7 +676,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -903,7 +903,7 @@ class _ProfileTabState extends State<_ProfileTab> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -919,7 +919,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   Container(
                     height: 30,
                     width: 1,
-                    color: colors.textSecondary.withOpacity(0.2),
+                    color: colors.textSecondary.withValues(alpha: 0.2),
                   ),
                   _infoColumn(context, "Weight", _weight),
                 ],
@@ -952,7 +952,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1007,7 +1007,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1054,7 +1054,7 @@ class _ProfileTabState extends State<_ProfileTab> {
               title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: colors.primary,
+              activeThumbColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
 
@@ -1151,7 +1151,7 @@ class _ProfileTabState extends State<_ProfileTab> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

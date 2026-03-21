@@ -213,7 +213,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                   width: active ? 22 : 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: active ? colors.accent : colors.textSecondary.withOpacity(0.5),
+                    color: active ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

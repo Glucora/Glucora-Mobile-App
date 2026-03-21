@@ -38,7 +38,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           border: Border(
-            top: BorderSide(color: colors.textSecondary.withOpacity(0.2), width: 1),
+            top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2), width: 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -476,7 +476,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: colors.primary,
+              activeThumbColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
 

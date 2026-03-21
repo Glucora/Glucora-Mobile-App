@@ -318,7 +318,7 @@ class PatientCarePlanScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
@@ -432,7 +432,7 @@ class PatientCarePlanScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,7 +652,7 @@ class PatientCarePlanScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         child: Text(
           plan.doctorNotes,

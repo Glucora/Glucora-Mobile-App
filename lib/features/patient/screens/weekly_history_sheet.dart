@@ -108,7 +108,7 @@ class _WeekTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),

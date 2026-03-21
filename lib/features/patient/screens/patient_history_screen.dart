@@ -505,7 +505,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             color: isActive ? activeColor : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive ? activeColor : colors.textSecondary.withOpacity(0.3),
+              color: isActive ? activeColor : colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
           child: Text(
@@ -810,7 +810,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withOpacity(0.2))),
+        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha:0.2))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),

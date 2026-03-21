@@ -331,7 +331,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

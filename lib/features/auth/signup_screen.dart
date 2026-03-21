@@ -74,11 +74,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.person_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -109,11 +109,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -154,11 +154,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -187,11 +187,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.phone, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -221,11 +221,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.people_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),

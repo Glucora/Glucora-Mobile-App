@@ -350,11 +350,11 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -431,7 +431,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       decoration: BoxDecoration(
         color: colors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,7 +523,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,7 +566,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +722,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           decoration: BoxDecoration(
             color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
@@ -785,11 +785,11 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           contentPadding: const EdgeInsets.all(14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.2)),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.2)),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -903,11 +903,11 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.2)),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.2)),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

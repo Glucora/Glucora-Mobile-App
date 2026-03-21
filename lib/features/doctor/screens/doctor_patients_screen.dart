@@ -604,7 +604,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           : colors.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? color : colors.textSecondary.withOpacity(0.2),
+                        color: isSelected ? color : colors.textSecondary.withValues(alpha: 0.2),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),

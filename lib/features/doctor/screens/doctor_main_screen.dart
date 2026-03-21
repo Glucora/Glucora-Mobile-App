@@ -394,7 +394,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: colors.primary,
+              activeThumbColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
             // ========== END DARK MODE TOGGLE ==========

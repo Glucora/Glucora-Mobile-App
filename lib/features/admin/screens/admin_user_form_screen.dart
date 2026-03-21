@@ -194,11 +194,11 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+        borderSide: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.textSecondary.withOpacity(0.3)),
+        borderSide: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

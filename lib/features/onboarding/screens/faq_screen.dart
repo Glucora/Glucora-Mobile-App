@@ -158,7 +158,7 @@ class _FAQScreenState extends State<FAQScreen> {
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
+                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                       ),
                       child: Icon(
                         Icons.arrow_back_ios_new_rounded,
@@ -250,7 +250,7 @@ class _FAQScreenState extends State<FAQScreen> {
                         border: Border.all(
                           color: isOpen
                               ? accent.withValues(alpha: 0.4)
-                              : colors.textSecondary.withOpacity(0.2),
+                              : colors.textSecondary.withValues(alpha: 0.2),
                           width: 1.5,
                         ),
                       ),
@@ -286,7 +286,7 @@ class _FAQScreenState extends State<FAQScreen> {
                             ),
                             if (isOpen) ...[
                               const SizedBox(height: 12),
-                              Divider(height: 1, color: colors.textSecondary.withOpacity(0.2)),
+                              Divider(height: 1, color: colors.textSecondary.withValues(alpha: 0.2)),
                               const SizedBox(height: 12),
                               Text(
                                 q['a'] as String,
