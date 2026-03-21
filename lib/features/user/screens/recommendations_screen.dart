@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class RecommendationsScreen extends StatelessWidget {
   const RecommendationsScreen({super.key});
@@ -29,20 +31,21 @@ class RecommendationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E), size: 20),
+          child: Icon(Icons.arrow_back_ios_new_rounded,
+              color: colors.textPrimary, size: 20),
         ),
-        title: const Text(
+        title: Text(
           "Recommendations",
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -56,39 +59,34 @@ class RecommendationsScreen extends StatelessWidget {
           children: [
             Text(
               "Based on your current glucose level of 110 mg/dL and the predicted rise, here's what we suggest:",
-              style: TextStyle(
-                  fontSize: 13, color: Colors.grey[600], height: 1.5),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5),
             ),
 
             const SizedBox(height: 20),
 
             ..._items.map((item) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: _recCard(item),
+                  child: _recCard(context, item),
                 )),
 
             const SizedBox(height: 10),
 
-            // Disclaimer
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F8),
+                color: colors.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.warning_amber_rounded,
-                      size: 14, color: Colors.grey[400]),
+                      size: 14, color: colors.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       "Recommendations are supportive and not a medical diagnosis. Always consult your healthcare provider.",
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                          height: 1.5),
+                      style: TextStyle(fontSize: 11, color: colors.textSecondary, height: 1.5),
                     ),
                   ),
                 ],
@@ -102,15 +100,16 @@ class RecommendationsScreen extends StatelessWidget {
     );
   }
 
-  Widget _recCard(_RecItem item) {
+  Widget _recCard(BuildContext context, _RecItem item) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -123,7 +122,7 @@ class RecommendationsScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: item.color.withValues(alpha:0.12),
+              color: item.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(item.icon, color: item.color, size: 20),
@@ -135,19 +134,16 @@ class RecommendationsScreen extends StatelessWidget {
               children: [
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   item.subtitle,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                      height: 1.4),
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.4),
                 ),
               ],
             ),

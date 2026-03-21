@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/features/doctor/screens/care_plan.dart';
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 final _mockPlan = CarePlan(
   targetGlucoseMin: 70,
@@ -25,23 +25,22 @@ final _mockPlan = CarePlan(
 const _doctorName = 'Dr. Sarah Johnson';
 const _lastUpdated = 'Mar 5, 2026';
 
-// ─── SCREEN ──────────────────────────────────────────────────────────────────
-
 class PatientCarePlanScreen extends StatelessWidget {
   const PatientCarePlanScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF199A8E),
+        backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'My Care Plan',
               style: TextStyle(
                 fontSize: 17,
@@ -51,7 +50,7 @@ class PatientCarePlanScreen extends StatelessWidget {
             ),
             Text(
               'Set by $_doctorName',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: Colors.white70,
                 fontWeight: FontWeight.w400,
@@ -66,62 +65,55 @@ class PatientCarePlanScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _infoChip(),
+            _infoChip(context),
             const SizedBox(height: 28),
 
-            _sectionHeader(
-              Icons.track_changes_outlined,
-              'Target Glucose Range',
-            ),
+            _sectionHeader(context, Icons.track_changes_outlined, 'Target Glucose Range'),
             const SizedBox(height: 12),
-            _targetRangeCard(_mockPlan),
+            _targetRangeCard(context, _mockPlan),
             const SizedBox(height: 28),
 
-            _sectionHeader(
-              Icons.water_drop_outlined,
-              'Insulin & Basal Program',
-            ),
+            _sectionHeader(context, Icons.water_drop_outlined, 'Insulin & Basal Program'),
             const SizedBox(height: 12),
-            _insulinBasalCard(_mockPlan),
+            _insulinBasalCard(context, _mockPlan),
             const SizedBox(height: 28),
 
-            _sectionHeader(Icons.calculate_outlined, 'Dosing Ratios'),
+            _sectionHeader(context, Icons.calculate_outlined, 'Dosing Ratios'),
             const SizedBox(height: 12),
-            _dosingRatiosCard(_mockPlan),
+            _dosingRatiosCard(context, _mockPlan),
             const SizedBox(height: 28),
 
-            _sectionHeader(Icons.bolt_outlined, 'AID Settings'),
+            _sectionHeader(context, Icons.bolt_outlined, 'AID Settings'),
             const SizedBox(height: 12),
-            _aidSettingsCard(_mockPlan),
+            _aidSettingsCard(context, _mockPlan),
             const SizedBox(height: 28),
 
-            _sectionHeader(Icons.calendar_today_outlined, 'Next Appointment'),
+            _sectionHeader(context, Icons.calendar_today_outlined, 'Next Appointment'),
             const SizedBox(height: 12),
-            _appointmentCard(_mockPlan),
+            _appointmentCard(context, _mockPlan),
             const SizedBox(height: 28),
 
-            _sectionHeader(Icons.notes_outlined, 'Doctor Notes'),
+            _sectionHeader(context, Icons.notes_outlined, 'Doctor Notes'),
             const SizedBox(height: 12),
-            _notesCard(_mockPlan),
+            _notesCard(context, _mockPlan),
 
             const SizedBox(height: 16),
-            _lastUpdatedFooter(),
+            _lastUpdatedFooter(context),
           ],
         ),
       ),
     );
   }
 
-  // ─── INFO CHIP ────────────────────────────────────────────────
-
-  Widget _infoChip() {
+  Widget _infoChip(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF199A8E).withValues(alpha: 0.1),
+        color: colors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF199A8E).withValues(alpha: 0.3),
+          color: colors.primary.withValues(alpha: 0.3),
         ),
       ),
       child: const Row(
@@ -142,19 +134,18 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── SECTION HEADER ───────────────────────────────────────────
-
-  Widget _sectionHeader(IconData icon, String title) {
+  Widget _sectionHeader(BuildContext context, IconData icon, String title) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF199A8E)),
+        Icon(icon, size: 18, color: colors.primary),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1A2B3C),
+            color: colors.textPrimary,
             letterSpacing: -0.3,
           ),
         ),
@@ -162,14 +153,13 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── TARGET RANGE CARD ────────────────────────────────────────
-
-  Widget _targetRangeCard(CarePlan plan) {
+  Widget _targetRangeCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gradient spectrum bar with target window overlay
           _GlucoseRangeBar(
             min: plan.targetGlucoseMin,
             max: plan.targetGlucoseMax,
@@ -177,16 +167,16 @@ class PatientCarePlanScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              _rangeChip(
+              _rangeChip(context,
                 label: 'Minimum',
                 value: '${plan.targetGlucoseMin} mg/dL',
-                color: const Color(0xFF2BB6A3),
+                color: colors.accent,
               ),
               const SizedBox(width: 12),
-              _rangeChip(
+              _rangeChip(context,
                 label: 'Maximum',
                 value: '${plan.targetGlucoseMax} mg/dL',
-                color: const Color(0xFFFF9F40),
+                color: colors.warning,
               ),
             ],
           ),
@@ -194,19 +184,19 @@ class PatientCarePlanScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2BB6A3).withValues(alpha: 0.07),
+              color: colors.accent.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.info_outline, size: 14, color: Color(0xFF2BB6A3)),
-                SizedBox(width: 8),
+                Icon(Icons.info_outline, size: 14, color: colors.accent),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Recommended range: 70–180 mg/dL for most Type 1 patients.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF1A7A6E),
+                      color: colors.primaryDark,
                       height: 1.4,
                     ),
                   ),
@@ -219,11 +209,12 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  Widget _rangeChip({
+  Widget _rangeChip(BuildContext context, {
     required String label,
     required String value,
     required Color color,
   }) {
+    final colors = context.colors;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -258,21 +249,20 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── INSULIN & BASAL CARD ─────────────────────────────────────
-
-  Widget _insulinBasalCard(CarePlan plan) {
+  Widget _insulinBasalCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Insulin type pill
           Row(
             children: [
-              const Text(
+              Text(
                 'Insulin Type',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: colors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -301,33 +291,34 @@ class PatientCarePlanScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Basal Program',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey,
+              color: colors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           ...plan.basalProgram.asMap().entries.map(
-            (e) => _basalSegmentRow(e.key, e.value, plan.basalProgram.length),
+            (e) => _basalSegmentRow(context, e.key, e.value, plan.basalProgram.length),
           ),
         ],
       ),
     );
   }
 
-  Widget _basalSegmentRow(int index, BasalSegment seg, int total) {
+  Widget _basalSegmentRow(BuildContext context, int index, BasalSegment seg, int total) {
+    final colors = context.colors;
     final isLast = index == total - 1;
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: const Color(0xFFF4F7FA),
+            color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE0E0E0)),
+            border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
           ),
           child: Row(
             children: [
@@ -335,16 +326,16 @@ class PatientCarePlanScreen extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF199A8E).withValues(alpha: 0.12),
+                  color: colors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
                     '${index + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF199A8E),
+                      color: colors.primary,
                     ),
                   ),
                 ),
@@ -353,10 +344,10 @@ class PatientCarePlanScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${_fmtHour(seg.startHour)} – ${_fmtHour(seg.endHour)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A2B3C),
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -366,15 +357,15 @@ class PatientCarePlanScreen extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF199A8E).withValues(alpha: 0.1),
+                  color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '${seg.rate.toStringAsFixed(2)} U/h',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF199A8E),
+                    color: colors.primary,
                   ),
                 ),
               ),
@@ -386,14 +377,15 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── DOSING RATIOS CARD ───────────────────────────────────────
-
-  Widget _dosingRatiosCard(CarePlan plan) {
+  Widget _dosingRatiosCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Row(
         children: [
           Expanded(
             child: _metricTile(
+              context,
               icon: Icons.restaurant_outlined,
               iconColor: const Color(0xFF5B8CF5),
               title: 'Insulin-to-Carb',
@@ -408,8 +400,9 @@ class PatientCarePlanScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: _metricTile(
+              context,
               icon: Icons.trending_down_outlined,
-              iconColor: const Color(0xFFFF9F40),
+              iconColor: colors.warning,
               title: 'Sensitivity',
               value: plan.sensitivityFactor.toStringAsFixed(
                 plan.sensitivityFactor % 1 == 0 ? 0 : 1,
@@ -424,7 +417,8 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  Widget _metricTile({
+  Widget _metricTile(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -432,12 +426,13 @@ class PatientCarePlanScreen extends StatelessWidget {
     required String unit,
     required String subtitle,
   }) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F7FA),
+        color: colors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,9 +444,9 @@ class PatientCarePlanScreen extends StatelessWidget {
               Flexible(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey,
+                    color: colors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -462,20 +457,20 @@ class PatientCarePlanScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1A2B3C),
+              color: colors.textPrimary,
               height: 1,
             ),
           ),
-          Text(unit, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Text(unit, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: Colors.grey,
+              color: colors.textSecondary,
               height: 1.3,
             ),
           ),
@@ -484,10 +479,10 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── AID SETTINGS CARD ────────────────────────────────────────
-
-  Widget _aidSettingsCard(CarePlan plan) {
+  Widget _aidSettingsCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -497,11 +492,11 @@ class PatientCarePlanScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Maximum Auto-Bolus',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: colors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -512,17 +507,17 @@ class PatientCarePlanScreen extends StatelessWidget {
                       children: [
                         Text(
                           plan.maxAutoBolus.toStringAsFixed(1),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A2B3C),
+                            color: colors.textPrimary,
                             height: 1,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
+                        Text(
                           'U / event',
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                          style: TextStyle(fontSize: 13, color: colors.textSecondary),
                         ),
                       ],
                     ),
@@ -533,12 +528,12 @@ class PatientCarePlanScreen extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
+                  color: colors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.bolt_outlined,
-                  color: Color(0xFFFF9F40),
+                  color: colors.warning,
                   size: 28,
                 ),
               ),
@@ -548,23 +543,23 @@ class PatientCarePlanScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF3E0),
+              color: colors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
                   size: 14,
-                  color: Color(0xFFFF9F40),
+                  color: colors.warning,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'The AID system will never deliver more than this in a single automated correction.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF8B6000),
+                      color: colors.warning,
                       height: 1.4,
                     ),
                   ),
@@ -577,26 +572,26 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── APPOINTMENT CARD ─────────────────────────────────────────
-
-  Widget _appointmentCard(CarePlan plan) {
+  Widget _appointmentCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     final date = plan.nextAppointment;
     final formatted = date != null ? _fmtDate(date) : 'Not scheduled';
     final daysUntil = date?.difference(DateTime.now()).inDays;
 
     return _card(
+      context,
       child: Row(
         children: [
           Container(
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: const Color(0xFF199A8E).withValues(alpha: 0.1),
+              color: colors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.calendar_today_outlined,
-              color: Color(0xFF199A8E),
+              color: colors.primary,
               size: 24,
             ),
           ),
@@ -607,10 +602,10 @@ class PatientCarePlanScreen extends StatelessWidget {
               children: [
                 Text(
                   formatted,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A2B3C),
+                    color: colors.textPrimary,
                   ),
                 ),
                 if (daysUntil != null)
@@ -622,9 +617,7 @@ class PatientCarePlanScreen extends StatelessWidget {
                         : '${-daysUntil} day${(-daysUntil) == 1 ? '' : 's'} ago',
                     style: TextStyle(
                       fontSize: 12,
-                      color: daysUntil >= 0
-                          ? const Color(0xFF199A8E)
-                          : Colors.redAccent,
+                      color: daysUntil >= 0 ? colors.primary : colors.error,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -636,35 +629,36 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── NOTES CARD ───────────────────────────────────────────────
-
-  Widget _notesCard(CarePlan plan) {
+  Widget _notesCard(BuildContext context, CarePlan plan) {
+    final colors = context.colors;
     if (plan.doctorNotes.trim().isEmpty) {
       return _card(
+        context,
         child: Text(
           'No notes from your doctor.',
           style: TextStyle(
             fontSize: 13,
-            color: Colors.grey.shade400,
+            color: colors.textSecondary,
             fontStyle: FontStyle.italic,
           ),
         ),
       );
     }
     return _card(
+      context,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF4F7FA),
+          color: colors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
+          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
         ),
         child: Text(
           plan.doctorNotes,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF1A2B3C),
+            color: colors.textPrimary,
             height: 1.6,
             fontStyle: FontStyle.italic,
           ),
@@ -673,25 +667,23 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  // ─── LAST UPDATED FOOTER ──────────────────────────────────────
-
-  Widget _lastUpdatedFooter() {
+  Widget _lastUpdatedFooter(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Text(
         'Last updated $_lastUpdated · $_doctorName',
-        style: const TextStyle(fontSize: 11, color: Colors.grey),
+        style: TextStyle(fontSize: 11, color: colors.textSecondary),
       ),
     );
   }
 
-  // ─── CARD WRAPPER ─────────────────────────────────────────────
-
-  Widget _card({required Widget child}) {
+  Widget _card(BuildContext context, {required Widget child}) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -704,8 +696,6 @@ class PatientCarePlanScreen extends StatelessWidget {
       child: child,
     );
   }
-
-  // ─── HELPERS ──────────────────────────────────────────────────
 
   String _fmtHour(int hour) {
     if (hour == 0 || hour == 24) return '12:00 AM';
@@ -734,8 +724,6 @@ class PatientCarePlanScreen extends StatelessWidget {
   }
 }
 
-// ─── GLUCOSE RANGE BAR (CustomPainter) ───────────────────────────────────────
-
 class _GlucoseRangeBar extends StatelessWidget {
   final int min;
   final int max;
@@ -744,6 +732,7 @@ class _GlucoseRangeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -755,42 +744,26 @@ class _GlucoseRangeBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        // x-axis labels
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('40', style: TextStyle(fontSize: 9, color: Colors.grey)),
-            Text('54', style: TextStyle(fontSize: 9, color: Colors.grey)),
-            Text('70', style: TextStyle(fontSize: 9, color: Colors.grey)),
-            Text('180', style: TextStyle(fontSize: 9, color: Colors.grey)),
-            Text('250', style: TextStyle(fontSize: 9, color: Colors.grey)),
-            Text('400', style: TextStyle(fontSize: 9, color: Colors.grey)),
+            Text('40', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text('54', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text('70', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text('180', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text('250', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text('400', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
           ],
         ),
         const SizedBox(height: 2),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Very Low',
-              style: TextStyle(fontSize: 8, color: Color(0xFFB71C1C)),
-            ),
-            Text(
-              'Low',
-              style: TextStyle(fontSize: 8, color: Color(0xFFFBC02D)),
-            ),
-            Text(
-              'In Range',
-              style: TextStyle(fontSize: 8, color: Color(0xFF2BB6A3)),
-            ),
-            Text(
-              'High',
-              style: TextStyle(fontSize: 8, color: Color(0xFFFF9F40)),
-            ),
-            Text(
-              'Very High',
-              style: TextStyle(fontSize: 8, color: Color(0xFFD32F2F)),
-            ),
+            Text('Very Low', style: TextStyle(fontSize: 8, color: Color(0xFFB71C1C))),
+            Text('Low', style: TextStyle(fontSize: 8, color: Color(0xFFFBC02D))),
+            Text('In Range', style: TextStyle(fontSize: 8, color: Color(0xFF2BB6A3))),
+            Text('High', style: TextStyle(fontSize: 8, color: Color(0xFFFF9F40))),
+            Text('Very High', style: TextStyle(fontSize: 8, color: Color(0xFFD32F2F))),
           ],
         ),
       ],
@@ -802,7 +775,6 @@ class _RangeBarPainter extends CustomPainter {
   final int targetMin;
   final int targetMax;
 
-  // Glucose spectrum: 40 → 54 → 70 → 180 → 250 → 400
   static const double _scaleMin = 40;
   static const double _scaleMax = 400;
 
@@ -820,19 +792,17 @@ class _RangeBarPainter extends CustomPainter {
     final double barTop = (h - barH) / 2;
     final radius = Radius.circular(barH / 2);
 
-    // Segment stops
     final x54 = _x(54, w);
     final x70 = _x(70, w);
     final x180 = _x(180, w);
     final x250 = _x(250, w);
 
-    // 1. Draw colour segments
     final segments = [
-      (0.0, x54, const Color(0xFFB71C1C)), // Very Low  (< 54)
-      (x54, x70, const Color(0xFFFBC02D)), // Low       (54–70)
-      (x70, x180, const Color(0xFF2BB6A3)), // In Range  (70–180)
-      (x180, x250, const Color(0xFFFF9F40)), // High      (180–250)
-      (x250, w, const Color(0xFFD32F2F)), // Very High (> 250)
+      (0.0, x54, const Color(0xFFB71C1C)),
+      (x54, x70, const Color(0xFFFBC02D)),
+      (x70, x180, const Color(0xFF2BB6A3)),
+      (x180, x250, const Color(0xFFFF9F40)),
+      (x250, w, const Color(0xFFD32F2F)),
     ];
 
     for (int i = 0; i < segments.length; i++) {
@@ -852,11 +822,9 @@ class _RangeBarPainter extends CustomPainter {
       );
     }
 
-    // 2. Draw target window overlay (white semi-transparent bracket)
     final txMin = _x(targetMin.toDouble(), w);
     final txMax = _x(targetMax.toDouble(), w);
 
-    // White overlay on target region
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(txMin, barTop - 4, txMax - txMin, barH + 8),
@@ -867,7 +835,6 @@ class _RangeBarPainter extends CustomPainter {
         ..style = PaintingStyle.fill,
     );
 
-    // Bracket border
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(txMin, barTop - 4, txMax - txMin, barH + 8),
@@ -879,7 +846,6 @@ class _RangeBarPainter extends CustomPainter {
         ..strokeWidth = 2,
     );
 
-    // 3. Target label above centre
     final midX = (txMin + txMax) / 2;
     final tp = TextPainter(
       text: TextSpan(

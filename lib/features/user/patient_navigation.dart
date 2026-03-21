@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';  // ADDED
-import 'package:glucora_ai_companion/core/theme/theme_provider.dart';  // ADDED
+import 'package:provider/provider.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/features/user/screens/calorie_log_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
@@ -8,7 +10,6 @@ import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
-
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -29,18 +30,20 @@ class _PatientNavigationState extends State<PatientNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: _buildNavBar(),
+      bottomNavigationBar: _buildNavBar(context),
     );
   }
 
-  Widget _buildNavBar() {
+  Widget _buildNavBar(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.textSecondary.withOpacity(0.2))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -56,24 +59,28 @@ class _PatientNavigationState extends State<PatientNavigation> {
           child: Row(
             children: [
               _NavTile(
+                context,
                 icon: Icons.home_rounded,
                 label: "Home",
                 active: _currentIndex == 0,
                 onTap: () => setState(() => _currentIndex = 0),
               ),
               _NavTile(
+                context,
                 icon: Icons.restaurant_menu_rounded,
                 label: "Calories",
                 active: _currentIndex == 1,
                 onTap: () => setState(() => _currentIndex = 1),
               ),
               _NavTile(
+                context,
                 icon: Icons.edit_rounded,
                 label: "Manual Log",
                 active: _currentIndex == 2,
                 onTap: () => setState(() => _currentIndex = 2),
               ),
               _NavTile(
+                context,
                 icon: Icons.person_outline_rounded,
                 label: "Profile",
                 active: _currentIndex == 3,
@@ -87,14 +94,14 @@ class _PatientNavigationState extends State<PatientNavigation> {
   }
 }
 
-// ── Nav tile ──────────────────────────────────────────
 class _NavTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
+  final BuildContext context;
 
-  const _NavTile({
+  const _NavTile(this.context, {
     required this.icon,
     required this.label,
     required this.active,
@@ -103,7 +110,8 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF199A8E) : const Color(0xFF9E9E9E);
+    final colors = this.context.colors;
+    final color = active ? colors.primary : colors.textSecondary;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -126,7 +134,7 @@ class _NavTile extends StatelessWidget {
               width: 5,
               height: 5,
               decoration: BoxDecoration(
-                color: active ? const Color(0xFF199A8E) : Colors.transparent,
+                color: active ? colors.primary : Colors.transparent,
                 shape: BoxShape.circle,
               ),
             ),
@@ -137,9 +145,6 @@ class _NavTile extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Edit Profile Screen
-// ─────────────────────────────────────────────────────
 class _EditProfileScreen extends StatefulWidget {
   final String name;
   final int age;
@@ -174,21 +179,22 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Edit Profile',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -196,10 +202,10 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text(
+            child: Text(
               'Save',
               style: TextStyle(
-                color: Color(0xFF199A8E),
+                color: colors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -211,28 +217,13 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildField('Name', _nameController, Icons.person_outline),
+            _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField(
-              'Age',
-              _ageController,
-              Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-            ),
+            _buildField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
             const SizedBox(height: 16),
-            _buildField(
-              'Height',
-              _heightController,
-              Icons.height,
-              hint: 'e.g. 157 cm',
-            ),
+            _buildField(context, 'Height', _heightController, Icons.height, hint: 'e.g. 157 cm'),
             const SizedBox(height: 16),
-            _buildField(
-              'Weight',
-              _weightController,
-              Icons.monitor_weight_outlined,
-              hint: 'e.g. 48 kgs',
-            ),
+            _buildField(context, 'Weight', _weightController, Icons.monitor_weight_outlined, hint: 'e.g. 48 kgs'),
           ],
         ),
       ),
@@ -240,19 +231,21 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   }
 
   Widget _buildField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
     String? hint,
   }) {
+    final colors = context.colors;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF199A8E)),
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -291,29 +284,27 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Settings Screen (with two options)
-// ─────────────────────────────────────────────────────
 class _SettingsScreen extends StatelessWidget {
   const _SettingsScreen();
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Settings',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -324,10 +315,11 @@ class _SettingsScreen extends StatelessWidget {
         child: Column(
           children: [
             _settingsCard(
+              context,
               icon: Icons.bluetooth_rounded,
               title: 'Bluetooth Pairing',
               subtitle: 'Connect your CGM sensor or pump',
-              color: const Color(0xFF199A8E),
+              color: colors.primary,
               onTap: () {
                 Navigator.push(
                   context,
@@ -339,6 +331,7 @@ class _SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _settingsCard(
+              context,
               icon: Icons.medical_services_outlined,
               title: 'Doctor Connecting',
               subtitle: 'Find and connect with your doctor',
@@ -358,21 +351,23 @@ class _SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _settingsCard({
+  Widget _settingsCard(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
   }) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -399,21 +394,21 @@ class _SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E),
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
           ],
         ),
       ),
@@ -421,29 +416,27 @@ class _SettingsScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Bluetooth Pairing Screen (scrollable)
-// ─────────────────────────────────────────────────────
 class _BluetoothPairingScreen extends StatelessWidget {
   const _BluetoothPairingScreen();
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Connect Device',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -455,12 +448,12 @@ class _BluetoothPairingScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Available Devices',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -468,9 +461,9 @@ class _BluetoothPairingScreen extends StatelessWidget {
               _deviceTile(context, 'Medtronic 780G', '45% battery', false),
               _deviceTile(context, 'Abbott Libre 3', 'Pairing mode', false),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'To pair a new device, put it in discovery mode and tap on it.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
               const SizedBox(height: 20),
             ],
@@ -486,20 +479,21 @@ class _BluetoothPairingScreen extends StatelessWidget {
     String status,
     bool isConnected,
   ) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Icon(
             Icons.bluetooth_rounded,
             size: 24,
-            color: isConnected ? const Color(0xFF199A8E) : Colors.grey,
+            color: isConnected ? colors.primary : colors.textSecondary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -508,15 +502,15 @@ class _BluetoothPairingScreen extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
                 Text(
                   status,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -525,14 +519,14 @@ class _BluetoothPairingScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF199A8E).withValues(alpha: 0.1),
+                color: colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 'Connected',
                 style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFF199A8E),
+                  color: colors.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -555,9 +549,9 @@ class _BluetoothPairingScreen extends StatelessWidget {
                 ),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text(
+              child: Text(
                 'Pair',
-                style: TextStyle(color: Color(0xFF199A8E)),
+                style: TextStyle(color: colors.primary),
               ),
             ),
         ],
@@ -566,9 +560,6 @@ class _BluetoothPairingScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Doctor Search Screen
-// ─────────────────────────────────────────────────────
 class _DoctorSearchScreen extends StatefulWidget {
   const _DoctorSearchScreen();
 
@@ -581,30 +572,10 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
   String _query = '';
 
   final List<Map<String, String>> _allDoctors = [
-    {
-      'name': 'Dr. Sarah Ahmed',
-      'phone': '0100 123 4567',
-      'email': 'sarah.ahmed@hospital.com',
-      'address': '15 Nile Street, Cairo',
-    },
-    {
-      'name': 'Dr. Mahmoud Youssef',
-      'phone': '0111 234 5678',
-      'email': 'mahmoud.y@clinic.com',
-      'address': '22 El Tahrir, Alexandria',
-    },
-    {
-      'name': 'Dr. Nouran Adel',
-      'phone': '0122 345 6789',
-      'email': 'nouran.adel@medical.org',
-      'address': '8 Zamalek, Cairo',
-    },
-    {
-      'name': 'Dr. Karim Hassan',
-      'phone': '0155 456 7890',
-      'email': 'karim.h@diabetes-care.com',
-      'address': '44 Maadi, Cairo',
-    },
+    {'name': 'Dr. Sarah Ahmed', 'phone': '0100 123 4567', 'email': 'sarah.ahmed@hospital.com', 'address': '15 Nile Street, Cairo'},
+    {'name': 'Dr. Mahmoud Youssef', 'phone': '0111 234 5678', 'email': 'mahmoud.y@clinic.com', 'address': '22 El Tahrir, Alexandria'},
+    {'name': 'Dr. Nouran Adel', 'phone': '0122 345 6789', 'email': 'nouran.adel@medical.org', 'address': '8 Zamalek, Cairo'},
+    {'name': 'Dr. Karim Hassan', 'phone': '0155 456 7890', 'email': 'karim.h@diabetes-care.com', 'address': '44 Maadi, Cairo'},
   ];
 
   List<Map<String, String>> get _filteredDoctors {
@@ -622,21 +593,22 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Find a Doctor',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -649,9 +621,9 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -663,10 +635,10 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _query = val),
-                decoration: const InputDecoration(
-                  icon: Icon(Icons.search, color: Colors.grey),
+                decoration: InputDecoration(
+                  icon: Icon(Icons.search, color: colors.textSecondary),
                   hintText: 'Search by doctor name...',
-                  hintStyle: TextStyle(color: Colors.grey),
+                  hintStyle: TextStyle(color: colors.textSecondary),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -678,7 +650,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
                   ? Center(
                       child: Text(
                         'No doctors found',
-                        style: TextStyle(color: Colors.grey[400]),
+                        style: TextStyle(color: colors.textSecondary),
                       ),
                     )
                   : ListView.builder(
@@ -686,7 +658,7 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
                       itemCount: _filteredDoctors.length,
                       itemBuilder: (context, index) {
                         final doc = _filteredDoctors[index];
-                        return _doctorCard(doc);
+                        return _doctorCard(context, doc);
                       },
                     ),
             ),
@@ -696,14 +668,15 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
     );
   }
 
-  Widget _doctorCard(Map<String, String> doctor) {
+  Widget _doctorCard(BuildContext context, Map<String, String> doctor) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -719,13 +692,11 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: const Color(
-                  0xFF199A8E,
-                ).withValues(alpha: 0.15),
+                backgroundColor: colors.primary.withValues(alpha: 0.15),
                 child: Text(
                   doctor['name']!.split(' ').map((e) => e[0]).take(2).join(),
-                  style: const TextStyle(
-                    color: Color(0xFF199A8E),
+                  style: TextStyle(
+                    color: colors.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -735,24 +706,24 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
               Expanded(
                 child: Text(
                   doctor['name']!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF199A8E).withValues(alpha: 0.1),
+                  color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   'Connect',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF199A8E),
+                    color: colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -760,25 +731,26 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _detailRow(Icons.phone_outlined, doctor['phone']!),
+          _detailRow(context, Icons.phone_outlined, doctor['phone']!),
           const SizedBox(height: 6),
-          _detailRow(Icons.email_outlined, doctor['email']!),
+          _detailRow(context, Icons.email_outlined, doctor['email']!),
           const SizedBox(height: 6),
-          _detailRow(Icons.location_on_outlined, doctor['address']!),
+          _detailRow(context, Icons.location_on_outlined, doctor['address']!),
         ],
       ),
     );
   }
 
-  Widget _detailRow(IconData icon, String text) {
+  Widget _detailRow(BuildContext context, IconData icon, String text) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.grey[400]),
+        Icon(icon, size: 14, color: colors.textSecondary),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 13, color: Colors.black87),
+            style: TextStyle(fontSize: 13, color: colors.textPrimary),
           ),
         ),
       ],
@@ -786,9 +758,6 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────
-// Profile tab (Stateful) – with Dark Mode Toggle
-// ─────────────────────────────────────────────────────
 class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
 
@@ -797,13 +766,13 @@ class _ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<_ProfileTab> {
-  // Editable profile data
   String _name = "Malak Mohamed";
   int _age = 21;
   String _height = "157 cm";
   String _weight = "48 kgs";
 
   void _showLogoutDialog(BuildContext context) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -813,9 +782,9 @@ class _ProfileTabState extends State<_ProfileTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Color(0xFF888888)),
+              style: TextStyle(color: colors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -827,7 +796,7 @@ class _ProfileTabState extends State<_ProfileTab> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF1616),
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -843,8 +812,8 @@ class _ProfileTabState extends State<_ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Get theme provider to toggle dark mode
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = context.colors;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -853,22 +822,21 @@ class _ProfileTabState extends State<_ProfileTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            // Header with title and settings icon
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Profile",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.settings_outlined,
-                    color: Color(0xFF555555),
+                    color: colors.textSecondary,
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -882,15 +850,14 @@ class _ProfileTabState extends State<_ProfileTab> {
               ],
             ),
             const SizedBox(height: 24),
-            // Profile picture and basic info with edit icon
             Center(
               child: Column(
                 children: [
                   Container(
                     width: 90,
                     height: 90,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF199A8E),
+                    decoration: BoxDecoration(
+                      color: colors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -905,19 +872,19 @@ class _ProfileTabState extends State<_ProfileTab> {
                     children: [
                       Text(
                         _name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit,
                           size: 18,
-                          color: Color(0xFF199A8E),
+                          color: colors.primary,
                         ),
                       ),
                     ],
@@ -925,19 +892,18 @@ class _ProfileTabState extends State<_ProfileTab> {
                   const SizedBox(height: 4),
                   Text(
                     "$_age years",
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Height & Weight card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -949,24 +915,23 @@ class _ProfileTabState extends State<_ProfileTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoColumn("Height", _height),
+                  _infoColumn(context, "Height", _height),
                   Container(
                     height: 30,
                     width: 1,
-                    color: const Color(0xFFEEEEEE),
+                    color: colors.textSecondary.withOpacity(0.2),
                   ),
-                  _infoColumn("Weight", _weight),
+                  _infoColumn(context, "Weight", _weight),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Reports & History section
-            const Text(
+            Text(
               "Reports & History",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -985,9 +950,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1002,25 +967,23 @@ class _ProfileTabState extends State<_ProfileTab> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF199A8E,
-                              ).withValues(alpha: 0.1),
+                              color: colors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.insert_chart_outlined_rounded,
-                              color: Color(0xFF199A8E),
+                              color: colors.primary,
                               size: 24,
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          Text(
                             'Weekly Report',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E),
+                              color: colors.textPrimary,
                             ),
                           ),
                         ],
@@ -1042,9 +1005,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1059,9 +1022,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF5B8CF5,
-                              ).withValues(alpha: 0.1),
+                              color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -1071,13 +1032,13 @@ class _ProfileTabState extends State<_ProfileTab> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          Text(
                             'History & Export',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E),
+                              color: colors.textPrimary,
                             ),
                           ),
                         ],
@@ -1088,35 +1049,30 @@ class _ProfileTabState extends State<_ProfileTab> {
               ],
             ),
 
-            // ========== DARK MODE TOGGLE ==========
             const SizedBox(height: 24),
             SwitchListTile(
-              title: const Text('Dark Mode'),
+              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: const Color(0xFF199A8E),
+              activeColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
-            // ========== END DARK MODE TOGGLE ==========
 
             const SizedBox(height: 24),
-            // FAQs heading
-            const Text(
+            Text(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
-            // FAQ items
-            _faqItem("How do I connect my glucose monitor?"),
-            _faqItem("What do the glucose ranges mean?"),
-            _faqItem("Can I share data with my doctor?"),
-            _faqItem("How accurate are the predictions?"),
+            _faqItem(context, "How do I connect my glucose monitor?"),
+            _faqItem(context, "What do the glucose ranges mean?"),
+            _faqItem(context, "Can I share data with my doctor?"),
+            _faqItem(context, "How accurate are the predictions?"),
             
-            // --- NEW: Switch to Guardian button ---
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
@@ -1127,7 +1083,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF199A8E),
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(200, 45),
                   shape: RoundedRectangleBorder(
@@ -1137,10 +1093,8 @@ class _ProfileTabState extends State<_ProfileTab> {
                 child: const Text('Switch to Guardian View'),
               ),
             ),
-            // --- END NEW ---
 
             const SizedBox(height: 24),
-            // Logout button
             Center(
               child: SizedBox(
                 width: double.infinity,
@@ -1148,15 +1102,15 @@ class _ProfileTabState extends State<_ProfileTab> {
                 child: OutlinedButton(
                   onPressed: () => _showLogoutDialog(context),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFEF1616)),
+                    side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     "Log Out",
                     style: TextStyle(
-                      color: Color(0xFFEF1616),
+                      color: colors.error,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1171,31 +1125,33 @@ class _ProfileTabState extends State<_ProfileTab> {
     );
   }
 
-  Widget _infoColumn(String label, String value) {
+  Widget _infoColumn(BuildContext context, String label, String value) {
+    final colors = context.colors;
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
         ),
       ],
     );
   }
 
-  Widget _faqItem(String question) {
+  Widget _faqItem(BuildContext context, String question) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1203,10 +1159,10 @@ class _ProfileTabState extends State<_ProfileTab> {
           Expanded(
             child: Text(
               question,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A2E)),
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+          Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
         ],
       ),
     );

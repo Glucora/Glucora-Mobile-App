@@ -13,14 +13,10 @@ import 'package:share_plus/share_plus.dart';
 import 'history_entry.dart';
 import 'weekly_history_sheet.dart';
 import 'weekly_report_model.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────────────────────────────────────
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class WeeklyReportScreen extends StatefulWidget {
-  /// The Monday that starts the week to display.
-  /// Defaults to the Monday of the current calendar week.
   final DateTime? weekStart;
 
   const WeeklyReportScreen({super.key, this.weekStart});
@@ -33,7 +29,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   late WeeklyStats _stats;
   bool _exporting = false;
 
-  // RepaintBoundary keys for PDF capture
   final GlobalKey _trendKey = GlobalKey();
   final GlobalKey _tirKey = GlobalKey();
   final GlobalKey _glucoseBarsKey = GlobalKey();
@@ -45,8 +40,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     final start = widget.weekStart ?? weekMonday(DateTime.now());
     _stats = computeWeeklyStats(start);
   }
-
-  // ── History ──────────────────────────────────────────────────────────────
 
   Future<void> _showHistory() async {
     final result = await showModalBottomSheet<DateTime>(
@@ -67,8 +60,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     }
   }
 
-  // ── PDF export ────────────────────────────────────────────────────────────
-
   Future<Uint8List?> _captureWidget(GlobalKey key) async {
     try {
       final boundary =
@@ -84,8 +75,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   Future<void> _exportPdf() async {
     if (_exporting) return;
     setState(() => _exporting = true);
-    // Wait for the frame to finish painting so RepaintBoundary layers are
-    // composited and ready before toImage() is called.
     await WidgetsBinding.instance.endOfFrame;
 
     try {
@@ -94,7 +83,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       final glucoseBarsBytes = await _captureWidget(_glucoseBarsKey);
       final insulinBarsBytes = await _captureWidget(_insulinBarsKey);
 
-      // Use built-in PDF fonts (no external TTF files needed).
       final doc = pw.Document(
         theme: pw.ThemeData.withFont(
           base: pw.Font.helvetica(),
@@ -109,7 +97,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           build: (ctx) => [
-            // ── Header ──
             pw.Text(
               'Glucora Weekly Report',
               style: pw.TextStyle(
@@ -125,7 +112,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             pw.Divider(height: 24),
 
-            // ── Stats table ──
             pw.Text(
               'Summary',
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
@@ -143,7 +129,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             pw.SizedBox(height: 20),
 
-            // ── Charts ──
             if (trendBytes != null) ...[
               pw.Text(
                 'Glucose Trend',
@@ -193,7 +178,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
               pw.SizedBox(height: 16),
             ],
 
-            // ── Notable events ──
             if (stats.notableEvents.isNotEmpty) ...[
               pw.Text(
                 'Notable Events',
@@ -241,8 +225,6 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     }
   }
 
-  // ── PDF helpers ───────────────────────────────────────────────────────────
-
   List<List<String>> _pdfStatRows(WeeklyStats s) => [
     [
       'Avg Glucose',
@@ -269,17 +251,16 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     ['Pump Failures', '${s.pumpFailureCount}'],
   ];
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final stats = _stats;
     final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Column(
@@ -325,20 +306,19 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Summary stats ────────────────────────────────────────────
-            _sectionHeader('Summary'),
+            _sectionHeader(context, 'Summary'),
             const SizedBox(height: 10),
-            _buildSummaryGrid(stats),
+            _buildSummaryGrid(context, stats),
             const SizedBox(height: 24),
 
-            // ── Glucose trend ────────────────────────────────────────────
-            _sectionHeader('Glucose Trend'),
+            _sectionHeader(context, 'Glucose Trend'),
             const SizedBox(height: 6),
             _chartCard(
+              context,
               child: RepaintBoundary(
                 key: _trendKey,
                 child: Container(
-                  color: Colors.white,
+                  color: colors.surface,
                   child: SizedBox(
                     height: 210,
                     child: CustomPaint(
@@ -353,14 +333,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Time in Range ────────────────────────────────────────────
-            _sectionHeader('Time in Range'),
+            _sectionHeader(context, 'Time in Range'),
             const SizedBox(height: 6),
             _chartCard(
+              context,
               child: RepaintBoundary(
                 key: _tirKey,
                 child: Container(
-                  color: Colors.white,
+                  color: colors.surface,
                   height: 200,
                   child: Row(
                     children: [
@@ -371,7 +351,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                           child: const SizedBox.expand(),
                         ),
                       ),
-                      Flexible(flex: 3, child: _TIRLegend(stats: stats)),
+                      Flexible(flex: 3, child: _TIRLegend(context, stats)),
                     ],
                   ),
                 ),
@@ -379,14 +359,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Daily avg glucose bars ───────────────────────────────────
-            _sectionHeader('Daily Average Glucose'),
+            _sectionHeader(context, 'Daily Average Glucose'),
             const SizedBox(height: 6),
             _chartCard(
+              context,
               child: RepaintBoundary(
                 key: _glucoseBarsKey,
                 child: Container(
-                  color: Colors.white,
+                  color: colors.surface,
                   child: SizedBox(
                     height: 160,
                     child: CustomPaint(
@@ -403,19 +383,19 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Daily insulin bars ───────────────────────────────────────
-            _sectionHeader('Daily Insulin Delivery'),
+            _sectionHeader(context, 'Daily Insulin Delivery'),
             const SizedBox(height: 4),
             Text(
               'Total units delivered per day (used as IOB proxy)',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
             const SizedBox(height: 6),
             _chartCard(
+              context,
               child: RepaintBoundary(
                 key: _insulinBarsKey,
                 child: Container(
-                  color: Colors.white,
+                  color: colors.surface,
                   child: SizedBox(
                     height: 160,
                     child: CustomPaint(
@@ -438,28 +418,27 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Notable events ───────────────────────────────────────────
             if (stats.notableEvents.isNotEmpty) ...[
-              _sectionHeader('Notable Events'),
+              _sectionHeader(context, 'Notable Events'),
               const SizedBox(height: 10),
-              _buildNotableEvents(stats.notableEvents),
+              _buildNotableEvents(context, stats.notableEvents),
               const SizedBox(height: 16),
             ] else ...[
-              _sectionHeader('Notable Events'),
+              _sectionHeader(context, 'Notable Events'),
               const SizedBox(height: 10),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                  border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
                 ),
                 child: Column(
                   children: [
                     Icon(
                       Icons.check_circle_outline_rounded,
-                      color: cZoneInRange,
+                      color: colors.accent,
                       size: 36,
                     ),
                     const SizedBox(height: 8),
@@ -467,7 +446,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                       'No notable events this week',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[600],
+                        color: colors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -482,26 +461,26 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 
-  // ── Widget helpers ────────────────────────────────────────────────────────
-
-  Widget _sectionHeader(String title) {
+  Widget _sectionHeader(BuildContext context, String title) {
+    final colors = context.colors;
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A1A2E),
+        color: colors.textPrimary,
       ),
     );
   }
 
-  Widget _chartCard({required Widget child}) {
+  Widget _chartCard(BuildContext context, {required Widget child}) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -517,7 +496,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 
-  Widget _buildSummaryGrid(WeeklyStats stats) {
+  Widget _buildSummaryGrid(BuildContext context, WeeklyStats stats) {
+    final colors = context.colors;
     final tirPct = stats.totalReadings > 0
         ? '${(stats.inRangeCount / stats.totalReadings * 100).toStringAsFixed(0)}%'
         : '—';
@@ -591,16 +571,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
         label: 'Device Failures',
         value: '${stats.totalFailures}',
         sub: 'CGM + Pump',
-        color: stats.totalFailures > 0 ? const Color(0xFFEF1616) : Colors.grey,
+        color: stats.totalFailures > 0 ? colors.error : Colors.grey,
         icon: Icons.warning_amber_rounded,
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate aspect ratio dynamically to avoid overflow.
-        // Each cell needs ~120px height for icon + value + label + sub.
-        final cellWidth = (constraints.maxWidth - 20) / 3; // minus spacing
+        final cellWidth = (constraints.maxWidth - 20) / 3;
         final aspectRatio = cellWidth / 120;
         return GridView.count(
           crossAxisCount: 3,
@@ -615,12 +593,13 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 
-  Widget _buildNotableEvents(List<HistoryEntry> events) {
+  Widget _buildNotableEvents(BuildContext context, List<HistoryEntry> events) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -634,7 +613,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           for (int i = 0; i < events.length; i++) ...[
             _EventTile(entry: events[i]),
             if (i < events.length - 1)
-              Divider(height: 1, color: Colors.grey.shade100),
+              Divider(height: 1, color: colors.textSecondary.withOpacity(0.2)),
           ],
         ],
       ),
@@ -642,9 +621,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Event description helper
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Keep the existing helper functions and classes below (they are correct) ───
 
 String _eventDescription(HistoryEntry e) {
   switch (e.type) {
@@ -694,19 +671,14 @@ IconData _eventIcon(HistoryEntry e) {
   }
 }
 
-/// Replaces non-Latin-1 characters that Helvetica cannot render.
 String _pdfSafe(String s) => s
-    .replaceAll('\u2013', '-') // en-dash
-    .replaceAll('\u2014', '-') // em-dash
-    .replaceAll('\u2265', '>=') // ≥
-    .replaceAll('\u2264', '<=') // ≤
-    .replaceAll('\u2019', "'") // right single quote
-    .replaceAll('\u201C', '"') // left double quote
-    .replaceAll('\u201D', '"'); // right double quote
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Small widgets
-// ─────────────────────────────────────────────────────────────────────────────
+    .replaceAll('\u2013', '-')
+    .replaceAll('\u2014', '-')
+    .replaceAll('\u2265', '>=')
+    .replaceAll('\u2264', '<=')
+    .replaceAll('\u2019', "'")
+    .replaceAll('\u201C', '"')
+    .replaceAll('\u201D', '"');
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -725,11 +697,12 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -763,17 +736,17 @@ class _StatCard extends StatelessWidget {
                 ),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   sub,
-                  style: TextStyle(fontSize: 9, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 9, color: colors.textSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -793,6 +766,7 @@ class _EventTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final color = _eventColor(entry);
     final desc = _eventDescription(entry);
 
@@ -816,16 +790,16 @@ class _EventTile extends StatelessWidget {
               children: [
                 Text(
                   desc,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   entry.timeLabel,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -838,11 +812,13 @@ class _EventTile extends StatelessWidget {
 
 class _TIRLegend extends StatelessWidget {
   final WeeklyStats stats;
+  final BuildContext context;
 
-  const _TIRLegend({required this.stats});
+  const _TIRLegend(this.context, this.stats);
 
   @override
   Widget build(BuildContext context) {
+    final colors = this.context.colors;
     final total = stats.totalReadings;
     String pct(int count) {
       if (total == 0) return '—';
@@ -890,10 +866,10 @@ class _TIRLegend extends StatelessWidget {
                 ),
                 Text(
                   pct(count),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: colors.textPrimary,
                   ),
                 ),
               ],
@@ -905,9 +881,7 @@ class _TIRLegend extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Custom Painters
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Keep all custom painters as they are (they use semantic glucose zone colors) ───
 
 class _GlucoseTrendPainter extends CustomPainter {
   final List<HistoryEntry> entries;
@@ -941,7 +915,6 @@ class _GlucoseTrendPainter extends CustomPainter {
       return _padT + (1.0 - t.clamp(0.0, 1.0)) * cH;
     }
 
-    // ── Zone background bands ─────────────────────────────────────────────
     void drawBand(double low, double high, Color color) {
       canvas.drawRect(
         Rect.fromLTRB(_padL, yOf(high), _padL + cW, yOf(low)),
@@ -955,7 +928,6 @@ class _GlucoseTrendPainter extends CustomPainter {
     drawBand(kGlucoseHigh.toDouble(), kGlucoseVeryHigh.toDouble(), cZoneHigh);
     drawBand(kGlucoseVeryHigh.toDouble(), _yMax, cZoneVeryHigh);
 
-    // ── Chart border ──────────────────────────────────────────────────────
     canvas.drawRect(
       Rect.fromLTWH(_padL, _padT, cW, cH),
       Paint()
@@ -964,7 +936,6 @@ class _GlucoseTrendPainter extends CustomPainter {
         ..strokeWidth = 0.8,
     );
 
-    // ── Dashed reference lines ────────────────────────────────────────────
     final dashPaint = Paint()
       ..strokeWidth = 0.8
       ..style = PaintingStyle.stroke;
@@ -987,7 +958,6 @@ class _GlucoseTrendPainter extends CustomPainter {
     drawDashed(kGlucoseHigh.toDouble(), cZoneHigh);
     drawDashed(kGlucoseVeryHigh.toDouble(), cZoneVeryHigh);
 
-    // ── Day separator lines ───────────────────────────────────────────────
     final sepPaint = Paint()
       ..color = Colors.grey.shade200
       ..strokeWidth = 0.6;
@@ -996,7 +966,6 @@ class _GlucoseTrendPainter extends CustomPainter {
       canvas.drawLine(Offset(x, _padT), Offset(x, _padT + cH), sepPaint);
     }
 
-    // ── Y-axis labels ─────────────────────────────────────────────────────
     void drawYLabel(double glucose) {
       final tp = TextPainter(
         text: TextSpan(
@@ -1015,7 +984,6 @@ class _GlucoseTrendPainter extends CustomPainter {
       drawYLabel(v);
     }
 
-    // ── X-axis day labels ─────────────────────────────────────────────────
     for (int d = 0; d < 7; d++) {
       final x = _padL + (d + 0.5) / 7.0 * cW;
       final tp = TextPainter(
@@ -1028,7 +996,6 @@ class _GlucoseTrendPainter extends CustomPainter {
       tp.paint(canvas, Offset(x - tp.width / 2, _padT + cH + 4));
     }
 
-    // ── Data line & dots ──────────────────────────────────────────────────
     if (entries.isEmpty) {
       final tp = TextPainter(
         text: TextSpan(
@@ -1083,8 +1050,6 @@ class _GlucoseTrendPainter extends CustomPainter {
   bool shouldRepaint(covariant _GlucoseTrendPainter old) =>
       old.entries != entries || old.weekStart != weekStart;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _TIRDonutPainter extends CustomPainter {
   final WeeklyStats stats;
@@ -1141,10 +1106,8 @@ class _TIRDonutPainter extends CustomPainter {
       startAngle += sweep;
     }
 
-    // Hole
     canvas.drawCircle(Offset(cx, cy), innerR, Paint()..color = Colors.white);
 
-    // Center label
     final tirPct = (stats.inRangeCount / total * 100).toStringAsFixed(0);
     final tp1 = TextPainter(
       text: TextSpan(
@@ -1173,10 +1136,8 @@ class _TIRDonutPainter extends CustomPainter {
   bool shouldRepaint(covariant _TIRDonutPainter old) => old.stats != stats;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _DailyBarPainter extends CustomPainter {
-  final List<double?> values; // 7 entries, null = no data
+  final List<double?> values;
   final double maxValue;
   final String unitLabel;
   final Color Function(double) colorFn;
@@ -1201,7 +1162,6 @@ class _DailyBarPainter extends CustomPainter {
     final barW = barAreaW * 0.55;
     final safeMax = maxValue > 0 ? maxValue : 1;
 
-    // ── Y-axis gridlines & labels ─────────────────────────────────────────
     final gridPaint = Paint()
       ..color = Colors.grey.shade100
       ..strokeWidth = 0.8;
@@ -1222,7 +1182,6 @@ class _DailyBarPainter extends CustomPainter {
       tp.paint(canvas, Offset(_padL - tp.width - 3, y - tp.height / 2));
     }
 
-    // ── Bars ──────────────────────────────────────────────────────────────
     for (int i = 0; i < 7; i++) {
       final v = values[i];
       final barX = _padL + i * barAreaW + (barAreaW - barW) / 2;
@@ -1237,7 +1196,6 @@ class _DailyBarPainter extends CustomPainter {
         );
         canvas.drawRRect(rect, Paint()..color = colorFn(v));
 
-        // Value label above bar
         final label = v < 10 ? v.toStringAsFixed(1) : v.toStringAsFixed(0);
         final tp = TextPainter(
           text: TextSpan(
@@ -1256,7 +1214,6 @@ class _DailyBarPainter extends CustomPainter {
         );
       }
 
-      // ── Day label ─────────────────────────────────────────────────────
       final tp = TextPainter(
         text: TextSpan(
           text: kDayLabels[i],
@@ -1273,7 +1230,6 @@ class _DailyBarPainter extends CustomPainter {
       );
     }
 
-    // ── Y-axis line ────────────────────────────────────────────────────────
     canvas.drawLine(
       Offset(_padL, _padT),
       Offset(_padL, _padT + cH),

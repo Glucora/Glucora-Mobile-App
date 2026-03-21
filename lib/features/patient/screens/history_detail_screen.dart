@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'history_entry.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class HistoryDetailScreen extends StatelessWidget {
   final HistoryEntry entry;
 
   const HistoryDetailScreen({super.key, required this.entry});
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
-  Color _entryColor(HistoryEntryType type) {
+  Color _entryColor(HistoryEntryType type, GlucoraColors colors) {
     switch (type) {
       case HistoryEntryType.cgmReading:
-        return const Color(0xFF2BB6A3);
+        return colors.accent;
       case HistoryEntryType.manualGlucoseLog:
         return const Color(0xFF5B8CF5);
       case HistoryEntryType.insulinDelivery:
         return const Color(0xFF9B59B6);
       case HistoryEntryType.cgmDeviceFailure:
-        return const Color(0xFFFF9F40);
+        return colors.warning;
       case HistoryEntryType.micropumpFailure:
-        return const Color(0xFFFF6B6B);
+        return colors.error;
     }
   }
 
@@ -84,15 +84,14 @@ class HistoryDetailScreen extends StatelessWidget {
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final color = _entryColor(entry.type);
+    final colors = context.colors;
+    final color = _entryColor(entry.type, colors);
     final icon = _entryIcon(entry.type);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       appBar: _buildAppBar(context, color),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -101,11 +100,11 @@ class HistoryDetailScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroCard(color, icon),
+              _buildHeroCard(context, color, icon),
               const SizedBox(height: 24),
-              ..._buildTypeSpecificSections(),
+              ..._buildTypeSpecificSections(context),
               const SizedBox(height: 24),
-              _buildTimestampSection(),
+              _buildTimestampSection(context),
             ],
           ),
         ),
@@ -113,11 +112,10 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // ── AppBar ────────────────────────────────────────────────────────────────
-
   AppBar _buildAppBar(BuildContext context, Color color) {
+    final colors = context.colors;
     return AppBar(
-      backgroundColor: const Color(0xFF1A7A6E),
+      backgroundColor: colors.primaryDark,
       foregroundColor: Colors.white,
       elevation: 0,
       title: Column(
@@ -140,14 +138,13 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // ── Hero card ─────────────────────────────────────────────────────────────
-
-  Widget _buildHeroCard(Color color, IconData icon) {
+  Widget _buildHeroCard(BuildContext context, Color color, IconData icon) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -168,13 +165,14 @@ class HistoryDetailScreen extends StatelessWidget {
             child: Icon(icon, color: color, size: 30),
           ),
           const SizedBox(height: 16),
-          _buildHeroContent(color),
+          _buildHeroContent(context, color),
         ],
       ),
     );
   }
 
-  Widget _buildHeroContent(Color color) {
+  Widget _buildHeroContent(BuildContext context, Color color) {
+    final colors = context.colors;
     switch (entry.type) {
       case HistoryEntryType.cgmReading:
       case HistoryEntryType.manualGlucoseLog:
@@ -243,9 +241,9 @@ class HistoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               entry.deliveryType ?? 'Delivery',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey,
+                color: colors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -275,7 +273,7 @@ class HistoryDetailScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: resolved
                     ? Colors.green.withValues(alpha: 0.12)
-                    : Colors.red.withValues(alpha: 0.12),
+                    : colors.error.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -283,7 +281,7 @@ class HistoryDetailScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: resolved ? Colors.green : Colors.red,
+                  color: resolved ? Colors.green : colors.error,
                 ),
               ),
             ),
@@ -292,66 +290,67 @@ class HistoryDetailScreen extends StatelessWidget {
     }
   }
 
-  // ── Type-specific sections ────────────────────────────────────────────────
-
-  List<Widget> _buildTypeSpecificSections() {
+  List<Widget> _buildTypeSpecificSections(BuildContext context) {
+    final colors = context.colors;
     switch (entry.type) {
       case HistoryEntryType.cgmReading:
         return [
-          _sectionCard('Reading Details', [
-            _detailRow('Glucose Value', '${entry.glucoseValue} mg/dL'),
-            _detailRow('Range', _glucoseRangeLabel(entry.glucoseValue ?? 0)),
+          _sectionCard(context, 'Reading Details', [
+            _detailRow(context, 'Glucose Value', '${entry.glucoseValue} mg/dL'),
+            _detailRow(context, 'Range', _glucoseRangeLabel(entry.glucoseValue ?? 0)),
             if (entry.glucoseTrend != null)
-              _detailRow('Trend', _trendLabel(entry.glucoseTrend!)),
-            _detailRow('Source', 'Automated CGM'),
+              _detailRow(context, 'Trend', _trendLabel(entry.glucoseTrend!)),
+            _detailRow(context, 'Source', 'Automated CGM'),
           ]),
           const SizedBox(height: 20),
-          _sectionCard('Device', [
-            _detailRow('Sensor', entry.cgmDevice ?? '—'),
-            _detailRow('Session', entry.sensorSession ?? '—'),
+          _sectionCard(context, 'Device', [
+            _detailRow(context, 'Sensor', entry.cgmDevice ?? '—'),
+            _detailRow(context, 'Session', entry.sensorSession ?? '—'),
           ]),
         ];
 
       case HistoryEntryType.manualGlucoseLog:
         return [
-          _sectionCard('Log Details', [
-            _detailRow('Glucose Value', '${entry.glucoseValue} mg/dL'),
-            _detailRow('Range', _glucoseRangeLabel(entry.glucoseValue ?? 0)),
-            _detailRow('Method', entry.logMethod ?? 'Manual Entry'),
+          _sectionCard(context, 'Log Details', [
+            _detailRow(context, 'Glucose Value', '${entry.glucoseValue} mg/dL'),
+            _detailRow(context, 'Range', _glucoseRangeLabel(entry.glucoseValue ?? 0)),
+            _detailRow(context, 'Method', entry.logMethod ?? 'Manual Entry'),
             if (entry.patientNote != null && entry.patientNote!.isNotEmpty)
-              _detailRow('Note', entry.patientNote!),
+              _detailRow(context, 'Note', entry.patientNote!),
           ]),
         ];
 
       case HistoryEntryType.insulinDelivery:
         return [
-          _sectionCard('Dose Details', [
-            _detailRow('Delivery Type', entry.deliveryType ?? '—'),
-            _detailRow('Units', '${entry.insulinUnits} U'),
-            _detailRow('Source', entry.deliverySource ?? '—'),
+          _sectionCard(context, 'Dose Details', [
+            _detailRow(context, 'Delivery Type', entry.deliveryType ?? '—'),
+            _detailRow(context, 'Units', '${entry.insulinUnits} U'),
+            _detailRow(context, 'Source', entry.deliverySource ?? '—'),
             if (entry.mealContext != null)
-              _detailRow('Meal', entry.mealContext!),
+              _detailRow(context, 'Meal', entry.mealContext!),
           ]),
           if (entry.glucoseAtDelivery != null) ...[
             const SizedBox(height: 20),
-            _sectionCard('Context at Dosing', [
+            _sectionCard(context, 'Context at Dosing', [
               _detailRow(
+                context,
                 'Glucose at Dose Time',
                 '${entry.glucoseAtDelivery} mg/dL',
               ),
-              _detailRow('Range', _glucoseRangeLabel(entry.glucoseAtDelivery!)),
+              _detailRow(context, 'Range', _glucoseRangeLabel(entry.glucoseAtDelivery!)),
             ]),
           ],
         ];
 
       case HistoryEntryType.cgmDeviceFailure:
         return [
-          _sectionCard('Failure Details', [
-            _detailRow('Failure Type', entry.cgmFailureKind ?? '—'),
-            _detailRow('Device', entry.cgmDevice ?? '—'),
+          _sectionCard(context, 'Failure Details', [
+            _detailRow(context, 'Failure Type', entry.cgmFailureKind ?? '—'),
+            _detailRow(context, 'Device', entry.cgmDevice ?? '—'),
             if (entry.failureDurationMinutes != null)
-              _detailRow('Duration', '${entry.failureDurationMinutes} minutes'),
+              _detailRow(context, 'Duration', '${entry.failureDurationMinutes} minutes'),
             _detailRow(
+              context,
               'Status',
               (entry.failureResolved ?? false) ? 'Resolved' : 'Ongoing',
             ),
@@ -360,14 +359,15 @@ class HistoryDetailScreen extends StatelessWidget {
 
       case HistoryEntryType.micropumpFailure:
         return [
-          _sectionCard('Failure Details', [
-            _detailRow('Failure Type', entry.pumpFailureKind ?? '—'),
-            _detailRow('Pump Model', entry.pumpModel ?? '—'),
+          _sectionCard(context, 'Failure Details', [
+            _detailRow(context, 'Failure Type', entry.pumpFailureKind ?? '—'),
+            _detailRow(context, 'Pump Model', entry.pumpModel ?? '—'),
             if (entry.pumpBatteryLevel != null)
-              _detailRow('Battery Level', entry.pumpBatteryLevel!),
+              _detailRow(context, 'Battery Level', entry.pumpBatteryLevel!),
             if (entry.failureDurationMinutes != null)
-              _detailRow('Duration', '${entry.failureDurationMinutes} minutes'),
+              _detailRow(context, 'Duration', '${entry.failureDurationMinutes} minutes'),
             _detailRow(
+              context,
               'Status',
               (entry.failureResolved ?? false) ? 'Resolved' : 'Ongoing',
             ),
@@ -376,27 +376,24 @@ class HistoryDetailScreen extends StatelessWidget {
     }
   }
 
-  // ── Timestamp section ─────────────────────────────────────────────────────
-
-  Widget _buildTimestampSection() {
-    return _sectionCard('Recorded At', [
-      _detailRow('Date & Time', entry.timeLabel),
-      _detailRow('Entry ID', '#${entry.id}'),
+  Widget _buildTimestampSection(BuildContext context) {
+    return _sectionCard(context, 'Recorded At', [
+      _detailRow(context, 'Date & Time', entry.timeLabel),
+      _detailRow(context, 'Entry ID', '#${entry.id}'),
     ]);
   }
 
-  // ── Shared card/row helpers ───────────────────────────────────────────────
-
-  Widget _sectionCard(String title, List<Widget> rows) {
+  Widget _sectionCard(BuildContext context, String title, List<Widget> rows) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1A2B3C),
+            color: colors.textPrimary,
             letterSpacing: -0.3,
           ),
         ),
@@ -404,7 +401,7 @@ class HistoryDetailScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -431,7 +428,8 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(BuildContext context, String label, String value) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
@@ -441,9 +439,9 @@ class HistoryDetailScreen extends StatelessWidget {
             width: 150,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey,
+                color: colors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -451,9 +449,9 @@ class HistoryDetailScreen extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF1A2B3C),
+                color: colors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
