@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
 import 'guardian_requests_screen.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
@@ -38,7 +38,10 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           border: Border(
-            top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2), width: 1),
+            top: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
           boxShadow: [
             BoxShadow(
@@ -54,7 +57,13 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home', colors),
+                _item(
+                  0,
+                  Icons.home_rounded,
+                  Icons.home_outlined,
+                  'Home',
+                  colors,
+                ),
                 _item(
                   1,
                   Icons.notifications_rounded,
@@ -352,10 +361,18 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {
+                // Continue navigation even if remote sign out fails.
+              }
+
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                '/login-screen',
                 (route) => false,
               );
             },
@@ -473,7 +490,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
 
             const SizedBox(height: 24),
             SwitchListTile(
-              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              title: Text(
+                'Dark Mode',
+                style: TextStyle(color: colors.textPrimary),
+              ),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
               activeThumbColor: colors.primary,
@@ -501,7 +521,9 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PatientNavigation()),
+                    MaterialPageRoute(
+                      builder: (_) => const PatientNavigation(),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -551,7 +573,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     final colors = context.colors;
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: colors.textSecondary),
+        ),
         const SizedBox(height: 4),
         Text(
           value,

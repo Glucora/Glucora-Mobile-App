@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'doctor_patients_screen.dart';
 import 'doctor_requests_screen.dart';
 import 'doctor_alerts_screen.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({super.key});
@@ -271,10 +270,18 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {
+                // Continue navigation even if remote sign out fails.
+              }
+
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                '/login-screen',
                 (route) => false,
               );
             },
@@ -383,7 +390,12 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
                   _infoRow(context, Icons.phone_outlined, "Phone", _phone),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(context, Icons.location_on_outlined, "Address", _address),
+                  _infoRow(
+                    context,
+                    Icons.location_on_outlined,
+                    "Address",
+                    _address,
+                  ),
                 ],
               ),
             ),
@@ -391,14 +403,17 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             // ========== DARK MODE TOGGLE ==========
             const SizedBox(height: 24),
             SwitchListTile(
-              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              title: Text(
+                'Dark Mode',
+                style: TextStyle(color: colors.textPrimary),
+              ),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
               activeThumbColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
-            // ========== END DARK MODE TOGGLE ==========
 
+            // ========== END DARK MODE TOGGLE ==========
             const SizedBox(height: 24),
             Text(
               "FAQs",
@@ -444,7 +459,12 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     );
   }
 
-  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _infoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     final colors = context.colors;
     return Row(
       children: [
