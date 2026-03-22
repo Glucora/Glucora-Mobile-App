@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../features/admin/screens/admin_main_screen.dart';
-import '../../features/doctor/screens/doctor_main_screen.dart';
-import '../../features/guardian/screens/guardian_main_screen.dart';
-import '../../features/user/patient_navigation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/features/admin/screens/admin_main_screen.dart';
+import 'package:glucora_ai_companion/features/doctor/screens/doctor_main_screen.dart';
+import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
+import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
 import 'signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
@@ -19,37 +22,112 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  StreamSubscription<AuthState>? _authSubscription;
+  bool _didNavigateAfterAuth = false;
 
-  final Map<String, String> _validUsers = {
-    'patient@test.com': 'patient123',
-    'doctor@test.com': 'doctor123',
-    'guardian@test.com': 'guardian123',
-    'admin@test.com': 'admin123',
-  };
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      event,
+    ) {
+      if (!mounted) return;
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
+      if ((event.event == AuthChangeEvent.signedIn ||
+              event.event == AuthChangeEvent.initialSession ||
+              event.event == AuthChangeEvent.tokenRefreshed) &&
+          event.session != null) {
+        _navigateByRole(event.session?.user);
+      }
+    });
+  }
 
-      if (_validUsers.containsKey(email) && _validUsers[email] == password) {
-        Widget nextScreen;
-        if (email.startsWith('patient')) {
-          nextScreen = const PatientNavigation();
-        } else if (email.startsWith('doctor')) {
-          nextScreen = const DoctorMainScreen();
-        } else if (email.startsWith('admin')) {
-          nextScreen = const AdminMainScreen();
-        } else {
-          nextScreen = const GuardianMainScreen();
-        }
+  void _navigateByRole(User? user) {
+    if (!mounted || _didNavigateAfterAuth) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => nextScreen),
+    final userMetaRole = user?.userMetadata?['role']?.toString();
+    final appMetaRole = user?.appMetadata['role']?.toString();
+    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
+        .trim()
+        .toLowerCase();
+
+    Widget? targetScreen;
+    if (normalizedRole == 'patient') {
+      targetScreen = const PatientNavigation();
+    } else if (normalizedRole == 'doctor') {
+      targetScreen = const DoctorMainScreen();
+    } else if (normalizedRole == 'guardian') {
+      targetScreen = const GuardianMainScreen();
+    } else if (normalizedRole == 'admin') {
+      targetScreen = const AdminMainScreen();
+    }
+
+    if (targetScreen != null) {
+      _didNavigateAfterAuth = true;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => targetScreen!),
+        (route) => false,
+      );
+      return;
+    }
+
+    _didNavigateAfterAuth = true;
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (response.session == null) {
+        _showErrorSnackBar(
+          'Login requires a verified email. Check your inbox and try again.',
         );
-      } else {
-        _showErrorSnackBar('Invalid email or password');
+        return;
+      }
+
+      _navigateByRole(response.user);
+    } on AuthException catch (e) {
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      _showErrorSnackBar('Login failed. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'com.glucora.companion://login-callback',
+        authScreenLaunchMode: LaunchMode.inAppBrowserView,
+      );
+    } on AuthException catch (e) {
+      _showErrorSnackBar(e.message);
+    } catch (_) {
+      _showErrorSnackBar('Google sign-in failed. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -116,14 +194,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Enter your email',
                     labelStyle: TextStyle(color: colors.textSecondary),
-                    prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: colors.primary,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -153,7 +238,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: colors.textSecondary,
                       ),
                       onPressed: () {
@@ -164,11 +251,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -193,13 +284,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _forgotPassword,
-                    child: Text('Forgot Password?', style: TextStyle(color: colors.accent)),
+                    child: Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: colors.accent),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 // Login button
                 ElevatedButton(
-                  onPressed: _login,
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.accent,
                     foregroundColor: Colors.white,
@@ -208,14 +302,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Login', style: TextStyle(fontSize: 16)),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Login', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(height: 16),
                 // Sign up link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Don't have an account? ", style: TextStyle(color: colors.textSecondary)),
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: colors.textSecondary),
+                    ),
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -244,38 +350,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 // Social buttons
                 OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: _isLoading ? null : _signInWithGoogle,
                   icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                  label: Text('Sign in with Google', style: TextStyle(color: colors.textPrimary)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  label: Text(
+                    'Sign in with Google',
+                    style: TextStyle(color: colors.textPrimary),
                   ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.apple, color: Colors.black),
-                  label: Text('Sign in with Apple', style: TextStyle(color: colors.textPrimary)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.facebook, color: Colors.blue),
-                  label: Text('Sign in with Facebook', style: TextStyle(color: colors.textPrimary)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -292,6 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

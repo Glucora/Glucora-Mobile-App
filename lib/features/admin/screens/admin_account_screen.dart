@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart'; // Fixed import
 
 class AdminAccountScreen extends StatefulWidget {
@@ -55,13 +55,24 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {
+                // Continue navigation even if remote sign out fails.
+              }
+
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                '/login-screen',
                 (route) => false,
               );
             },
@@ -69,7 +80,9 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Logout'),
           ),
@@ -94,9 +107,19 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("My Account", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+                Text(
+                  "My Account",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
                 IconButton(
-                  icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: colors.textSecondary,
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -104,7 +127,9 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                         builder: (_) => _AdminSettingsScreen(
                           notificationsEnabled: _notificationsEnabled,
                           onSettingsChanged: (notifications) {
-                            setState(() => _notificationsEnabled = notifications);
+                            setState(
+                              () => _notificationsEnabled = notifications,
+                            );
                           },
                         ),
                       ),
@@ -121,28 +146,62 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   Container(
                     width: 90,
                     height: 90,
-                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-                    child: const Icon(Icons.admin_panel_settings_rounded, size: 48, color: Colors.white),
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.admin_panel_settings_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+                      Text(
+                        _name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: Icon(Icons.edit, size: 18, color: colors.primary),
+                        child: Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: colors.primary,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text("$_age years", style: TextStyle(fontSize: 14, color: colors.textSecondary)),
+                  Text(
+                    "$_age years",
+                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
+                  ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                    child: Text("Administrator", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "Administrator",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -155,7 +214,13 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFEEEEEE)),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -163,20 +228,35 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
                   _infoRow(context, Icons.phone_outlined, "Phone", _phone),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(context, Icons.location_on_outlined, "Address", _address),
+                  _infoRow(
+                    context,
+                    Icons.location_on_outlined,
+                    "Address",
+                    _address,
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
             SwitchListTile(
-              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              title: Text(
+                'Dark Mode',
+                style: TextStyle(color: colors.textPrimary),
+              ),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
               activeThumbColor: colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 24),
-            Text("FAQs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+            Text(
+              "FAQs",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 12),
             for (int i = 0; i < _faqs.length; i++)
               _faqItem(context, i, _faqs[i]['q']!, _faqs[i]['a']!),
@@ -187,8 +267,20 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                 height: 50,
                 child: OutlinedButton(
                   onPressed: () => _showLogoutDialog(context),
-                  style: OutlinedButton.styleFrom(side: BorderSide(color: colors.error), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  child: Text("Log Out", style: TextStyle(color: colors.error, fontSize: 15, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: colors.error),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    "Log Out",
+                    style: TextStyle(
+                      color: colors.error,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -199,19 +291,44 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     );
   }
 
-  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _infoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     final colors = context.colors;
     return Row(
       children: [
         Icon(icon, size: 16, color: colors.primary),
         const SizedBox(width: 12),
-        SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary))),
-        Expanded(child: Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary))),
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _faqItem(BuildContext context, int index, String question, String answer) {
+  Widget _faqItem(
+    BuildContext context,
+    int index,
+    String question,
+    String answer,
+  ) {
     final colors = context.colors;
     final isExpanded = _expandedFaqIndex == index;
     return GestureDetector(
@@ -223,7 +340,11 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isExpanded ? colors.primary.withValues(alpha: 0.3) : const Color(0xFFEEEEEE)),
+          border: Border.all(
+            color: isExpanded
+                ? colors.primary.withValues(alpha: 0.3)
+                : const Color(0xFFEEEEEE),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,17 +352,28 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: Text(question, style: TextStyle(fontSize: 14, color: colors.textPrimary))),
+                Expanded(
+                  child: Text(
+                    question,
+                    style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                  ),
+                ),
                 AnimatedRotation(
                   turns: isExpanded ? 0.25 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
             if (isExpanded) ...[
               const SizedBox(height: 10),
-              Text(answer, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+              Text(
+                answer,
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
+              ),
             ],
           ],
         ),
@@ -253,7 +385,13 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _EditAdminProfileScreen(name: _name, age: _age, email: _email, phone: _phone, address: _address),
+        builder: (_) => _EditAdminProfileScreen(
+          name: _name,
+          age: _age,
+          email: _email,
+          phone: _phone,
+          address: _address,
+        ),
       ),
     );
     if (result != null) {
@@ -287,7 +425,8 @@ class _EditAdminProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditAdminProfileScreen> createState() => _EditAdminProfileScreenState();
+  State<_EditAdminProfileScreen> createState() =>
+      _EditAdminProfileScreenState();
 }
 
 class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
@@ -315,15 +454,31 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Edit Profile', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         actions: [
           TextButton(
             onPressed: _save,
-            child: Text('Save', style: TextStyle(color: colors.primary, fontSize: 16, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: colors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -333,13 +488,36 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
           children: [
             _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
+            _buildField(
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Email', _emailController, Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            _buildField(
+              context,
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Phone', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            _buildField(
+              context,
+              'Phone',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Address', _addressController, Icons.location_on_outlined),
+            _buildField(
+              context,
+              'Address',
+              _addressController,
+              Icons.location_on_outlined,
+            ),
           ],
         ),
       ),
@@ -362,10 +540,16 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -433,10 +617,19 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Settings', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Padding(
@@ -487,14 +680,23 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             width: 50,
             height: 50,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Icon(icon, color: color, size: 26),
           ),
           const SizedBox(width: 16),
@@ -502,9 +704,19 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                ),
               ],
             ),
           ),

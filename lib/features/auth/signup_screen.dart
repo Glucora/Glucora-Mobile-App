@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -16,27 +17,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _phoneController = TextEditingController(); // separate controller for phone
+  final _phoneController =
+      TextEditingController(); // separate controller for phone
 
   bool _obscurePassword = true;
-  String? _selectedRole;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
 
-  final List<String> _roles = ['Patient', 'Doctor', 'Guardian'];
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-  void _signUp() {
-    if (_formKey.currentState!.validate() && _agreeToTerms) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
-      );
-    } else if (!_agreeToTerms) {
+    if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You must agree to the Terms of Service'),
           backgroundColor: Colors.orange,
         ),
       );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        data: {
+          'full_name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+        },
+      );
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign up failed. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -74,11 +110,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.person_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -109,11 +149,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -143,7 +187,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: colors.textSecondary,
                     ),
                     onPressed: () {
@@ -154,11 +200,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -187,11 +237,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.phone, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -212,44 +266,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              // Role dropdown
-              DropdownButtonFormField<String>(
-                initialValue: _selectedRole,
-                decoration: InputDecoration(
-                  labelText: 'Select your role',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.people_outline, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                items: _roles.map((role) {
-                  return DropdownMenuItem(value: role, child: Text(role));
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedRole = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a role';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               // Terms & Conditions checkbox with clickable links
               Row(
                 children: [
@@ -318,7 +335,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 24),
               // Sign Up button
               ElevatedButton(
-                onPressed: _signUp,
+                onPressed: _isLoading ? null : _signUp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
@@ -327,14 +344,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Sign Up', style: TextStyle(fontSize: 16)),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Sign Up', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
               // Link to login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Already have an account? ", style: TextStyle(color: colors.textSecondary)),
+                  Text(
+                    "Already have an account? ",
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context); // go back to login
@@ -379,11 +408,7 @@ class SignUpSuccessScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.check_circle_outline,
-              color: colors.accent,
-              size: 100,
-            ),
+            Icon(Icons.check_circle_outline, color: colors.accent, size: 100),
             const SizedBox(height: 24),
             Text(
               'Success!',

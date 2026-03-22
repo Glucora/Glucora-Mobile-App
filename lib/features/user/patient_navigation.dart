@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/features/user/screens/calorie_log_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
@@ -43,7 +42,9 @@ class _PatientNavigationState extends State<PatientNavigation> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2))),
+        border: Border(
+          top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -101,7 +102,8 @@ class _NavTile extends StatelessWidget {
   final VoidCallback onTap;
   final BuildContext context;
 
-  const _NavTile(this.context, {
+  const _NavTile(
+    this.context, {
     required this.icon,
     required this.label,
     required this.active,
@@ -219,11 +221,29 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           children: [
             _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            _buildField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
+            _buildField(
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Height', _heightController, Icons.height, hint: 'e.g. 157 cm'),
+            _buildField(
+              context,
+              'Height',
+              _heightController,
+              Icons.height,
+              hint: 'e.g. 157 cm',
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Weight', _weightController, Icons.monitor_weight_outlined, hint: 'e.g. 48 kgs'),
+            _buildField(
+              context,
+              'Weight',
+              _weightController,
+              Icons.monitor_weight_outlined,
+              hint: 'e.g. 48 kgs',
+            ),
           ],
         ),
       ),
@@ -367,7 +387,9 @@ class _SettingsScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -549,10 +571,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
                 ),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(
-                'Pair',
-                style: TextStyle(color: colors.primary),
-              ),
+              child: Text('Pair', style: TextStyle(color: colors.primary)),
             ),
         ],
       ),
@@ -572,10 +591,30 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
   String _query = '';
 
   final List<Map<String, String>> _allDoctors = [
-    {'name': 'Dr. Sarah Ahmed', 'phone': '0100 123 4567', 'email': 'sarah.ahmed@hospital.com', 'address': '15 Nile Street, Cairo'},
-    {'name': 'Dr. Mahmoud Youssef', 'phone': '0111 234 5678', 'email': 'mahmoud.y@clinic.com', 'address': '22 El Tahrir, Alexandria'},
-    {'name': 'Dr. Nouran Adel', 'phone': '0122 345 6789', 'email': 'nouran.adel@medical.org', 'address': '8 Zamalek, Cairo'},
-    {'name': 'Dr. Karim Hassan', 'phone': '0155 456 7890', 'email': 'karim.h@diabetes-care.com', 'address': '44 Maadi, Cairo'},
+    {
+      'name': 'Dr. Sarah Ahmed',
+      'phone': '0100 123 4567',
+      'email': 'sarah.ahmed@hospital.com',
+      'address': '15 Nile Street, Cairo',
+    },
+    {
+      'name': 'Dr. Mahmoud Youssef',
+      'phone': '0111 234 5678',
+      'email': 'mahmoud.y@clinic.com',
+      'address': '22 El Tahrir, Alexandria',
+    },
+    {
+      'name': 'Dr. Nouran Adel',
+      'phone': '0122 345 6789',
+      'email': 'nouran.adel@medical.org',
+      'address': '8 Zamalek, Cairo',
+    },
+    {
+      'name': 'Dr. Karim Hassan',
+      'phone': '0155 456 7890',
+      'email': 'karim.h@diabetes-care.com',
+      'address': '44 Maadi, Cairo',
+    },
   ];
 
   List<Map<String, String>> get _filteredDoctors {
@@ -623,7 +662,9 @@ class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.2),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -788,10 +829,18 @@ class _ProfileTabState extends State<_ProfileTab> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {
+                // Continue navigation even if remote sign out fails.
+              }
+
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                '/login-screen',
                 (route) => false,
               );
             },
@@ -903,7 +952,9 @@ class _ProfileTabState extends State<_ProfileTab> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.2),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -952,7 +1003,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: colors.textSecondary.withValues(alpha: 0.2),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1007,7 +1060,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: colors.textSecondary.withValues(alpha: 0.2),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -1022,7 +1077,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF5B8CF5,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -1051,7 +1108,10 @@ class _ProfileTabState extends State<_ProfileTab> {
 
             const SizedBox(height: 24),
             SwitchListTile(
-              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              title: Text(
+                'Dark Mode',
+                style: TextStyle(color: colors.textPrimary),
+              ),
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (_) => themeProvider.toggleTheme(),
               activeThumbColor: colors.primary,
@@ -1072,14 +1132,16 @@ class _ProfileTabState extends State<_ProfileTab> {
             _faqItem(context, "What do the glucose ranges mean?"),
             _faqItem(context, "Can I share data with my doctor?"),
             _faqItem(context, "How accurate are the predictions?"),
-            
+
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const GuardianMainScreen(),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -1129,7 +1191,10 @@ class _ProfileTabState extends State<_ProfileTab> {
     final colors = context.colors;
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: colors.textSecondary),
+        ),
         const SizedBox(height: 4),
         Text(
           value,
@@ -1151,7 +1216,7 @@ class _ProfileTabState extends State<_ProfileTab> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
