@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     final patients = mockAdminUsers
         .where((u) => u.role == UserRole.patient)
         .toList();
@@ -28,10 +31,10 @@ class AdminDashboardScreen extends StatelessWidget {
           'Admin Dashboard',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: OrientationBuilder(
         builder: (context, orientation) {
           if (orientation == Orientation.landscape) {
@@ -40,21 +43,23 @@ class AdminDashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle('System Overview'),
+                  _sectionTitle(context, 'System Overview'),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: _statCard(
+                          context,
                           'Total Users',
                           '${mockAdminUsers.length}',
                           Icons.people,
-                          const Color(0xFF2BB6A3),
+                          colors.accent,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Patients',
                           '${patients.length}',
                           Icons.personal_injury,
@@ -64,6 +69,7 @@ class AdminDashboardScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Doctors',
                           '${doctors.length}',
                           Icons.medical_services,
@@ -73,6 +79,7 @@ class AdminDashboardScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Admins',
                           '${admins.length}',
                           Icons.admin_panel_settings,
@@ -82,30 +89,33 @@ class AdminDashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _sectionTitle('Devices & Alerts'),
+                  _sectionTitle(context, 'Devices & Alerts'),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: _statCard(
+                          context,
                           'Active Devices',
                           '$activeDevices',
                           Icons.sensors,
-                          const Color(0xFF2BB6A3),
+                          colors.accent,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Inactive Devices',
                           '$inactiveDevices',
                           Icons.sensors_off,
-                          const Color(0xFFD32F2F),
+                          colors.error,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Alert Rules',
                           '$enabledRules enabled',
                           Icons.rule,
@@ -115,21 +125,23 @@ class AdminDashboardScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Critical Rules',
                           '$criticalRules',
                           Icons.warning_amber,
-                          const Color(0xFFD32F2F),
+                          colors.error,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _sectionTitle('Assignments'),
+                  _sectionTitle(context, 'Assignments'),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: _statCard(
+                          context,
                           'Total Assignments',
                           '${mockAssignments.length}',
                           Icons.link,
@@ -139,10 +151,11 @@ class AdminDashboardScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _statCard(
+                          context,
                           'Unassigned Patients',
                           '${patients.where((p) => !mockAssignments.any((a) => a.patientId == p.id)).length}',
                           Icons.person_off,
-                          const Color(0xFFFF9F40),
+                          colors.warning,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -152,7 +165,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _aiModelPlaceholder(),
+                  _aiModelPlaceholder(context),
                 ],
               ),
             );
@@ -163,21 +176,23 @@ class AdminDashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _sectionTitle('System Overview'),
+                _sectionTitle(context, 'System Overview'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _statCard(
+                        context,
                         'Total Users',
                         '${mockAdminUsers.length}',
                         Icons.people,
-                        const Color(0xFF2BB6A3),
+                        colors.accent,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _statCard(
+                        context,
                         'Patients',
                         '${patients.length}',
                         Icons.personal_injury,
@@ -191,6 +206,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _statCard(
+                        context,
                         'Doctors',
                         '${doctors.length}',
                         Icons.medical_services,
@@ -200,6 +216,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _statCard(
+                        context,
                         'Admins',
                         '${admins.length}',
                         Icons.admin_panel_settings,
@@ -209,36 +226,39 @@ class AdminDashboardScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                _sectionTitle('Devices'),
+                _sectionTitle(context, 'Devices'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _statCard(
+                        context,
                         'Active Devices',
                         '$activeDevices',
                         Icons.sensors,
-                        const Color(0xFF2BB6A3),
+                        colors.accent,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _statCard(
+                        context,
                         'Inactive Devices',
                         '$inactiveDevices',
                         Icons.sensors_off,
-                        const Color(0xFFD32F2F),
+                        colors.error,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                _sectionTitle('Alert Rules'),
+                _sectionTitle(context, 'Alert Rules'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _statCard(
+                        context,
                         'Enabled Rules',
                         '$enabledRules',
                         Icons.rule,
@@ -248,21 +268,23 @@ class AdminDashboardScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _statCard(
+                        context,
                         'Critical Rules',
                         '$criticalRules',
                         Icons.warning_amber,
-                        const Color(0xFFD32F2F),
+                        colors.error,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                _sectionTitle('Assignments'),
+                _sectionTitle(context, 'Assignments'),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _statCard(
+                        context,
                         'Total Assignments',
                         '${mockAssignments.length}',
                         Icons.link,
@@ -272,16 +294,17 @@ class AdminDashboardScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _statCard(
+                        context,
                         'Unassigned',
                         '${patients.where((p) => !mockAssignments.any((a) => a.patientId == p.id)).length}',
                         Icons.person_off,
-                        const Color(0xFFFF9F40),
+                        colors.warning,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                _aiModelPlaceholder(),
+                _aiModelPlaceholder(context),
               ],
             ),
           );
@@ -290,22 +313,24 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
+    final colors = context.colors;
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A7A6E),
+        color: colors.primaryDark,
       ),
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color) {
+  Widget _statCard(BuildContext context, String label, String value, IconData icon, Color color) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -336,21 +361,22 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
         ],
       ),
     );
   }
 
-  Widget _aiModelPlaceholder() {
+  Widget _aiModelPlaceholder(BuildContext context) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF2BB6A3).withValues(alpha: 0.3),
+          color: colors.accent.withValues(alpha: 0.3),
           width: 1.5,
           style: BorderStyle.solid,
         ),
@@ -367,22 +393,22 @@ class AdminDashboardScreen extends StatelessWidget {
           Icon(
             Icons.psychology,
             size: 48,
-            color: const Color(0xFF2BB6A3).withValues(alpha: 0.4),
+            color: colors.accent.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'AI Model Statistics',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A7A6E),
+              color: colors.primaryDark,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Model performance metrics, prediction accuracy, and training stats will appear here.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ],
       ),

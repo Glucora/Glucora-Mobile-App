@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class AIPredictionScreen extends StatelessWidget {
   const AIPredictionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF1A1A2E), size: 20),
+          child: Icon(Icons.arrow_back_ios_new_rounded,
+              color: colors.textPrimary, size: 20),
         ),
-        title: const Text(
+        title: Text(
           "AI Prediction",
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -30,54 +33,51 @@ class AIPredictionScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Summary Card ──
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3FDF7),
+                color: colors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF199A8E), width: 1),
+                border: Border.all(color: colors.primary, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Predicted in 30 minutes",
-                    style: TextStyle(
-                        fontSize: 13, color: Color(0xFF555555)),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      const Text(
+                      Text(
                         "135",
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         " mg/dL",
-                        style: TextStyle(
-                            fontSize: 18, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 18, color: colors.textSecondary),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.arrow_upward,
-                          color: Color(0xFFEF1616), size: 14),
+                      Icon(Icons.arrow_upward,
+                          color: colors.error, size: 14),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         "22.73% rise expected",
                         style: TextStyle(
-                            color: Color(0xFFEF1616),
+                            color: colors.error,
                             fontWeight: FontWeight.w600,
                             fontSize: 13),
                       ),
@@ -89,44 +89,43 @@ class AIPredictionScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            const Text(
+            Text(
               "Prediction Details",
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
 
             const SizedBox(height: 14),
 
-            _detailRow("Current Level", "110 mg/dL", const Color(0xFF199A8E)),
+            _detailRow(context, "Current Level", "110 mg/dL", colors.primary),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow("Predicted (30 min)", "135 mg/dL",
-                const Color(0xFFEF1616)),
+            _detailRow(context, "Predicted (30 min)", "135 mg/dL", colors.error),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow("Trend", "Rising", const Color(0xFFEFDD16)),
+            _detailRow(context, "Trend", "Rising", const Color(0xFFEFDD16)),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow("Last Reading",
-                "10:21pm · 15 Jan, 2026", const Color(0xFF888888)),
+            _detailRow(context, "Last Reading", "10:21pm · 15 Jan, 2026", colors.textSecondary),
 
             const SizedBox(height: 28),
 
-            const Text(
+            Text(
               "What this means",
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
 
             const SizedBox(height: 10),
 
             _infoCard(
+              context,
               Icons.info_outline_rounded,
               "Your glucose is predicted to rise by 25 mg/dL in the next 30 minutes. "
-                  "Consider reducing carbohydrate intake and staying active.",
+              "Consider reducing carbohydrate intake and staying active.",
             ),
 
             const SizedBox(height: 30),
@@ -136,12 +135,13 @@ class AIPredictionScreen extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(String label, String value, Color valueColor) {
+  Widget _detailRow(BuildContext context, String label, String value, Color valueColor) {
+    final colors = context.colors;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF555555))),
+            style: TextStyle(fontSize: 14, color: colors.textSecondary)),
         Text(value,
             style: TextStyle(
                 fontSize: 14,
@@ -151,24 +151,25 @@ class AIPredictionScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoCard(IconData icon, String text) {
+  Widget _infoCard(BuildContext context, IconData icon, String text) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F8),
+        color: colors.background,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF199A8E)),
+          Icon(icon, size: 18, color: colors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
-                  color: Color(0xFF555555),
+                  color: colors.textSecondary,
                   height: 1.5),
             ),
           ),

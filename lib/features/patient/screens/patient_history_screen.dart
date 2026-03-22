@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'history_entry.dart';
 import 'history_detail_screen.dart';
 import 'csv_export_sheet.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 // ── Graph filter enums ────────────────────────────────────────────────────
 
@@ -11,18 +13,18 @@ enum _GraphSpan { day, week, month }
 
 // ── Top-level helpers ──────────────────────────────────────────────────────
 
-Color _entryColor(HistoryEntryType type) {
+Color _entryColor(HistoryEntryType type, GlucoraColors colors) {
   switch (type) {
     case HistoryEntryType.cgmReading:
-      return const Color(0xFF2BB6A3);
+      return colors.accent;
     case HistoryEntryType.manualGlucoseLog:
       return const Color(0xFF5B8CF5);
     case HistoryEntryType.insulinDelivery:
       return const Color(0xFF9B59B6);
     case HistoryEntryType.cgmDeviceFailure:
-      return const Color(0xFFFF9F40);
+      return colors.warning;
     case HistoryEntryType.micropumpFailure:
-      return const Color(0xFFFF6B6B);
+      return colors.error;
   }
 }
 
@@ -112,7 +114,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     }
   }
 
-  /// Returns glucose entries sorted oldest→newest within [start, end].
   List<_GlucosePoint> _glucosePoints(DateTime start, DateTime end) {
     final result = <_GlucosePoint>[];
     for (final e in patientLogEntries) {
@@ -133,8 +134,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     return result;
   }
 
-  /// Insulin grouped into time buckets. Returns parallel lists of
-  /// [values] (total units) and [labels].
   _BarData _insulinBuckets(DateTime start, DateTime end) {
     final entries = patientLogEntries.where(
       (e) =>
@@ -145,7 +144,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
 
     if (_graphSpan == _GraphSpan.day) {
-      // 8 × 3-hour buckets
       final values = List.filled(8, 0.0);
       for (final e in entries) {
         values[e.timestamp.hour ~/ 3] += e.insulinUnits!;
@@ -164,7 +162,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         ],
       );
     } else if (_graphSpan == _GraphSpan.week) {
-      // 7 day buckets (index 0 = 6 days ago)
       final values = List.filled(7, 0.0);
       final labels = List<String>.generate(7, (i) {
         final d = end.subtract(Duration(days: 6 - i));
@@ -176,7 +173,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       }
       return _BarData(values: values, labels: labels);
     } else {
-      // 30 day buckets (index 0 = 29 days ago)
       final values = List.filled(30, 0.0);
       final labels = List<String>.generate(30, (i) {
         final d = end.subtract(Duration(days: 29 - i));
@@ -190,7 +186,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     }
   }
 
-  /// Failures grouped into time buckets.
   _FailureBarData _failureBuckets(DateTime start, DateTime end) {
     final entries = patientLogEntries.where(
       (e) =>
@@ -266,10 +261,11 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final filtered = _filtered;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       bottomNavigationBar: _buildNavBar(context),
       body: SafeArea(
         child: OrientationBuilder(
@@ -278,18 +274,18 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             return CustomScrollView(
               physics: const ClampingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: _buildHeader(isLandscape)),
-                SliverToBoxAdapter(child: _buildGraphCard()),
-                SliverToBoxAdapter(child: _buildSummaryCounts()),
+                SliverToBoxAdapter(child: _buildHeader(context, isLandscape)),
+                SliverToBoxAdapter(child: _buildGraphCard(context)),
+                SliverToBoxAdapter(child: _buildSummaryCounts(context)),
                 if (!isLandscape)
-                  SliverToBoxAdapter(child: _buildFilterChipsScroll()),
-                SliverToBoxAdapter(child: _buildListLabel(filtered.length)),
+                  SliverToBoxAdapter(child: _buildFilterChipsScroll(context)),
+                SliverToBoxAdapter(child: _buildListLabel(context, filtered.length)),
                 if (filtered.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     child: Center(
                       child: Text(
                         'No entries for this filter.',
-                        style: TextStyle(color: Colors.grey, fontSize: 15),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 15),
                       ),
                     ),
                   ),
@@ -330,29 +326,31 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   // ── Header ─────────────────────────────────────────────────────────────
 
-  Widget _buildHeader(bool isLandscape) {
+  Widget _buildHeader(BuildContext context, bool isLandscape) {
+    final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, isLandscape ? 12 : 24, 16, 0),
       child: isLandscape
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(child: _buildTitleBlock()),
+                Expanded(child: _buildTitleBlock(context)),
                 const SizedBox(width: 16),
-                _buildFilterChipsInline(),
+                _buildFilterChipsInline(context),
               ],
             )
-          : _buildTitleBlock(),
+          : _buildTitleBlock(context),
     );
   }
 
-  Widget _buildTitleBlock() {
+  Widget _buildTitleBlock(BuildContext context) {
+    final colors = context.colors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: const Color(0xFF1A2B3C),
+          color: colors.textPrimary,
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
           onPressed: () => Navigator.pop(context),
@@ -361,26 +359,26 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'My History',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A2B3C),
+                  color: colors.textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '${patientLogEntries.length} total events recorded',
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
             ],
           ),
         ),
         IconButton(
           icon: const Icon(Icons.upload_file_outlined),
-          color: const Color(0xFF1A7A6E),
+          color: colors.primaryDark,
           tooltip: 'Export CSV',
           onPressed: () => showModalBottomSheet(
             context: context,
@@ -395,13 +393,14 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   // ── Graph card ─────────────────────────────────────────────────────────
 
-  Widget _buildGraphCard() {
+  Widget _buildGraphCard(BuildContext context) {
+    final colors = context.colors;
     final (start, end) = _graphRange;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -416,17 +415,13 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Graph type toggle row
-              _buildGraphTypeRow(),
+              _buildGraphTypeRow(context),
               const SizedBox(height: 10),
-              // Time span toggle row
-              _buildGraphSpanRow(),
+              _buildGraphSpanRow(context),
               const SizedBox(height: 14),
-              // Chart
-              SizedBox(height: 190, child: _buildChart(start, end)),
+              SizedBox(height: 190, child: _buildChart(context, start, end)),
               const SizedBox(height: 8),
-              // Legend
-              _buildChartLegend(),
+              _buildChartLegend(context),
             ],
           ),
         ),
@@ -434,37 +429,22 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _buildGraphTypeRow() {
+  Widget _buildGraphTypeRow(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
-        _graphTypeChip(_GraphType.glucose, Icons.show_chart_rounded, 'Glucose'),
+        _graphTypeChip(context, _GraphType.glucose, Icons.show_chart_rounded, 'Glucose', colors.accent),
         const SizedBox(width: 8),
-        _graphTypeChip(
-          _GraphType.insulin,
-          Icons.water_drop_outlined,
-          'Insulin',
-        ),
+        _graphTypeChip(context, _GraphType.insulin, Icons.water_drop_outlined, 'Insulin', const Color(0xFF9B59B6)),
         const SizedBox(width: 8),
-        _graphTypeChip(
-          _GraphType.failures,
-          Icons.warning_amber_rounded,
-          'Failures',
-        ),
+        _graphTypeChip(context, _GraphType.failures, Icons.warning_amber_rounded, 'Failures', colors.error),
       ],
     );
   }
 
-  Widget _graphTypeChip(_GraphType type, IconData icon, String label) {
+  Widget _graphTypeChip(BuildContext context, _GraphType type, IconData icon, String label, Color activeColor) {
+    final colors = context.colors;
     final isActive = _graphType == type;
-    Color activeColor;
-    switch (type) {
-      case _GraphType.glucose:
-        activeColor = const Color(0xFF2BB6A3);
-      case _GraphType.insulin:
-        activeColor = const Color(0xFF9B59B6);
-      case _GraphType.failures:
-        activeColor = const Color(0xFFFF6B6B);
-    }
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _graphType = type),
@@ -472,7 +452,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 7),
           decoration: BoxDecoration(
-            color: isActive ? activeColor : const Color(0xFFF4F7FA),
+            color: isActive ? activeColor : colors.background,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -481,7 +461,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               Icon(
                 icon,
                 size: 14,
-                color: isActive ? Colors.white : Colors.grey.shade500,
+                color: isActive ? Colors.white : colors.textSecondary,
               ),
               const SizedBox(width: 4),
               Text(
@@ -489,7 +469,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: isActive ? Colors.white : Colors.grey.shade500,
+                  color: isActive ? Colors.white : colors.textSecondary,
                 ),
               ),
             ],
@@ -499,19 +479,21 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _buildGraphSpanRow() {
+  Widget _buildGraphSpanRow(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
-        _graphSpanChip(_GraphSpan.day, '24 Hours'),
+        _graphSpanChip(context, _GraphSpan.day, '24 Hours', colors.primaryDark),
         const SizedBox(width: 8),
-        _graphSpanChip(_GraphSpan.week, '7 Days'),
+        _graphSpanChip(context, _GraphSpan.week, '7 Days', colors.primaryDark),
         const SizedBox(width: 8),
-        _graphSpanChip(_GraphSpan.month, '30 Days'),
+        _graphSpanChip(context, _GraphSpan.month, '30 Days', colors.primaryDark),
       ],
     );
   }
 
-  Widget _graphSpanChip(_GraphSpan span, String label) {
+  Widget _graphSpanChip(BuildContext context, _GraphSpan span, String label, Color activeColor) {
+    final colors = context.colors;
     final isActive = _graphSpan == span;
     return Expanded(
       child: GestureDetector(
@@ -520,10 +502,10 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 5),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF1A7A6E) : Colors.transparent,
+            color: isActive ? activeColor : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive ? const Color(0xFF1A7A6E) : Colors.grey.shade300,
+              color: isActive ? activeColor : colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
           child: Text(
@@ -532,7 +514,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isActive ? Colors.white : Colors.grey.shade500,
+              color: isActive ? Colors.white : colors.textSecondary,
             ),
           ),
         ),
@@ -540,11 +522,11 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _buildChart(DateTime start, DateTime end) {
+  Widget _buildChart(BuildContext context, DateTime start, DateTime end) {
     switch (_graphType) {
       case _GraphType.glucose:
         final pts = _glucosePoints(start, end);
-        if (pts.isEmpty) return _emptyChart('No glucose data in this period');
+        if (pts.isEmpty) return _emptyChart(context, 'No glucose data in this period');
         return CustomPaint(
           painter: _GlucoseLinePainter(points: pts, start: start, end: end),
           child: const SizedBox.expand(),
@@ -553,8 +535,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       case _GraphType.insulin:
         final data = _insulinBuckets(start, end);
         final hasData = data.values.any((v) => v > 0);
-        if (!hasData)
-          return _emptyChart('No insulin deliveries in this period');
+        if (!hasData) {
+          return _emptyChart(context, 'No insulin deliveries in this period');
+        }
         return CustomPaint(
           painter: _InsulinBarPainter(values: data.values, labels: data.labels),
           child: const SizedBox.expand(),
@@ -565,7 +548,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         final hasData =
             data.cgmCounts.any((v) => v > 0) ||
             data.pumpCounts.any((v) => v > 0);
-        if (!hasData) return _emptyChart('No failures in this period');
+        if (!hasData) return _emptyChart(context, 'No failures in this period');
         return CustomPaint(
           painter: _FailureBarPainter(
             cgmCounts: data.cgmCounts,
@@ -577,33 +560,35 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     }
   }
 
-  Widget _emptyChart(String message) {
+  Widget _emptyChart(BuildContext context, String message) {
+    final colors = context.colors;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.bar_chart_rounded, size: 40, color: Colors.grey.shade300),
+          Icon(Icons.bar_chart_rounded, size: 40, color: colors.textSecondary),
           const SizedBox(height: 8),
           Text(
             message,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildChartLegend() {
+  Widget _buildChartLegend(BuildContext context) {
+    final colors = context.colors;
     switch (_graphType) {
       case _GraphType.glucose:
         return Wrap(
           spacing: 14,
           runSpacing: 4,
           children: [
-            _legendItem(const Color(0xFF2BB6A3), 'CGM Reading', isLine: true),
+            _legendItem(colors.accent, 'CGM Reading', isLine: true),
             _legendItem(const Color(0xFF5B8CF5), 'Manual Log', isLine: false),
             _legendItem(
-              const Color(0xFF2BB6A3).withValues(alpha: 0.25),
+              colors.accent.withValues(alpha: 0.25),
               'Target 70–180 mg/dL',
               isLine: false,
               isBand: true,
@@ -620,8 +605,8 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         return Wrap(
           spacing: 14,
           children: [
-            _legendItem(const Color(0xFFFF9F40), 'CGM Failure', isLine: false),
-            _legendItem(const Color(0xFFFF6B6B), 'Pump Failure', isLine: false),
+            _legendItem(colors.warning, 'CGM Failure', isLine: false),
+            _legendItem(colors.error, 'Pump Failure', isLine: false),
           ],
         );
     }
@@ -663,7 +648,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         const SizedBox(width: 5),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+          style: const TextStyle(fontSize: 10, color: Color(0xFF888888)),
         ),
       ],
     );
@@ -671,7 +656,8 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   // ── Summary counts ─────────────────────────────────────────────────────
 
-  Widget _buildSummaryCounts() {
+  Widget _buildSummaryCounts(BuildContext context) {
+    final colors = context.colors;
     final failureCount =
         _countForType(HistoryEntryType.cgmDeviceFailure) +
         _countForType(HistoryEntryType.micropumpFailure);
@@ -679,36 +665,28 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
         children: [
-          _countChip(
-            'CGM',
-            _countForType(HistoryEntryType.cgmReading),
-            const Color(0xFF2BB6A3),
-          ),
+          _countChip(context, 'CGM',
+              _countForType(HistoryEntryType.cgmReading), colors.accent),
           const SizedBox(width: 8),
-          _countChip(
-            'Manual',
-            _countForType(HistoryEntryType.manualGlucoseLog),
-            const Color(0xFF5B8CF5),
-          ),
+          _countChip(context, 'Manual',
+              _countForType(HistoryEntryType.manualGlucoseLog), const Color(0xFF5B8CF5)),
           const SizedBox(width: 8),
-          _countChip(
-            'Insulin',
-            _countForType(HistoryEntryType.insulinDelivery),
-            const Color(0xFF9B59B6),
-          ),
+          _countChip(context, 'Insulin',
+              _countForType(HistoryEntryType.insulinDelivery), const Color(0xFF9B59B6)),
           const SizedBox(width: 8),
-          _countChip('Failures', failureCount, Colors.red),
+          _countChip(context, 'Failures', failureCount, colors.error),
         ],
       ),
     );
   }
 
-  Widget _countChip(String label, int count, Color color) {
+  Widget _countChip(BuildContext context, String label, int count, Color color) {
+    final colors = context.colors;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -741,7 +719,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   // ── Filter chips ────────────────────────────────────────────────────────
 
-  Widget _buildFilterChipsScroll() {
+  Widget _buildFilterChipsScroll(BuildContext context) {
     return SizedBox(
       height: 38,
       child: ListView.separated(
@@ -749,26 +727,27 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _filters.length,
         separatorBuilder: (_, index) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => _filterChip(_filters[i]),
+        itemBuilder: (_, i) => _filterChip(context, _filters[i]),
       ),
     );
   }
 
-  Widget _buildFilterChipsInline() {
+  Widget _buildFilterChipsInline(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: _filters
           .map(
             (f) => Padding(
               padding: const EdgeInsets.only(left: 6),
-              child: _filterChip(f),
+              child: _filterChip(context, f),
             ),
           )
           .toList(),
     );
   }
 
-  Widget _filterChip(String filter) {
+  Widget _filterChip(BuildContext context, String filter) {
+    final colors = context.colors;
     final isActive = _activeFilter == filter;
     return GestureDetector(
       onTap: () => setState(() => _activeFilter = filter),
@@ -776,7 +755,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF2BB6A3) : Colors.white,
+          color: isActive ? colors.accent : colors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -791,7 +770,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : Colors.grey.shade600,
+            color: isActive ? Colors.white : colors.textSecondary,
           ),
         ),
       ),
@@ -800,23 +779,24 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   // ── List label ──────────────────────────────────────────────────────────
 
-  Widget _buildListLabel(int shownCount) {
+  Widget _buildListLabel(BuildContext context, int shownCount) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Events',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A2B3C),
+              color: colors.textPrimary,
             ),
           ),
           Text(
             '$shownCount shown',
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ],
       ),
@@ -826,10 +806,11 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   // ── Bottom nav bar ──────────────────────────────────────────────────────
 
   Widget _buildNavBar(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha:0.2))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -856,6 +837,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   Widget _navTile(BuildContext context, IconData icon, String label) {
+    final colors = context.colors;
     return Expanded(
       child: GestureDetector(
         onTap: () => Navigator.pop(context),
@@ -863,13 +845,13 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 24, color: const Color(0xFF9E9E9E)),
+            Icon(icon, size: 24, color: colors.textSecondary),
             const SizedBox(height: 3),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF9E9E9E),
+                color: colors.textSecondary,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -890,7 +872,8 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _entryColor(entry.type);
+    final colors = context.colors;
+    final color = _entryColor(entry.type, colors);
     final icon = _entryIcon(entry.type);
     final typeLabel = _entryTypeLabel(entry.type);
 
@@ -904,7 +887,7 @@ class _HistoryCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -917,7 +900,6 @@ class _HistoryCard extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(
             children: [
-              // Left accent line
               Container(
                 width: 4,
                 decoration: BoxDecoration(
@@ -928,7 +910,6 @@ class _HistoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Icon circle
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 14, 0, 14),
                 child: Container(
@@ -941,7 +922,6 @@ class _HistoryCard extends StatelessWidget {
                   child: Icon(icon, color: color, size: 20),
                 ),
               ),
-              // Content
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
@@ -955,20 +935,19 @@ class _HistoryCard extends StatelessWidget {
                           const Spacer(),
                           Text(
                             entry.timeLabel,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.grey,
+                              color: colors.textSecondary,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 7),
-                      _buildSummaryLine(color),
+                      _buildSummaryLine(colors, color),
                     ],
                   ),
                 ),
               ),
-              // Chevron
               const Padding(
                 padding: EdgeInsets.only(right: 10),
                 child: Icon(Icons.chevron_right, color: Colors.grey, size: 18),
@@ -999,7 +978,7 @@ class _HistoryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryLine(Color color) {
+  Widget _buildSummaryLine(GlucoraColors colors, Color color) {
     switch (entry.type) {
       case HistoryEntryType.cgmReading:
       case HistoryEntryType.manualGlucoseLog:
@@ -1018,7 +997,7 @@ class _HistoryCard extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '• ${entry.logMethod}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
             ],
           ],
@@ -1053,7 +1032,7 @@ class _HistoryCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: entry.deliverySource == 'AID Auto'
                         ? Colors.green
-                        : Colors.grey,
+                        : colors.textSecondary,
                   ),
                 ),
               ),
@@ -1085,7 +1064,7 @@ class _HistoryCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: resolved
                       ? Colors.green.withValues(alpha: 0.10)
-                      : Colors.red.withValues(alpha: 0.10),
+                      : colors.error.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1093,7 +1072,7 @@ class _HistoryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: resolved ? Colors.green : Colors.red,
+                    color: resolved ? Colors.green : colors.error,
                   ),
                 ),
               ),
@@ -1127,7 +1106,7 @@ class _HistoryCard extends StatelessWidget {
   }
 }
 
-// ── Graph data helpers ───────────────────────────────────────────────────────
+// ── Graph data helpers (keep existing classes) ───────────────────────────────────────────────────────
 
 class _GlucosePoint {
   final DateTime ts;
@@ -1160,7 +1139,7 @@ class _FailureBarData {
   });
 }
 
-// ── Glucose Line Painter ─────────────────────────────────────────────────────
+// ── Glucose Line Painter (keep as is - uses semantic colors) ─────────────────────────────────────
 
 class _GlucoseLinePainter extends CustomPainter {
   final List<_GlucosePoint> points;
@@ -1192,7 +1171,6 @@ class _GlucoseLinePainter extends CustomPainter {
     double yOf(double val) =>
         _padT + chartH * (1 - (val - _minY) / (_maxY - _minY));
 
-    // ── Target range band (70–180) ──
     final bandPaint = Paint()
       ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.08);
     final bandTop = yOf(180);
@@ -1202,7 +1180,6 @@ class _GlucoseLinePainter extends CustomPainter {
       bandPaint,
     );
 
-    // Range border lines
     final rangeBorderPaint = Paint()
       ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.35)
       ..strokeWidth = 1;
@@ -1217,7 +1194,6 @@ class _GlucoseLinePainter extends CustomPainter {
       rangeBorderPaint,
     );
 
-    // ── Y-axis gridlines + labels ──
     final gridPaint = Paint()
       ..color = Colors.grey.shade200
       ..strokeWidth = 1;
@@ -1235,10 +1211,8 @@ class _GlucoseLinePainter extends CustomPainter {
       );
     }
 
-    // ── X-axis labels ──
     _drawXLabels(canvas, chartW, chartH, xOf);
 
-    // ── Line + gradient fill ──
     final offsets = points
         .map((p) => Offset(xOf(p.ts), yOf(p.value.toDouble())))
         .toList();
@@ -1257,7 +1231,6 @@ class _GlucoseLinePainter extends CustomPainter {
         linePath.cubicTo(ctrlX, prev.dy, ctrlX, curr.dy, curr.dx, curr.dy);
       }
 
-      // Gradient fill under line
       final fillPath = Path.from(linePath)
         ..lineTo(offsets.last.dx, _padT + chartH)
         ..lineTo(offsets.first.dx, _padT + chartH)
@@ -1275,7 +1248,6 @@ class _GlucoseLinePainter extends CustomPainter {
           ).createShader(Rect.fromLTWH(_padL, _padT, chartW, chartH)),
       );
 
-      // Main line
       canvas.drawPath(
         linePath,
         Paint()
@@ -1287,16 +1259,13 @@ class _GlucoseLinePainter extends CustomPainter {
       );
     }
 
-    // ── Dots ──
     for (int i = 0; i < points.length; i++) {
       final p = points[i];
       final pos = offsets[i];
       final color = p.isManual
           ? const Color(0xFF5B8CF5)
           : const Color(0xFF2BB6A3);
-      // White halo
       canvas.drawCircle(pos, 4.5, Paint()..color = Colors.white);
-      // Colored border
       canvas.drawCircle(
         pos,
         4.5,
@@ -1305,7 +1274,6 @@ class _GlucoseLinePainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
-      // Tiny filled center
       canvas.drawCircle(pos, 1.5, Paint()..color = color);
     }
   }
@@ -1324,7 +1292,6 @@ class _GlucoseLinePainter extends CustomPainter {
     String Function(DateTime) fmt;
 
     if (spanHours <= 26) {
-      // Every 6 hours
       ticks = [];
       var hour = (start.hour ~/ 6 + 1) * 6;
       var t = DateTime(start.year, start.month, start.day, hour % 24);
@@ -1379,7 +1346,7 @@ class _GlucoseLinePainter extends CustomPainter {
       old.points != points || old.start != start || old.end != end;
 }
 
-// ── Insulin Bar Painter ──────────────────────────────────────────────────────
+// ── Insulin Bar Painter (keep as is) ──────────────────────────────────────────────────────
 
 class _InsulinBarPainter extends CustomPainter {
   final List<double> values;
@@ -1399,12 +1366,10 @@ class _InsulinBarPainter extends CustomPainter {
     final n = values.length;
 
     final maxVal = values.reduce((a, b) => a > b ? a : b);
-    // Round up max to nearest nice number
     final yMax = maxVal <= 0 ? 10.0 : (maxVal * 1.25).ceilToDouble();
 
     double yOf(double v) => _padT + chartH * (1 - v / yMax);
 
-    // ── Gridlines + y-axis labels ──
     final gridPaint = Paint()
       ..color = Colors.grey.shade200
       ..strokeWidth = 1;
@@ -1423,7 +1388,6 @@ class _InsulinBarPainter extends CustomPainter {
       );
     }
 
-    // ── Bars ──
     final barColor = const Color(0xFF9B59B6);
     final barW = (chartW / n) * 0.6;
     final barSpacing = chartW / n;
@@ -1444,7 +1408,6 @@ class _InsulinBarPainter extends CustomPainter {
         Paint()..color = barColor.withValues(alpha: 0.85),
       );
 
-      // Value label above bar
       if (v > 0) {
         _drawText(
           canvas,
@@ -1456,7 +1419,6 @@ class _InsulinBarPainter extends CustomPainter {
       }
     }
 
-    // ── X-axis labels ──
     final xStyle = TextStyle(fontSize: 9, color: Colors.grey.shade500);
     for (int i = 0; i < n; i++) {
       if (labels[i].isEmpty) continue;
@@ -1492,7 +1454,7 @@ class _InsulinBarPainter extends CustomPainter {
       old.values != values || old.labels != labels;
 }
 
-// ── Failure Bar Painter ──────────────────────────────────────────────────────
+// ── Failure Bar Painter (keep as is) ──────────────────────────────────────────────────────
 
 class _FailureBarPainter extends CustomPainter {
   final List<int> cgmCounts;
@@ -1522,7 +1484,6 @@ class _FailureBarPainter extends CustomPainter {
 
     double yOf(double v) => _padT + chartH * (1 - v / yMax);
 
-    // ── Gridlines + y-axis labels ──
     final gridPaint = Paint()
       ..color = Colors.grey.shade200
       ..strokeWidth = 1;
@@ -1534,7 +1495,6 @@ class _FailureBarPainter extends CustomPainter {
       _drawText(canvas, '$i', Offset(0, y - 5), yStyle, maxWidth: _padL - 3);
     }
 
-    // ── Stacked bars ──
     const cgmColor = Color(0xFFFF9F40);
     const pumpColor = Color(0xFFFF6B6B);
     final barW = (chartW / n) * 0.6;
@@ -1548,7 +1508,6 @@ class _FailureBarPainter extends CustomPainter {
       final x = _padL + barSpacing * i + (barSpacing - barW) / 2;
       final botY = yOf(0);
 
-      // CGM slice (bottom)
       if (cgm > 0) {
         final top = yOf(cgm);
         canvas.drawRRect(
@@ -1563,7 +1522,6 @@ class _FailureBarPainter extends CustomPainter {
         );
       }
 
-      // Pump slice (top)
       if (pump > 0) {
         final topPump = yOf(cgm + pump);
         final botPump = cgm > 0 ? yOf(cgm) : botY;
@@ -1580,7 +1538,6 @@ class _FailureBarPainter extends CustomPainter {
       }
     }
 
-    // ── X-axis labels ──
     final xStyle = TextStyle(fontSize: 9, color: Colors.grey.shade500);
     for (int i = 0; i < n; i++) {
       if (labels[i].isEmpty) continue;

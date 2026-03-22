@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart'; // ADDED
 
 class AdminAssignmentsScreen extends StatefulWidget {
   const AdminAssignmentsScreen({super.key});
@@ -45,12 +47,12 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Doctor',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A7A6E),
+                  color: ctx.colors.primaryDark, // UPDATED
                 ),
               ),
               const SizedBox(height: 6),
@@ -74,12 +76,12 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 onChanged: (v) => setDialogState(() => selectedDoctorId = v),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Patient',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A7A6E),
+                  color: ctx.colors.primaryDark, // UPDATED
                 ),
               ),
               const SizedBox(height: 6),
@@ -176,6 +178,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final doctors = _doctors;
     final unassigned = _unassignedPatients();
 
@@ -185,13 +188,13 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
           'Doctor–Patient Assignments',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(icon: const Icon(Icons.add), onPressed: _addAssignment),
         ],
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -200,17 +203,17 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFF9F40).withValues(alpha: 0.08),
+                color: colors.warning.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFFFF9F40).withValues(alpha: 0.3),
+                  color: colors.warning.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.person_off,
-                    color: Color(0xFFFF9F40),
+                    color: colors.warning,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
@@ -220,10 +223,10 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                       children: [
                         Text(
                           '${unassigned.length} Unassigned Patient${unassigned.length > 1 ? 's' : ''}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
-                            color: Color(0xFFFF9F40),
+                            color: colors.warning,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -231,7 +234,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                           unassigned.map((p) => p.name).join(', '),
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[600],
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -245,7 +248,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
           // Doctor groups
           ...doctors.map((doctor) {
             final assignments = _assignmentsForDoctor(doctor.id);
-            return _doctorGroup(doctor, assignments);
+            return _doctorGroup(context, doctor, assignments);
           }),
         ],
       ),
@@ -253,13 +256,15 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
   }
 
   Widget _doctorGroup(
+    BuildContext context,
     AdminUser doctor,
     List<DoctorPatientAssignment> assignments,
   ) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -291,14 +296,15 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                     children: [
                       Text(
                         doctor.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
+                          color: colors.textPrimary,
                         ),
                       ),
                       Text(
                         '${assignments.length} patient${assignments.length != 1 ? 's' : ''}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 11, color: colors.textSecondary),
                       ),
                     ],
                   ),
@@ -313,7 +319,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
               padding: const EdgeInsets.all(14),
               child: Text(
                 'No patients assigned',
-                style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
             )
           else
@@ -336,7 +342,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 ),
                 title: Text(
                   a.patientName,
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: 13, color: colors.textPrimary),
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.close, size: 18, color: Colors.red),

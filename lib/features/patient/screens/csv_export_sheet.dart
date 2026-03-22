@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'history_entry.dart';
-
-const _teal = Color(0xFF2BB6A3);
-const _darkTeal = Color(0xFF1A7A6E);
-const _headColor = Color(0xFF1A2B3C);
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class CsvExportSheet extends StatefulWidget {
   const CsvExportSheet({super.key});
@@ -16,21 +14,16 @@ class CsvExportSheet extends StatefulWidget {
 }
 
 class _CsvExportSheetState extends State<CsvExportSheet> {
-  // ── Range selection ──────────────────────────────────────────────────────
   String _rangePreset = '1 Week';
   DateTime? _customStart;
   DateTime? _customEnd;
 
-  // ── Entry type checkboxes ────────────────────────────────────────────────
   bool _includeCgm = true;
   bool _includeManual = true;
   bool _includeInsulin = true;
   bool _includeFailures = true;
 
-  // ── UI state ─────────────────────────────────────────────────────────────
   bool _isExporting = false;
-
-  // ── Computed ─────────────────────────────────────────────────────────────
 
   bool get _anyTypeSelected =>
       _includeCgm || _includeManual || _includeInsulin || _includeFailures;
@@ -40,60 +33,56 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
 
   bool get _canExport => _anyTypeSelected && _customRangeReady;
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final screenHeight = MediaQuery.of(context).size.height;
     return Material(
       color: Colors.transparent,
       child: Container(
         constraints: BoxConstraints(maxHeight: screenHeight * 0.88),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            // Drag handle
             Center(
               child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: colors.textSecondary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            // Title row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     'Export Records',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: _headColor,
+                      color: colors.textPrimary,
                       letterSpacing: -0.3,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    color: Colors.grey,
+                    color: colors.textSecondary,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
             ),
             const Divider(height: 1),
-            // Scrollable body
             Expanded(
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
@@ -101,11 +90,11 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildRangeSection(),
+                    _buildRangeSection(context),
                     const SizedBox(height: 24),
-                    _buildTypeSection(),
+                    _buildTypeSection(context),
                     const SizedBox(height: 32),
-                    _buildExportButton(),
+                    _buildExportButton(context),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -117,9 +106,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     );
   }
 
-  // ── Range section ──────────────────────────────────────────────────────────
-
-  Widget _buildRangeSection() {
+  Widget _buildRangeSection(BuildContext context) {
+    final colors = context.colors;
     const presets = [
       'Today',
       '3 Days',
@@ -131,26 +119,26 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.date_range_outlined, 'Time Range'),
+        _sectionHeader(context, Icons.date_range_outlined, 'Time Range'),
         const SizedBox(height: 14),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: presets.map((p) => _presetChip(p)).toList(),
+          children: presets.map((p) => _presetChip(context, p)).toList(),
         ),
-        // Custom date picker rows (animated)
         AnimatedSize(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
           child: _rangePreset == 'Custom'
-              ? _buildCustomDateRows()
+              ? _buildCustomDateRows(context)
               : const SizedBox.shrink(),
         ),
       ],
     );
   }
 
-  Widget _presetChip(String label) {
+  Widget _presetChip(BuildContext context, String label) {
+    final colors = context.colors;
     final isActive = _rangePreset == label;
     return GestureDetector(
       onTap: () => setState(() {
@@ -164,12 +152,12 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: isActive ? _teal : Colors.grey.shade100,
+          color: isActive ? colors.accent : colors.background,
           borderRadius: BorderRadius.circular(20),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: _teal.withValues(alpha: 0.25),
+                    color: colors.accent.withValues(alpha: 0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -181,19 +169,20 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : Colors.grey.shade600,
+            color: isActive ? Colors.white : colors.textSecondary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCustomDateRows() {
+  Widget _buildCustomDateRows(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -205,13 +194,13 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
         ),
         child: Column(
           children: [
-            _datePickerRow(
+            _datePickerRow(context,
               label: 'From',
               value: _customStart,
               onPick: (d) => setState(() => _customStart = d),
             ),
             const Divider(height: 1, color: Color(0xFFF0F0F0)),
-            _datePickerRow(
+            _datePickerRow(context,
               label: 'To',
               value: _customEnd,
               onPick: (d) => setState(() => _customEnd = d),
@@ -222,11 +211,13 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     );
   }
 
-  Widget _datePickerRow({
+  Widget _datePickerRow(
+    BuildContext context, {
     required String label,
     required DateTime? value,
     required void Function(DateTime) onPick,
   }) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -236,8 +227,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
           lastDate: DateTime.now(),
           builder: (ctx, child) => Theme(
             data: Theme.of(ctx).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: _teal,
+              colorScheme: ColorScheme.light(
+                primary: colors.accent,
                 onPrimary: Colors.white,
               ),
             ),
@@ -250,11 +241,11 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(Icons.calendar_month_outlined, size: 18, color: _teal),
+            Icon(Icons.calendar_month_outlined, size: 18, color: colors.accent),
             const SizedBox(width: 12),
             Text(
               label,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
             ),
             const Spacer(),
             Text(
@@ -264,28 +255,27 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: value != null ? _headColor : Colors.grey.shade400,
+                color: value != null ? colors.textPrimary : colors.textSecondary,
               ),
             ),
             const SizedBox(width: 6),
-            Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
+            Icon(Icons.chevron_right, size: 18, color: colors.textSecondary),
           ],
         ),
       ),
     );
   }
 
-  // ── Type section ───────────────────────────────────────────────────────────
-
-  Widget _buildTypeSection() {
+  Widget _buildTypeSection(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.filter_list_outlined, 'Include Entry Types'),
+        _sectionHeader(context, Icons.filter_list_outlined, 'Include Entry Types'),
         const SizedBox(height: 14),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -297,15 +287,15 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
           ),
           child: Column(
             children: [
-              _typeRow(
+              _typeRow(context,
                 icon: Icons.monitor_heart_outlined,
-                iconColor: const Color(0xFF2BB6A3),
+                iconColor: colors.accent,
                 label: 'CGM Readings',
                 value: _includeCgm,
                 onChanged: (v) => setState(() => _includeCgm = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(
+              _typeRow(context,
                 icon: Icons.fingerprint,
                 iconColor: const Color(0xFF5B8CF5),
                 label: 'Manual Logs',
@@ -313,7 +303,7 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 onChanged: (v) => setState(() => _includeManual = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(
+              _typeRow(context,
                 icon: Icons.water_drop_outlined,
                 iconColor: const Color(0xFF9B59B6),
                 label: 'Insulin Doses',
@@ -321,7 +311,7 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 onChanged: (v) => setState(() => _includeInsulin = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(
+              _typeRow(context,
                 icon: Icons.warning_amber_rounded,
                 iconColor: const Color(0xFFFF6B6B),
                 label: 'Device Failures',
@@ -336,24 +326,26 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
             padding: const EdgeInsets.only(top: 8, left: 4),
             child: Text(
               'Select at least one entry type to export.',
-              style: TextStyle(fontSize: 12, color: Colors.red.shade400),
+              style: TextStyle(fontSize: 12, color: colors.error),
             ),
           ),
       ],
     );
   }
 
-  Widget _typeRow({
+  Widget _typeRow(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String label,
     required bool value,
     required void Function(bool?) onChanged,
   }) {
+    final colors = context.colors;
     return CheckboxListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      activeColor: _teal,
+      activeColor: colors.accent,
       value: value,
       onChanged: onChanged,
       title: Row(
@@ -370,10 +362,10 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: _headColor,
+              color: colors.textPrimary,
             ),
           ),
         ],
@@ -381,9 +373,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     );
   }
 
-  // ── Export button ──────────────────────────────────────────────────────────
-
-  Widget _buildExportButton() {
+  Widget _buildExportButton(BuildContext context) {
+    final colors = context.colors;
     final enabled = _canExport && !_isExporting;
     return SizedBox(
       width: double.infinity,
@@ -391,8 +382,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       child: ElevatedButton(
         onPressed: enabled ? _doExport : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _teal,
-          disabledBackgroundColor: _teal.withValues(alpha: 0.4),
+          backgroundColor: colors.accent,
+          disabledBackgroundColor: colors.accent.withValues(alpha: 0.4),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -426,12 +417,9 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     );
   }
 
-  // ── Export logic ───────────────────────────────────────────────────────────
-
   Future<void> _doExport() async {
     setState(() => _isExporting = true);
 
-    // 1. Compute date range
     final now = DateTime.now();
     late DateTime startDate;
     late DateTime endDate;
@@ -440,19 +428,24 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       case 'Today':
         startDate = DateTime(now.year, now.month, now.day);
         endDate = now;
+        break;
       case '3 Days':
         startDate = now.subtract(const Duration(days: 3));
         endDate = now;
+        break;
       case '1 Week':
         startDate = now.subtract(const Duration(days: 7));
         endDate = now;
+        break;
       case '2 Weeks':
         startDate = now.subtract(const Duration(days: 14));
         endDate = now;
+        break;
       case '1 Month':
         startDate = now.subtract(const Duration(days: 30));
         endDate = now;
-      default: // 'Custom'
+        break;
+      default:
         startDate = DateTime(
           _customStart!.year,
           _customStart!.month,
@@ -468,7 +461,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
         );
     }
 
-    // 2. Build allowed type set
     final allowed = <HistoryEntryType>{
       if (_includeCgm) HistoryEntryType.cgmReading,
       if (_includeManual) HistoryEntryType.manualGlucoseLog,
@@ -479,7 +471,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       ],
     };
 
-    // 3. Filter entries
     final entries = patientLogEntries.where((e) {
       return allowed.contains(e.type) &&
           !e.timestamp.isBefore(startDate) &&
@@ -507,7 +498,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       return;
     }
 
-    // 4. Build CSV string
     final buf = StringBuffer();
     buf.writeln(
       'Type,Timestamp,Glucose (mg/dL),Trend,'
@@ -520,7 +510,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       buf.writeln(_toCsvRow(e));
     }
 
-    // 5. Write to temp file
     final dir = await getTemporaryDirectory();
     final stamp =
         '${now.year}${_pad(now.month)}${_pad(now.day)}_'
@@ -530,7 +519,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
 
     if (!mounted) return;
 
-    // 6. Share
     await Share.shareXFiles([
       XFile(file.path, mimeType: 'text/csv'),
     ], subject: 'Glucora Export – glucora_export_$stamp.csv');
@@ -538,8 +526,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     setState(() => _isExporting = false);
     if (mounted) Navigator.pop(context);
   }
-
-  // ── CSV helpers ────────────────────────────────────────────────────────────
 
   String _toCsvRow(HistoryEntry e) {
     final typeLabel = switch (e.type) {
@@ -580,19 +566,18 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
   String _q(String s) => '"$s"';
   String _pad(int n) => n.toString().padLeft(2, '0');
 
-  // ── Shared UI helper ───────────────────────────────────────────────────────
-
-  Widget _sectionHeader(IconData icon, String title) {
+  Widget _sectionHeader(BuildContext context, IconData icon, String title) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 18, color: _darkTeal),
+        Icon(icon, size: 18, color: colors.primaryDark),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: _headColor,
+            color: colors.textPrimary,
             letterSpacing: -0.3,
           ),
         ),

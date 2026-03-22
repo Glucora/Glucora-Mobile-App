@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'care_plan_editor_screen.dart';
-
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 // ─── ENUMS & MODELS ──────────────────────────────────────────────────────────
 
 enum AlertSeverity { critical, warning, info }
@@ -114,9 +115,10 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final visible = _visibleAlerts;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(
           builder: (context, orientation) {
@@ -131,24 +133,24 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(child: _buildTitleBlock()),
+                              Expanded(child: _buildTitleBlock(context)),
                               const SizedBox(width: 16),
-                              _buildFilterChipsInline(),
+                              _buildFilterChipsInline(context),
                             ],
                           )
-                        : _buildTitleBlock(),
+                        : _buildTitleBlock(context),
                   ),
                 ),
                 if (!isLandscape)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: _buildFilterChipsScroll(),
+                      child: _buildFilterChipsScroll(context),
                     ),
                   ),
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 if (visible.isEmpty)
-                  SliverFillRemaining(child: _buildEmptyState()),
+                  SliverFillRemaining(child: _buildEmptyState(context)),
                 if (visible.isNotEmpty)
                   isLandscape
                       ? SliverPadding(
@@ -195,17 +197,18 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
     );
   }
 
-  Widget _buildTitleBlock() {
+  Widget _buildTitleBlock(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Expanded(child: Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
+            Expanded(child: Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary))),
             if (_unreadCount > 0)
               TextButton(
                 onPressed: _markAllRead,
-                child: const Text('Mark all read', style: TextStyle(color: Color(0xFF2BB6A3), fontWeight: FontWeight.w600, fontSize: 13)),
+                child: Text('Mark all read', style: TextStyle(color: colors.accent, fontWeight: FontWeight.w600, fontSize: 13)),
               ),
           ],
         ),
@@ -215,21 +218,21 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
             if (_unreadCount > 0) ...[
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text('$_unreadCount unread', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 12)),
+                decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text('$_unreadCount unread', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
               ),
               const SizedBox(width: 8),
             ],
             if (_criticalCount > 0)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.warning_rounded, color: Colors.red, size: 12),
+                    Icon(Icons.warning_rounded, color: colors.error, size: 12),
                     const SizedBox(width: 4),
-                    Text('$_criticalCount critical', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 12)),
+                    Text('$_criticalCount critical', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
                   ],
                 ),
               ),
@@ -240,7 +243,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
     );
   }
 
-  Widget _buildFilterChipsScroll() {
+  Widget _buildFilterChipsScroll(BuildContext context) {
     return SizedBox(
       height: 38,
       child: ListView.separated(
@@ -249,19 +252,20 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
         physics: const ClampingScrollPhysics(),
         itemCount: _filters.length,
         separatorBuilder: (_, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => _filterChip(_filters[index]),
+        itemBuilder: (context, index) => _filterChip(context, _filters[index]),
       ),
     );
   }
 
-  Widget _buildFilterChipsInline() {
+  Widget _buildFilterChipsInline(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: _filters.map((f) => Padding(padding: const EdgeInsets.only(left: 8), child: _filterChip(f))).toList(),
+      children: _filters.map((f) => Padding(padding: const EdgeInsets.only(left: 8), child: _filterChip(context, f))).toList(),
     );
   }
 
-  Widget _filterChip(String filter) {
+  Widget _filterChip(BuildContext context, String filter) {
+    final colors = context.colors;
     final isActive = _activeFilter == filter;
     return GestureDetector(
       onTap: () => setState(() => _activeFilter = filter),
@@ -269,23 +273,24 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF2BB6A3) : Colors.white,
+          color: isActive ? colors.accent : colors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
         ),
-        child: Text(filter, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isActive ? Colors.white : Colors.grey.shade600)),
+        child: Text(filter, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isActive ? Colors.white : colors.textSecondary)),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_off_outlined, size: 56, color: Colors.grey.shade300),
+          Icon(Icons.notifications_off_outlined, size: 56, color: colors.textSecondary),
           const SizedBox(height: 12),
-          Text('No alerts in this category', style: TextStyle(color: Colors.grey.shade400, fontSize: 15)),
+          Text('No alerts in this category', style: TextStyle(color: colors.textSecondary, fontSize: 15)),
         ],
       ),
     );
@@ -303,13 +308,13 @@ class _AlertCard extends StatelessWidget {
 
   const _AlertCard({required this.alert, required this.onMarkRead, required this.onDismiss, required this.onViewPatient, required this.onEditPlan});
 
-  Color get _severityColor {
-    switch (alert.severity) {
-      case AlertSeverity.critical: return Colors.red;
-      case AlertSeverity.warning: return const Color(0xFFFF9F40);
-      case AlertSeverity.info: return const Color(0xFF5B8CF5);
-    }
+Color _severityColor(GlucoraColors colors) {
+  switch (alert.severity) {
+    case AlertSeverity.critical: return colors.error;
+    case AlertSeverity.warning: return colors.warning;
+    case AlertSeverity.info: return const Color(0xFF5B8CF5);
   }
+}
 
   IconData get _typeIcon {
     switch (alert.type) {
@@ -334,12 +339,15 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final severityColor = _severityColor(colors);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: alert.isRead ? null : Border.all(color: _severityColor.withValues(alpha: 0.4), width: 1.5),
+        border: alert.isRead ? null : Border.all(color: severityColor.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Column(
@@ -351,8 +359,8 @@ class _AlertCard extends StatelessWidget {
               children: [
                 Container(
                   width: 42, height: 42,
-                  decoration: BoxDecoration(color: _severityColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-                  child: Icon(_typeIcon, color: _severityColor, size: 20),
+                  decoration: BoxDecoration(color: severityColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(_typeIcon, color: severityColor, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -363,8 +371,8 @@ class _AlertCard extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: _severityColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(_severityLabel, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: _severityColor, letterSpacing: 0.8)),
+                            decoration: BoxDecoration(color: severityColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                            child: Text(_severityLabel, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: severityColor, letterSpacing: 0.8)),
                           ),
                           if (alert.type == AlertType.incident) ...[
                             const SizedBox(width: 6),
@@ -375,17 +383,17 @@ class _AlertCard extends StatelessWidget {
                             ),
                           ],
                           const Spacer(),
-                          Text(alert.timeAgo, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(alert.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
                           if (!alert.isRead) ...[
                             const SizedBox(width: 6),
-                            Container(width: 8, height: 8, decoration: BoxDecoration(color: _severityColor, shape: BoxShape.circle)),
+                            Container(width: 8, height: 8, decoration: BoxDecoration(color: severityColor, shape: BoxShape.circle)),
                           ],
                         ],
                       ),
                       const SizedBox(height: 5),
-                      Text(alert.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: alert.isRead ? Colors.black87 : Colors.black)),
+                      Text(alert.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: alert.isRead ? colors.textSecondary : colors.textPrimary)),
                       const SizedBox(height: 4),
-                      Text(alert.description, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4)),
+                      Text(alert.description, style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.4)),
                     ],
                   ),
                 ),
@@ -395,16 +403,16 @@ class _AlertCard extends StatelessWidget {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 14),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(color: const Color(0xFFF4F7FA), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: colors.background, borderRadius: BorderRadius.circular(10)),
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 12,
-                  backgroundColor: const Color(0xFF2BB6A3).withValues(alpha: 0.15),
-                  child: Text(alert.patientInitials, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1A7A6E))),
+                  backgroundColor: colors.accent.withValues(alpha: 0.15),
+                  child: Text(alert.patientInitials, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colors.primaryDark)),
                 ),
                 const SizedBox(width: 8),
-                Text(alert.patientName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
+                Text(alert.patientName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary)),
               ],
             ),
           ),
@@ -415,10 +423,10 @@ class _AlertCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 if (!alert.isRead)
-                  _actionBtn(Icons.done, 'Mark Read', Colors.grey.shade600, Colors.grey.shade100, onMarkRead),
-                _actionBtn(Icons.close, 'Dismiss', Colors.grey.shade600, Colors.grey.shade100, onDismiss),
+                  _actionBtn(Icons.done, 'Mark Read', colors.textSecondary, colors.background, onMarkRead),
+                _actionBtn(Icons.close, 'Dismiss', colors.textSecondary, colors.background, onDismiss),
                 _actionBtn(Icons.edit_outlined, 'Edit Plan', const Color(0xFF5B8CF5), const Color(0xFF5B8CF5).withValues(alpha: 0.1), onEditPlan),
-                _actionBtn(Icons.person_outline, 'View Patient', const Color(0xFF1A7A6E), const Color(0xFF2BB6A3).withValues(alpha: 0.1), onViewPatient),
+                _actionBtn(Icons.person_outline, 'View Patient', colors.primaryDark, colors.accent.withValues(alpha: 0.1), onViewPatient),
               ],
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminAlertRuleFormScreen extends StatefulWidget {
   final AdminAlertRule? rule;
@@ -100,6 +101,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -109,27 +111,27 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _label('Rule Name'),
+            _label(context, 'Rule Name'),
             TextFormField(
               controller: _nameController,
-              decoration: _inputDecoration('e.g. Critical High Glucose'),
+              decoration: _inputDecoration(context, 'e.g. Critical High Glucose'),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-            _label('Condition Type'),
+            _label(context, 'Condition Type'),
             DropdownButtonFormField<String>(
               initialValue: _conditionType,
-              decoration: _inputDecoration('Select condition'),
+              decoration: _inputDecoration(context, 'Select condition'),
               items: _conditionTypes
                   .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                   .toList(),
@@ -140,6 +142,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
             if (_showThreshold) ...[
               const SizedBox(height: 16),
               _label(
+                context,
                 _conditionType == 'Time Out of Range'
                     ? 'Threshold (% time)'
                     : 'Threshold (mg/dL)',
@@ -147,6 +150,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
               TextFormField(
                 controller: _thresholdController,
                 decoration: _inputDecoration(
+                  context,
                   _conditionType == 'Time Out of Range'
                       ? 'e.g. 30'
                       : 'e.g. 250',
@@ -156,18 +160,18 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
             ],
             if (_showDuration) ...[
               const SizedBox(height: 16),
-              _label('Duration (minutes)'),
+              _label(context, 'Duration (minutes)'),
               TextFormField(
                 controller: _durationController,
-                decoration: _inputDecoration('e.g. 30'),
+                decoration: _inputDecoration(context, 'e.g. 30'),
                 keyboardType: TextInputType.number,
               ),
             ],
             const SizedBox(height: 16),
-            _label('Severity'),
+            _label(context, 'Severity'),
             DropdownButtonFormField<String>(
               initialValue: _severity,
-              decoration: _inputDecoration('Select severity'),
+              decoration: _inputDecoration(context, 'Select severity'),
               items: [
                 'Critical',
                 'Warning',
@@ -179,12 +183,13 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Enabled'),
+              title: Text('Enabled', style: TextStyle(color: colors.textPrimary)),
               subtitle: Text(
                 _isEnabled ? 'Rule is active' : 'Rule is disabled',
+                style: TextStyle(color: colors.textSecondary),
               ),
               value: _isEnabled,
-              activeThumbColor: const Color(0xFF2BB6A3),
+              activeThumbColor: colors.accent,
               onChanged: (v) => setState(() => _isEnabled = v),
               contentPadding: EdgeInsets.zero,
             ),
@@ -194,7 +199,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2BB6A3),
+                  backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -221,37 +226,39 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
     );
   }
 
-  Widget _label(String text) {
+  Widget _label(BuildContext context, String text) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1A7A6E),
+          color: colors.primaryDark,
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: colors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+        borderSide: BorderSide(color: colors.accent, width: 1.5),
       ),
     );
   }

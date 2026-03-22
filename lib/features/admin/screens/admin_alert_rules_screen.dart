@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'admin_alert_rule_form_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminAlertRulesScreen extends StatefulWidget {
   const AdminAlertRulesScreen({super.key});
@@ -74,6 +75,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final filtered = _filtered;
 
     return Scaffold(
@@ -82,7 +84,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           'Alert Rules',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -99,7 +101,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Column(
         children: [
           SizedBox(
@@ -112,12 +114,10 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(label),
+                    label: Text(label, style: TextStyle(color: colors.textPrimary)),
                     selected: selected,
-                    selectedColor: const Color(
-                      0xFF2BB6A3,
-                    ).withValues(alpha: 0.2),
-                    checkmarkColor: const Color(0xFF2BB6A3),
+                    selectedColor: colors.accent.withValues(alpha: 0.2),
+                    checkmarkColor: colors.accent,
                     onSelected: (_) => setState(() => _severityFilter = label),
                   ),
                 );
@@ -129,7 +129,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 ? Center(
                     child: Text(
                       'No alert rules',
-                      style: TextStyle(color: Colors.grey[500]),
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -139,7 +139,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                     ),
                     itemCount: filtered.length,
                     separatorBuilder: (_, a2) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) => _ruleCard(filtered[index]),
+                    itemBuilder: (context, index) => _ruleCard(context, filtered[index]),
                   ),
           ),
         ],
@@ -147,11 +147,12 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     );
   }
 
-  Widget _ruleCard(AdminAlertRule rule) {
+  Widget _ruleCard(BuildContext context, AdminAlertRule rule) {
+    final colors = context.colors;
     final color = _severityColor(rule.severity);
 
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -187,15 +188,16 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   children: [
                     Text(
                       rule.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _ruleDescription(rule),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 11, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -224,7 +226,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   const SizedBox(height: 6),
                   Switch(
                     value: rule.isEnabled,
-                    activeThumbColor: const Color(0xFF2BB6A3),
+                    activeThumbColor: colors.accent,
                     onChanged: (v) => setState(() => rule.isEnabled = v),
                   ),
                 ],
@@ -250,10 +252,12 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _ruleDescription(AdminAlertRule rule) {
     final parts = <String>[];
     parts.add(rule.conditionType);
-    if (rule.thresholdValue != null)
+    if (rule.thresholdValue != null) {
       parts.add('Threshold: ${rule.thresholdValue!.toInt()} mg/dL');
-    if (rule.durationMinutes != null)
+    }
+    if (rule.durationMinutes != null) {
       parts.add('Duration: ${rule.durationMinutes} min');
+    }
     return parts.join('  •  ');
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 enum GuardianRequestStatus { pending, accepted, declined }
 
@@ -46,19 +48,20 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
 
   void _accept(PatientRequest r) {
     setState(() => r.status = GuardianRequestStatus.accepted);
-    _snack('You are now watching over ${r.patientName} ', const Color(0xFF2A9D8F));
+    _snack('You are now watching over ${r.patientName} ', context);
   }
 
   void _decline(PatientRequest r) {
     setState(() => r.status = GuardianRequestStatus.declined);
-    _snack('Request from ${r.patientName} declined', const Color(0xFFE63946));
+    _snack('Request from ${r.patientName} declined', context);
   }
 
-  void _snack(String msg, Color color) {
+  void _snack(String msg, BuildContext context) {
+    final colors = context.colors;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
-      backgroundColor: color,
+      backgroundColor: colors.accent,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       duration: const Duration(seconds: 3),
@@ -67,22 +70,23 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(builder: (context, orientation) {
           final isLandscape = orientation == Orientation.landscape;
           return Column(children: [
-            _buildHeader(isLandscape),
-            _buildTabBar(),
+            _buildHeader(context, isLandscape),
+            _buildTabBar(context),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 physics: const ClampingScrollPhysics(),
                 children: [
-                  _buildList(_pending,  showActions: true,  isLandscape: isLandscape),
-                  _buildList(_accepted, showActions: false, isLandscape: isLandscape),
-                  _buildList(_declined, showActions: false, isLandscape: isLandscape),
+                  _buildList(context, _pending,  showActions: true,  isLandscape: isLandscape),
+                  _buildList(context, _accepted, showActions: false, isLandscape: isLandscape),
+                  _buildList(context, _declined, showActions: false, isLandscape: isLandscape),
                 ],
               ),
             ),
@@ -92,43 +96,44 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
     );
   }
 
-  Widget _buildHeader(bool isLandscape) {
+  Widget _buildHeader(BuildContext context, bool isLandscape) {
+    final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(20, isLandscape ? 10 : 24, 20, 0),
       child: isLandscape
           ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Patient Requests', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
-                Text('${_pending.length} waiting for your response', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                Text('Patient Requests', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.textPrimary, letterSpacing: -0.5)),
+                Text('${_pending.length} waiting for your response', style: TextStyle(fontSize: 13, color: colors.textSecondary)),
               ])),
               const SizedBox(width: 16),
               Row(children: [
-                _summaryPill('Pending',  _pending.length,  const Color(0xFFE76F51)),
+                _summaryPill(context, 'Pending',  _pending.length,  colors.warning),
                 const SizedBox(width: 8),
-                _summaryPill('Watching', _accepted.length, const Color(0xFF2A9D8F)),
+                _summaryPill(context, 'Watching', _accepted.length, colors.accent),
                 const SizedBox(width: 8),
-                _summaryPill('Declined', _declined.length, const Color(0xFFE63946)),
+                _summaryPill(context, 'Declined', _declined.length, colors.error),
               ]),
               const SizedBox(height: 10),
             ])
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Patient Requests', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
+              Text('Patient Requests', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: colors.textPrimary, letterSpacing: -0.5)),
               const SizedBox(height: 4),
-              Text('${_pending.length} waiting for your response', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+              Text('${_pending.length} waiting for your response', style: TextStyle(fontSize: 14, color: colors.textSecondary)),
               const SizedBox(height: 16),
               Row(children: [
-                _summaryPill('Pending',  _pending.length,  const Color(0xFFE76F51)),
+                _summaryPill(context, 'Pending',  _pending.length,  colors.warning),
                 const SizedBox(width: 10),
-                _summaryPill('Watching', _accepted.length, const Color(0xFF2A9D8F)),
+                _summaryPill(context, 'Watching', _accepted.length, colors.accent),
                 const SizedBox(width: 10),
-                _summaryPill('Declined', _declined.length, const Color(0xFFE63946)),
+                _summaryPill(context, 'Declined', _declined.length, colors.error),
               ]),
               const SizedBox(height: 16),
             ]),
     );
   }
 
-  Widget _summaryPill(String label, int count, Color color) {
+  Widget _summaryPill(BuildContext context, String label, int count, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -144,14 +149,15 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      color: Colors.white,
+      color: colors.surface,
       child: TabBar(
         controller: _tabController,
-        labelColor: const Color(0xFF2A9D8F),
-        unselectedLabelColor: Colors.grey,
-        indicatorColor: const Color(0xFF2A9D8F),
+        labelColor: colors.accent,
+        unselectedLabelColor: colors.textSecondary,
+        indicatorColor: colors.accent,
         indicatorWeight: 3,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
@@ -162,7 +168,7 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF2A9D8F), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: colors.accent, borderRadius: BorderRadius.circular(10)),
                 child: Text('${_pending.length}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
               ),
             ],
@@ -174,14 +180,15 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
     );
   }
 
-  Widget _buildList(List<PatientRequest> requests, {required bool showActions, required bool isLandscape}) {
+  Widget _buildList(BuildContext context, List<PatientRequest> requests, {required bool showActions, required bool isLandscape}) {
+    final colors = context.colors;
     if (requests.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(showActions ? 'No requests' : 'All good', style: const TextStyle(fontSize: 48)),
+          Text(showActions ? 'No requests' : 'All good', style: TextStyle(fontSize: 48, color: colors.textSecondary)),
           const SizedBox(height: 12),
           Text(showActions ? 'No requests right now' : 'Nothing here yet',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 15, fontWeight: FontWeight.w500)),
+              style: TextStyle(color: colors.textSecondary, fontSize: 15, fontWeight: FontWeight.w500)),
         ]),
       );
     }
@@ -192,6 +199,7 @@ class _GuardianRequestsScreenState extends State<GuardianRequestsScreen> with Si
       padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 24),
       itemCount: requests.length,
       itemBuilder: (_, i) => _RequestCard(
+        context: context,
         request: requests[i],
         showActions: showActions,
         onAccept: () => _accept(requests[i]),
@@ -206,15 +214,23 @@ class _RequestCard extends StatelessWidget {
   final bool showActions;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final BuildContext context;
 
-  const _RequestCard({required this.request, required this.showActions, required this.onAccept, required this.onDecline});
+  const _RequestCard({
+    required this.context,
+    required this.request,
+    required this.showActions,
+    required this.onAccept,
+    required this.onDecline,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = this.context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4))],
       ),
@@ -224,31 +240,30 @@ class _RequestCard extends StatelessWidget {
           child: Row(children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: const Color(0xFF2A9D8F).withValues(alpha: 0.15),
-              child: Text(request.avatarInitials, style: const TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w800, fontSize: 15)),
+              backgroundColor: colors.accent.withValues(alpha: 0.15),
+              child: Text(request.avatarInitials, style: TextStyle(color: colors.accent, fontWeight: FontWeight.w800, fontSize: 15)),
             ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(request.patientName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1A2B3C))),
+              Text(request.patientName, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.textPrimary)),
               const SizedBox(height: 3),
-              Text('Age ${request.age}', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              Text('Age ${request.age}', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               const SizedBox(height: 5),
-              // Plain-English diabetes explanation
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2A9D8F).withValues(alpha: 0.08),
+                  color: colors.accent.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.info_outline_rounded, size: 12, color: Color(0xFF2A9D8F)),
+                  Icon(Icons.info_outline_rounded, size: 12, color: colors.accent),
                   const SizedBox(width: 5),
-                  Flexible(child: Text(request.diabetesExplained, style: const TextStyle(fontSize: 11, color: Color(0xFF2A9D8F), fontWeight: FontWeight.w600))),
+                  Flexible(child: Text(request.diabetesExplained, style: TextStyle(fontSize: 11, color: colors.accent, fontWeight: FontWeight.w600))),
                 ]),
               ),
             ])),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(request.sentAgo, style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+              Text(request.sentAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
             ]),
           ]),
         ),
@@ -261,10 +276,9 @@ class _RequestCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onDecline,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color.fromARGB(255, 255, 255, 255),
-                                        backgroundColor: const Color(0xFFE63946),
-
-                    side: BorderSide(color: const Color(0xFFE63946)),
+                    foregroundColor: Colors.white,
+                    backgroundColor: colors.error,
+                    side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     minimumSize: const Size(0, 0),
@@ -278,7 +292,7 @@ class _RequestCard extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onAccept,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2A9D8F),
+                    backgroundColor: colors.accent,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -300,8 +314,8 @@ class _RequestCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: request.status == GuardianRequestStatus.accepted
-                      ? const Color(0xFF2A9D8F).withValues(alpha: 0.1)
-                      : const Color(0xFFE63946).withValues(alpha: 0.1),
+                      ? colors.accent.withValues(alpha: 0.1)
+                      : colors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -309,7 +323,7 @@ class _RequestCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: request.status == GuardianRequestStatus.accepted ? const Color(0xFF2A9D8F) : Color(0xFFE63946),
+                    color: request.status == GuardianRequestStatus.accepted ? colors.accent : colors.error,
                   ),
                 ),
               ),

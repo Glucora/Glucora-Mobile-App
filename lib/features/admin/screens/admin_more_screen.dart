@@ -4,31 +4,33 @@ import 'admin_device_list_screen.dart';
 import 'admin_alert_rules_screen.dart';
 import 'admin_role_management_screen.dart';
 import 'admin_assignments_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminMoreScreen extends StatelessWidget {
   const AdminMoreScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Admin Panel',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionTitle('User Management'),
+          _sectionTitle(context, 'User Management'),
           const SizedBox(height: 8),
           _menuCard(
             context,
             icon: Icons.people,
-            color: const Color(0xFF2BB6A3),
+            color: colors.accent,
             title: 'Users',
             subtitle: 'Create, edit, delete user accounts',
             onTap: () => Navigator.push(
@@ -63,12 +65,12 @@ class AdminMoreScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _sectionTitle('Device & Alert Management'),
+          _sectionTitle(context, 'Device & Alert Management'),
           const SizedBox(height: 8),
           _menuCard(
             context,
             icon: Icons.sensors,
-            color: const Color(0xFFFF9F40),
+            color: colors.warning,
             title: 'Devices',
             subtitle: 'Manage CGM sensors and micropumps',
             onTap: () => Navigator.push(
@@ -80,7 +82,7 @@ class AdminMoreScreen extends StatelessWidget {
           _menuCard(
             context,
             icon: Icons.rule,
-            color: const Color(0xFFD32F2F),
+            color: colors.error,
             title: 'Alert Rules',
             subtitle: 'Configure alert thresholds and conditions',
             onTap: () => Navigator.push(
@@ -93,13 +95,14 @@ class AdminMoreScreen extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(BuildContext context, String title) {
+    final colors = context.colors;
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A7A6E),
+        color: colors.primaryDark,
       ),
     );
   }
@@ -112,8 +115,9 @@ class AdminMoreScreen extends StatelessWidget {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final colors = context.colors;
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -145,12 +149,12 @@ class AdminMoreScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey[400]),
+              Icon(Icons.chevron_right, color: colors.textSecondary),
             ],
           ),
         ),

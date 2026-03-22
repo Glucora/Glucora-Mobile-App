@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminRoleManagementScreen extends StatefulWidget {
   const AdminRoleManagementScreen({super.key});
@@ -103,6 +104,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final filtered = _filtered;
 
     return Scaffold(
@@ -111,10 +113,10 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
           'Role Management',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF1A7A6E),
+        backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: Column(
         children: [
           Padding(
@@ -123,10 +125,11 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search users…',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintStyle: TextStyle(color: colors.textSecondary),
+                prefixIcon: Icon(Icons.search, color: colors.textSecondary),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: Icon(Icons.clear, color: colors.textSecondary),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _query = '');
@@ -134,7 +137,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colors.surface,
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 0,
                   horizontal: 16,
@@ -180,7 +183,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                 ? Center(
                     child: Text(
                       'No users found',
-                      style: TextStyle(color: Colors.grey[500]),
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                   )
                 : ListView.separated(
@@ -191,7 +194,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                     itemCount: filtered.length,
                     separatorBuilder: (_, a2) => const SizedBox(height: 8),
                     itemBuilder: (context, index) =>
-                        _userRoleCard(filtered[index]),
+                        _userRoleCard(context, filtered[index]),
                   ),
           ),
         ],
@@ -217,11 +220,12 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
     );
   }
 
-  Widget _userRoleCard(AdminUser user) {
+  Widget _userRoleCard(BuildContext context, AdminUser user) {
+    final colors = context.colors;
     final color = _roleColor(user.role);
 
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -249,15 +253,16 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                   children: [
                     Text(
                       user.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       user.email,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),
                   ],
                 ),

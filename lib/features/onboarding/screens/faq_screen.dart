@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class FAQScreen extends StatefulWidget {
   const FAQScreen({super.key});
@@ -8,8 +10,6 @@ class FAQScreen extends StatefulWidget {
 }
 
 class _FAQScreenState extends State<FAQScreen> {
-  static const Color _bg = Color(0xFFF5FFFE);
-
   int _expandedIndex = -1;
 
   final List<Map<String, dynamic>> _sections = [
@@ -123,7 +123,8 @@ class _FAQScreenState extends State<FAQScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Build flat item list with section headers
+    final colors = context.colors;
+    
     final List<Map<String, dynamic>> items = [];
     int globalIndex = 0;
     for (final section in _sections) {
@@ -140,12 +141,11 @@ class _FAQScreenState extends State<FAQScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               child: Row(
@@ -156,19 +156,19 @@ class _FAQScreenState extends State<FAQScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE0F0EE)),
+                        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new_rounded,
                         size: 16,
-                        color: Color(0xFF1A2B2B),
+                        color: colors.textPrimary,
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -176,14 +176,14 @@ class _FAQScreenState extends State<FAQScreen> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A2B2B),
+                          color: colors.textPrimary,
                         ),
                       ),
                       Text(
                         'Everything you need to know.',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF6B7C7C),
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -205,6 +205,7 @@ class _FAQScreenState extends State<FAQScreen> {
 
                   if (item['type'] == 'header') {
                     final section = item['section'] as Map<String, dynamic>;
+                    final sectionColor = section['color'] as Color;
                     return Padding(
                       padding: const EdgeInsets.only(top: 24, bottom: 12),
                       child: Row(
@@ -213,7 +214,7 @@ class _FAQScreenState extends State<FAQScreen> {
                             width: 4,
                             height: 16,
                             decoration: BoxDecoration(
-                              color: section['color'] as Color,
+                              color: sectionColor,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -223,7 +224,7 @@ class _FAQScreenState extends State<FAQScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: section['color'] as Color,
+                              color: sectionColor,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -239,18 +240,17 @@ class _FAQScreenState extends State<FAQScreen> {
                   final accent = section['color'] as Color;
 
                   return GestureDetector(
-                    onTap: () => setState(
-                        () => _expandedIndex = isOpen ? -1 : idx),
+                    onTap: () => setState(() => _expandedIndex = isOpen ? -1 : idx),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isOpen
-                              ? accent.withValues(alpha:0.4)
-                              : const Color(0xFFE8F0EF),
+                              ? accent.withValues(alpha: 0.4)
+                              : colors.textSecondary.withValues(alpha: 0.2),
                           width: 1.5,
                         ),
                       ),
@@ -269,7 +269,7 @@ class _FAQScreenState extends State<FAQScreen> {
                                       fontWeight: FontWeight.w600,
                                       color: isOpen
                                           ? accent
-                                          : const Color(0xFF1A2B2B),
+                                          : colors.textPrimary,
                                       height: 1.4,
                                     ),
                                   ),
@@ -279,20 +279,20 @@ class _FAQScreenState extends State<FAQScreen> {
                                   isOpen
                                       ? Icons.keyboard_arrow_up_rounded
                                       : Icons.keyboard_arrow_down_rounded,
-                                  color: isOpen ? accent : const Color(0xFF6B7C7C),
+                                  color: isOpen ? accent : colors.textSecondary,
                                   size: 20,
                                 ),
                               ],
                             ),
                             if (isOpen) ...[
                               const SizedBox(height: 12),
-                              const Divider(height: 1, color: Color(0xFFEEF5F4)),
+                              Divider(height: 1, color: colors.textSecondary.withValues(alpha: 0.2)),
                               const SizedBox(height: 12),
                               Text(
                                 q['a'] as String,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Color(0xFF4A5A5A),
+                                  color: colors.textSecondary,
                                   height: 1.65,
                                 ),
                               ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
 
@@ -42,10 +44,9 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
-  // Active filters — null means 'no filter applied'
-  String? _filterStatus;    // 'Normal' | 'Stable' | 'High Risk'
-  String? _filterTrend;     // 'up' | 'down' | 'stable'
-  String? _filterRange;     // 'Low' | 'In Range' | 'High'
+  String? _filterStatus;
+  String? _filterTrend;
+  String? _filterRange;
 
   bool get _hasActiveFilters =>
       _filterStatus != null || _filterTrend != null || _filterRange != null;
@@ -94,9 +95,10 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final filtered = _filtered;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(
           builder: (context, orientation) {
@@ -104,7 +106,6 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
             return CustomScrollView(
               physics: const ClampingScrollPhysics(),
               slivers: [
-                // ── Header (scrolls away in landscape) ──
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -115,90 +116,88 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Hi, Dr. Nouran 👋',
                                         style: TextStyle(
                                             fontSize: 20,
-                                            fontWeight: FontWeight.bold)),
+                                            fontWeight: FontWeight.bold,
+                                            color: colors.textPrimary)),
                                     Text('Here is your patients overview',
                                         style: TextStyle(
-                                            fontSize: 13, color: Colors.grey)),
+                                            fontSize: 13, color: colors.textSecondary)),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 16),
                               SizedBox(
                                 width: 340,
-                                child: _buildSearchBar(),
+                                child: _buildSearchBar(context),
                               ),
                             ],
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Hi, Dr. Nouran 👋',
+                              Text('Hi, Dr. Nouran 👋',
                                   style: TextStyle(
                                       fontSize: 24,
-                                      fontWeight: FontWeight.bold)),
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.textPrimary)),
                               const SizedBox(height: 4),
-                              const Text('Here is your patients overview',
+                              Text('Here is your patients overview',
                                   style: TextStyle(
-                                      fontSize: 14, color: Colors.grey)),
+                                      fontSize: 14, color: colors.textSecondary)),
                             ],
                           ),
                   ),
                 ),
 
-                // ── Summary chips ──
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                         16, isLandscape ? 0 : 0, 16, 16),
-                    child: _buildSummaryRow(),
+                    child: _buildSummaryRow(context),
                   ),
                 ),
 
-                // ── Search bar (portrait only — in landscape it's in header) ──
                 if (!isLandscape)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                      child: _buildSearchBar(),
+                      child: _buildSearchBar(context),
                     ),
                   ),
 
-                // ── List title ──
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Your Patients',
+                        Text('Your Patients',
                             style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold)),
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary)),
                         Text('${filtered.length} shown',
-                            style: const TextStyle(
-                                fontSize: 13, color: Colors.grey)),
+                            style: TextStyle(
+                                fontSize: 13, color: colors.textSecondary)),
                       ],
                     ),
                   ),
                 ),
 
-                // ── Empty state ──
                 if (filtered.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     child: Center(
                       child: Text('No patients found.',
-                          style: TextStyle(color: Colors.grey)),
+                          style: TextStyle(color: colors.textSecondary)),
                     ),
                   ),
 
-                // ── Patient list ──
                 if (filtered.isNotEmpty)
                   isLandscape
                       ? SliverPadding(
@@ -236,26 +235,28 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  Widget _buildSummaryRow() {
+  Widget _buildSummaryRow(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
-        _summaryChip('Total', '${_allPatients.length}', const Color(0xFF2BB6A3)),
+        _summaryChip(context, 'Total', '${_allPatients.length}', colors.accent),
         const SizedBox(width: 10),
-        _summaryChip('High Risk', '$_highRiskCount', Colors.red),
+        _summaryChip(context, 'High Risk', '$_highRiskCount', colors.error),
         const SizedBox(width: 10),
-        _summaryChip('Stable', '$_stableCount', Colors.blueGrey),
+        _summaryChip(context, 'Stable', '$_stableCount', Colors.blueGrey),
         const SizedBox(width: 10),
-        _summaryChip('Normal', '$_normalCount', Colors.green),
+        _summaryChip(context, 'Normal', '$_normalCount', Colors.green),
       ],
     );
   }
 
-  Widget _summaryChip(String label, String count, Color color) {
+  Widget _summaryChip(BuildContext context, String label, String count, Color color) {
+    final colors = context.colors;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -286,7 +287,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  void _showFilterSheet() {
+  void _showFilterSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -313,14 +314,15 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -333,10 +335,10 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: (val) => setState(() => _query = val),
-              decoration: const InputDecoration(
-                icon: Icon(Icons.search, color: Colors.grey),
+              decoration: InputDecoration(
+                icon: Icon(Icons.search, color: colors.textSecondary),
                 hintText: 'Search patients...',
-                hintStyle: TextStyle(color: Colors.grey),
+                hintStyle: TextStyle(color: colors.textSecondary),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 14),
               ),
@@ -345,7 +347,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
         ),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: _showFilterSheet,
+          onTap: () => _showFilterSheet(context),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -353,8 +355,8 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: _hasActiveFilters
-                      ? const Color(0xFF1A7A6E)
-                      : const Color(0xFF2BB6A3),
+                      ? colors.primaryDark
+                      : colors.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.tune, color: Colors.white, size: 20),
@@ -428,34 +430,33 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle bar
           Center(
             child: Container(
               margin: const EdgeInsets.symmetric(vertical: 12),
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: colors.textSecondary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          // Header
           Row(
             children: [
-              const Text(
+              Text(
                 'Filter Patients',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.textPrimary),
               ),
               const Spacer(),
               if (_hasAny)
@@ -467,10 +468,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       _range = null;
                     });
                   },
-                  child: const Text(
+                  child: Text(
                     'Clear all',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: colors.error,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -480,34 +481,34 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           ),
           const SizedBox(height: 20),
 
-          // Status
           _filterSection(
+            context,
             title: 'Status',
             icon: Icons.circle_outlined,
             options: const ['Normal', 'Stable', 'High Risk'],
-            colors: const [Colors.green, Colors.blueGrey, Colors.red],
+            optionColors: const [Colors.green, Colors.blueGrey, Colors.red],
             selected: _status,
             onSelect: (val) => setState(() => _status = _status == val ? null : val),
           ),
           const SizedBox(height: 20),
 
-          // Last Reading Range
           _filterSection(
+            context,
             title: 'Last Reading',
             icon: Icons.monitor_heart_outlined,
             options: const ['Low', 'In Range', 'High'],
-            colors: const [Color(0xFFFF6B6B), Color(0xFF2BB6A3), Color(0xFFFF9F40)],
+            optionColors: const [Color(0xFFFF6B6B), Color(0xFF2BB6A3), Color(0xFFFF9F40)],
             selected: _range,
             onSelect: (val) => setState(() => _range = _range == val ? null : val),
           ),
           const SizedBox(height: 20),
 
-          // Glucose Trend
           _filterSection(
+            context,
             title: 'Glucose Trend',
             icon: Icons.trending_up_outlined,
             options: const ['Rising', 'Falling', 'Stable'],
-            colors: const [Colors.red, Color(0xFFFF9F40), Colors.green],
+            optionColors: const [Colors.red, Color(0xFFFF9F40), Colors.green],
             selected: _trend == 'up'
                 ? 'Rising'
                 : _trend == 'down'
@@ -525,7 +526,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           ),
           const SizedBox(height: 28),
 
-          // Apply button
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -535,7 +535,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2BB6A3),
+                backgroundColor: colors.accent,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -556,27 +556,29 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _filterSection({
+  Widget _filterSection(
+    BuildContext context, {
     required String title,
     required IconData icon,
     required List<String> options,
-    required List<Color> colors,
+    required List<Color> optionColors,
     required String? selected,
     required void Function(String) onSelect,
   }) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 15, color: Colors.grey),
+            Icon(icon, size: 15, color: colors.textSecondary),
             const SizedBox(width: 6),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Colors.black54,
+                color: colors.textSecondary,
                 letterSpacing: 0.3,
               ),
             ),
@@ -586,7 +588,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         Row(
           children: List.generate(options.length, (i) {
             final opt = options[i];
-            final color = colors[i];
+            final color = optionColors[i];
             final isSelected = selected == opt;
             return Expanded(
               child: Padding(
@@ -599,10 +601,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? color.withValues(alpha: 0.12)
-                          : Colors.grey.shade50,
+                          : colors.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? color : Colors.grey.shade200,
+                        color: isSelected ? color : colors.textSecondary.withValues(alpha: 0.2),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -612,7 +614,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           Icon(Icons.check_circle, color: color, size: 16)
                         else
                           Icon(Icons.circle_outlined,
-                              color: Colors.grey.shade300, size: 16),
+                              color: colors.textSecondary, size: 16),
                         const SizedBox(height: 4),
                         Text(
                           opt,
@@ -622,7 +624,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             fontWeight: isSelected
                                 ? FontWeight.w700
                                 : FontWeight.w500,
-                            color: isSelected ? color : Colors.grey.shade600,
+                            color: isSelected ? color : colors.textSecondary,
                           ),
                         ),
                       ],
@@ -671,6 +673,7 @@ class _PatientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -684,7 +687,7 @@ class _PatientCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -696,15 +699,13 @@ class _PatientCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Avatar with initials
             CircleAvatar(
               radius: 24,
-              backgroundColor:
-                  const Color(0xFF2BB6A3).withValues(alpha: 0.15),
+              backgroundColor: colors.accent.withValues(alpha: 0.15),
               child: Text(
                 patient.initials,
-                style: const TextStyle(
-                  color: Color(0xFF1A7A6E),
+                style: TextStyle(
+                  color: colors.primaryDark,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -713,16 +714,16 @@ class _PatientCard extends StatelessWidget {
 
             const SizedBox(width: 12),
 
-            // Name + reading + timestamp
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     patient.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -732,8 +733,8 @@ class _PatientCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         patient.lastReading,
-                        style: const TextStyle(
-                          color: Colors.black87,
+                        style: TextStyle(
+                          color: colors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -741,8 +742,8 @@ class _PatientCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         '• ${patient.lastReadingTime}',
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        style: TextStyle(
+                          color: colors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -752,10 +753,8 @@ class _PatientCard extends StatelessWidget {
               ),
             ),
 
-            // Status badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: _statusColor().withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),

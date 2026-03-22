@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class _Alert {
   final String id;
@@ -10,7 +12,7 @@ class _Alert {
   final String title;
   final String description;
   final String timeAgo;
-  final String urgency; // 'emergency' | 'warning' | 'info'
+  final String urgency;
   final String typeLabel;
   bool isRead;
 
@@ -79,16 +81,16 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
 
   int get _unreadCount => _alerts.where((a) => !a.isRead).length;
 
-  Color _uColor(String u) {
+  Color _uColor(String u, GlucoraColors colors) {
     switch (u) {
-      case 'emergency': return const Color(0xFFE63946);
-      case 'warning':   return const Color(0xFFE76F51);
-      default:          return const Color(0xFF2A9D8F);
+      case 'emergency': return colors.error;
+      case 'warning':   return colors.warning;
+      default:          return colors.accent;
     }
   }
 
   void _markRead(_Alert a)  => setState(() => a.isRead = true);
-  void _markAllRead()       => setState(() { for (final a in _alerts) a.isRead = true; });
+  void _markAllRead()       => setState(() { for (final a in _alerts) { a.isRead = true; } });
 
   void _call(String name) {
     HapticFeedback.mediumImpact();
@@ -108,37 +110,35 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final list = _filtered;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(builder: (ctx, orientation) {
           final isLandscape = orientation == Orientation.landscape;
           return CustomScrollView(
             physics: const ClampingScrollPhysics(),
             slivers: [
-
-              // ── Header ────────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(20, isLandscape ? 10 : 24, 20, 0),
                   child: isLandscape
                       ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                          Expanded(child: _headerBlock()),
+                          Expanded(child: _headerBlock(context)),
                           const SizedBox(width: 16),
-                          _filterChips(),
+                          _filterChips(context),
                         ])
-                      : _headerBlock(),
+                      : _headerBlock(context),
                 ),
               ),
 
-              // ── Search bar ────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4F7FA),
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: TextField(
@@ -146,13 +146,13 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                       onChanged: (v) => setState(() => _query = v),
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+                        prefixIcon: Icon(Icons.search, color: colors.textSecondary, size: 20),
                         hintText: 'Search alerts or patient name...',
-                        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                        hintStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
                         border: InputBorder.none,
                         suffixIcon: _query.isNotEmpty
                             ? IconButton(
-                                icon: Icon(Icons.close, color: Colors.grey.shade400, size: 18),
+                                icon: Icon(Icons.close, color: colors.textSecondary, size: 18),
                                 onPressed: () => setState(() { _query = ''; _searchCtrl.clear(); }),
                               )
                             : null,
@@ -162,7 +162,6 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                 ),
               ),
 
-              // ── Filter chips (portrait only) ───────────────────────────────
               if (!isLandscape)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -174,7 +173,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         physics: const ClampingScrollPhysics(),
                         children: ['All', 'Emergency', 'Warning', 'Info']
-                            .map((f) => _chip(f))
+                            .map((f) => _chip(context, f))
                             .toList(),
                       ),
                     ),
@@ -186,30 +185,28 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                   child: Row(children: [
                     Text('${list.length} alert${list.length == 1 ? '' : 's'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                        style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                     const Spacer(),
                     if (_unreadCount > 0)
                       TextButton(
                         onPressed: _markAllRead,
                         style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                        child: const Text('Mark all seen',
-                            style: TextStyle(color: Color(0xFF2A9D8F), fontWeight: FontWeight.w700, fontSize: 13)),
+                        child: Text('Mark all seen',
+                            style: TextStyle(color: colors.accent, fontWeight: FontWeight.w700, fontSize: 13)),
                       ),
                   ]),
                 ),
               ),
 
-              // ── Empty ──────────────────────────────────────────────────────
               if (list.isEmpty)
                 SliverFillRemaining(
                   child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
+                    Icon(Icons.notifications_off_outlined, size: 48, color: colors.textSecondary),
                     const SizedBox(height: 12),
-                    Text('No alerts found.', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+                    Text('No alerts found.', style: TextStyle(color: colors.textSecondary, fontSize: 14)),
                   ])),
                 ),
 
-              // ── Alert cards ────────────────────────────────────────────────
               if (list.isNotEmpty)
                 isLandscape
                     ? SliverPadding(
@@ -219,7 +216,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                             crossAxisCount: 2, crossAxisSpacing: 14, mainAxisExtent: 220,
                           ),
                           delegate: SliverChildBuilderDelegate(
-                            (_, i) => _buildCard(list[i]),
+                            (_, i) => _buildCard(context, list[i]),
                             childCount: list.length,
                           ),
                         ),
@@ -228,7 +225,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
-                            (_, i) => _buildCard(list[i]),
+                            (_, i) => _buildCard(context, list[i]),
                             childCount: list.length,
                           ),
                         ),
@@ -240,31 +237,35 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
     );
   }
 
-  Widget _headerBlock() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Row(children: [
-      const Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
-          color: Color(0xFF1A2B3C), letterSpacing: -0.5)),
-      const Spacer(),
-    ]),
-    const SizedBox(height: 4),
-    _unreadCount > 0
-        ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE63946).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text('$_unreadCount new',
-                style: const TextStyle(color: Color(0xFFE63946), fontWeight: FontWeight.w700, fontSize: 12)))
-        : Text('All caught up', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-    const SizedBox(height: 4),
-  ]);
+  Widget _headerBlock(BuildContext context) {
+    final colors = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+            color: colors.textPrimary, letterSpacing: -0.5)),
+        const Spacer(),
+      ]),
+      const SizedBox(height: 4),
+      _unreadCount > 0
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('$_unreadCount new',
+                  style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)))
+          : Text('All caught up', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+      const SizedBox(height: 4),
+    ]);
+  }
 
-  Widget _filterChips() => Row(mainAxisSize: MainAxisSize.min, children:
+  Widget _filterChips(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children:
       ['All', 'Emergency', 'Warning', 'Info'].map((f) => Padding(
-        padding: const EdgeInsets.only(left: 8), child: _chip(f))).toList());
+        padding: const EdgeInsets.only(left: 8), child: _chip(context, f))).toList());
 
-  Widget _chip(String label) {
+  Widget _chip(BuildContext context, String label) {
+    final colors = context.colors;
     final active = _urgencyFilter == label;
     return GestureDetector(
       onTap: () => setState(() => _urgencyFilter = label),
@@ -273,32 +274,32 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF2A9D8F) : const Color(0xFFF4F7FA),
+          color: active ? colors.accent : colors.surface,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(label, style: TextStyle(
             fontSize: 12, fontWeight: FontWeight.w700,
-            color: active ? Colors.white : Colors.grey.shade500)),
+            color: active ? Colors.white : colors.textSecondary)),
       ),
     );
   }
 
-  Widget _buildCard(_Alert a) {
-    final uc = _uColor(a.urgency);
+  Widget _buildCard(BuildContext context, _Alert a) {
+    final colors = context.colors;
+    final uc = _uColor(a.urgency, colors);
     final patient = _patientById(a.patientId);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: a.isRead
-            ? Border.all(color: Colors.grey.shade100)
+            ? Border.all(color: colors.textSecondary.withValues(alpha:0.2))
             : Border.all(color: uc.withValues(alpha: 0.45), width: 1.5),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Card header ──
         Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
           decoration: BoxDecoration(
@@ -316,15 +317,14 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: uc, letterSpacing: 0.5)),
             ),
             const SizedBox(width: 8),
-            // Patient name chip
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: colors.background,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(a.patientName,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: colors.textSecondary)),
             ),
             const Spacer(),
             if (!a.isRead)
@@ -333,37 +333,35 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
           ]),
         ),
 
-        // ── Title + description ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Text(a.title,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
-                  color: a.isRead ? const Color(0xFF1A2B3C) : uc, height: 1.3)),
+                  color: a.isRead ? colors.textSecondary : uc, height: 1.3)),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
           child: Text(a.description,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.5)),
+              style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.5)),
         ),
 
-        // ── Time + actions ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
           child: Row(children: [
-            Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade400),
+            Icon(Icons.access_time_rounded, size: 12, color: colors.textSecondary),
             const SizedBox(width: 4),
-            Text(a.timeAgo, style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+            Text(a.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
             const Spacer(),
             if (!a.isRead)
-              _btn(Icons.check_rounded, 'Got it', Colors.grey.shade600, Colors.grey.shade100, () => _markRead(a)),
+              _btn(Icons.check_rounded, 'Got it', colors.textSecondary, colors.background, () => _markRead(a)),
             if (a.urgency == 'emergency') ...[
               const SizedBox(width: 8),
               _btn(Icons.call_rounded, 'Call', Colors.white, uc, () => _call(a.patientName)),
             ],
             if (patient != null) ...[
               const SizedBox(width: 8),
-              _btn(Icons.person_outline_rounded, 'View', const Color(0xFF2A9D8F),
-                  const Color(0xFF2A9D8F).withValues(alpha: 0.1), () {
+              _btn(Icons.person_outline_rounded, 'View', colors.accent,
+                  colors.accent.withValues(alpha: 0.1), () {
                 _markRead(a);
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => GuardianPatientDetailScreen(patient: patient),

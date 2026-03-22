@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'doctor_patients_screen.dart';
 import 'doctor_requests_screen.dart';
 import 'doctor_alerts_screen.dart';
-import 'package:glucora_ai_companion/features/auth/login_screen.dart'; // for logout
+import 'package:glucora_ai_companion/features/auth/login_screen.dart';
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({super.key});
@@ -23,11 +27,12 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF2BB6A3),
+        selectedItemColor: colors.accent,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
@@ -100,21 +105,22 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Edit Profile',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -122,10 +128,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text(
+            child: Text(
               'Save',
               style: TextStyle(
-                color: Color(0xFF199A8E),
+                color: colors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -137,9 +143,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            _buildField('Name', _nameController, Icons.person_outline),
+            _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Age',
               _ageController,
               Icons.cake_outlined,
@@ -147,6 +154,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
             ),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Email',
               _emailController,
               Icons.email_outlined,
@@ -154,6 +162,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
             ),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Phone Number',
               _phoneController,
               Icons.phone_outlined,
@@ -161,6 +170,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
             ),
             const SizedBox(height: 16),
             _buildField(
+              context,
               'Address',
               _addressController,
               Icons.location_on_outlined,
@@ -173,17 +183,19 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   }
 
   Widget _buildField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final colors = context.colors;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF199A8E)),
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -243,6 +255,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   String _address = "123 Medical Center, Cairo";
 
   void _showLogoutDialog(BuildContext context) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -252,9 +265,9 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Color(0xFF888888)),
+              style: TextStyle(color: colors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -266,7 +279,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF1616),
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -282,6 +295,9 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final colors = context.colors;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -289,12 +305,12 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Profile",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -304,8 +320,8 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                   Container(
                     width: 90,
                     height: 90,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF199A8E),
+                    decoration: BoxDecoration(
+                      color: colors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -320,19 +336,19 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                     children: [
                       Text(
                         _name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E),
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit,
                           size: 18,
-                          color: Color(0xFF199A8E),
+                          color: colors.primary,
                         ),
                       ),
                     ],
@@ -340,7 +356,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                   const SizedBox(height: 4),
                   Text(
                     "$_age years",
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -350,7 +366,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFEEEEEE)),
                 boxShadow: [
@@ -363,28 +379,40 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.email_outlined, "Email", _email),
+                  _infoRow(context, Icons.email_outlined, "Email", _email),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.phone_outlined, "Phone", _phone),
+                  _infoRow(context, Icons.phone_outlined, "Phone", _phone),
                   const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(Icons.location_on_outlined, "Address", _address),
+                  _infoRow(context, Icons.location_on_outlined, "Address", _address),
                 ],
               ),
             ),
+
+            // ========== DARK MODE TOGGLE ==========
             const SizedBox(height: 24),
-            const Text(
+            SwitchListTile(
+              title: Text('Dark Mode', style: TextStyle(color: colors.textPrimary)),
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (_) => themeProvider.toggleTheme(),
+              activeThumbColor: colors.primary,
+              contentPadding: EdgeInsets.zero,
+            ),
+            // ========== END DARK MODE TOGGLE ==========
+
+            const SizedBox(height: 24),
+            Text(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
-            _faqItem("How do I connect my glucose monitor?"),
-            _faqItem("What do the glucose ranges mean?"),
-            _faqItem("Can I share data with my doctor?"),
-            _faqItem("How accurate are the predictions?"),
+            _faqItem(context, "How do I connect my glucose monitor?"),
+            _faqItem(context, "What do the glucose ranges mean?"),
+            _faqItem(context, "Can I share data with my doctor?"),
+            _faqItem(context, "How accurate are the predictions?"),
             const SizedBox(height: 24),
             Center(
               child: SizedBox(
@@ -393,15 +421,15 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                 child: OutlinedButton(
                   onPressed: () => _showLogoutDialog(context),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFEF1616)),
+                    side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     "Log Out",
                     style: TextStyle(
-                      color: Color(0xFFEF1616),
+                      color: colors.error,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -416,25 +444,26 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF199A8E)),
+        Icon(icon, size: 16, color: colors.primary),
         const SizedBox(width: 12),
         SizedBox(
           width: 70,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
+              color: colors.textPrimary,
             ),
           ),
         ),
@@ -442,12 +471,13 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     );
   }
 
-  Widget _faqItem(String question) {
+  Widget _faqItem(BuildContext context, String question) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
@@ -457,10 +487,10 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           Expanded(
             child: Text(
               question,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A2E)),
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+          Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
         ],
       ),
     );

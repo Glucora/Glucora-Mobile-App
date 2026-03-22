@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'care_plan.dart';
-
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 // ─── SCREEN ──────────────────────────────────────────────────────────────────
 
 class CarePlanEditorScreen extends StatefulWidget {
@@ -72,6 +73,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
   }
 
   Future<void> _save() async {
+    final colors = context.colors;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
@@ -83,7 +85,6 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     _plan.maxAutoBolus = double.tryParse(_maxBolusCtrl.text) ?? 4.0;
     _plan.doctorNotes = _notesCtrl.text.trim();
 
-    // Simulate API save
     await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;
@@ -101,7 +102,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF2BB6A3),
+        backgroundColor: colors.accent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
@@ -113,9 +114,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
-      appBar: _buildAppBar(),
+      backgroundColor: colors.background,
+      appBar: _buildAppBar(context),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -124,48 +126,45 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _patientChip(),
+              _patientChip(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(
-                Icons.track_changes_outlined,
-                'Target Glucose Range',
-              ),
+              _sectionHeader(context, Icons.track_changes_outlined, 'Target Glucose Range'),
               const SizedBox(height: 12),
-              _buildTargetRangeCard(),
+              _buildTargetRangeCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.water_drop_outlined, 'Insulin Type'),
+              _sectionHeader(context, Icons.water_drop_outlined, 'Insulin Type'),
               const SizedBox(height: 12),
-              _buildInsulinTypeCard(),
+              _buildInsulinTypeCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.schedule_outlined, 'Basal Program'),
+              _sectionHeader(context, Icons.schedule_outlined, 'Basal Program'),
               const SizedBox(height: 12),
-              _buildBasalProgramCard(),
+              _buildBasalProgramCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.calculate_outlined, 'Dosing Ratios'),
+              _sectionHeader(context, Icons.calculate_outlined, 'Dosing Ratios'),
               const SizedBox(height: 12),
-              _buildDosingRatiosCard(),
+              _buildDosingRatiosCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.bolt_outlined, 'AID Limits'),
+              _sectionHeader(context, Icons.bolt_outlined, 'AID Limits'),
               const SizedBox(height: 12),
-              _buildAIDLimitsCard(),
+              _buildAIDLimitsCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.calendar_today_outlined, 'Next Appointment'),
+              _sectionHeader(context, Icons.calendar_today_outlined, 'Next Appointment'),
               const SizedBox(height: 12),
-              _buildAppointmentCard(),
+              _buildAppointmentCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(Icons.notes_outlined, 'Doctor Notes'),
+              _sectionHeader(context, Icons.notes_outlined, 'Doctor Notes'),
               const SizedBox(height: 12),
-              _buildNotesCard(),
+              _buildNotesCard(context),
               const SizedBox(height: 36),
 
-              _buildSaveButton(),
+              _buildSaveButton(context),
             ],
           ),
         ),
@@ -173,11 +172,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── APP BAR ───────────────────────────────────────────────
-
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context) {
+    final colors = context.colors;
     return AppBar(
-      backgroundColor: const Color(0xFF1A7A6E),
+      backgroundColor: colors.primaryDark,
       foregroundColor: Colors.white,
       elevation: 0,
       title: const Column(
@@ -204,27 +202,26 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── PATIENT CHIP ──────────────────────────────────────────
-
-  Widget _patientChip() {
+  Widget _patientChip(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF2BB6A3).withValues(alpha: 0.1),
+        color: colors.accent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF2BB6A3).withValues(alpha: 0.3),
+          color: colors.accent.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.person_outline, color: Color(0xFF1A7A6E), size: 16),
+          Icon(Icons.person_outline, color: colors.primaryDark, size: 16),
           const SizedBox(width: 8),
           Text(
             'Editing plan for ${widget.patientName}',
-            style: const TextStyle(
-              color: Color(0xFF1A7A6E),
+            style: TextStyle(
+              color: colors.primaryDark,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -234,19 +231,18 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── SECTION HEADER ────────────────────────────────────────
-
-  Widget _sectionHeader(IconData icon, String title) {
+  Widget _sectionHeader(BuildContext context, IconData icon, String title) {
+    final colors = context.colors;
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF1A7A6E)),
+        Icon(icon, size: 18, color: colors.primaryDark),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1A2B3C),
+            color: colors.textPrimary,
             letterSpacing: -0.3,
           ),
         ),
@@ -254,16 +250,17 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── TARGET RANGE ──────────────────────────────────────────
-
-  Widget _buildTargetRangeCard() {
+  Widget _buildTargetRangeCard(BuildContext context) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
                 child: _labeledField(
+                  context,
                   label: 'Minimum',
                   unit: 'mg/dL',
                   controller: _targetMinCtrl,
@@ -285,7 +282,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                       '—',
                       style: TextStyle(
                         fontSize: 20,
-                        color: Colors.grey.shade400,
+                        color: colors.textSecondary,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
@@ -294,6 +291,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               ),
               Expanded(
                 child: _labeledField(
+                  context,
                   label: 'Maximum',
                   unit: 'mg/dL',
                   controller: _targetMaxCtrl,
@@ -312,19 +310,19 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2BB6A3).withValues(alpha: 0.07),
+              color: colors.accent.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.info_outline, size: 14, color: Color(0xFF2BB6A3)),
-                SizedBox(width: 8),
+                Icon(Icons.info_outline, size: 14, color: colors.accent),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Recommended range: 70–180 mg/dL for most Type 1 patients.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF1A7A6E),
+                      color: colors.primaryDark,
                       height: 1.4,
                     ),
                   ),
@@ -337,33 +335,33 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── INSULIN TYPE ──────────────────────────────────────────
-
-  Widget _buildInsulinTypeCard() {
+  Widget _buildInsulinTypeCard(BuildContext context) {
+    final colors = context.colors;
     return _card(
+      context,
       child: DropdownButtonFormField<String>(
         initialValue: _plan.insulinType,
         decoration: InputDecoration(
           labelText: 'Insulin Type',
-          labelStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+          labelStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 14,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+            borderSide: BorderSide(color: colors.accent, width: 1.5),
           ),
           filled: true,
-          fillColor: Colors.grey.shade50,
+          fillColor: colors.surface,
         ),
         items: _insulinTypes
             .map(
@@ -378,17 +376,17 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── BASAL PROGRAM ─────────────────────────────────────────
-
-  Widget _buildBasalProgramCard() {
+  Widget _buildBasalProgramCard(BuildContext context) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         children: [
           ...List.generate(_plan.basalProgram.length, (i) {
             final seg = _plan.basalProgram[i];
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _basalSegmentRow(seg, i),
+              child: _basalSegmentRow(context, seg, i),
             );
           }),
           const Divider(height: 8),
@@ -406,14 +404,14 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               children: [
                 Icon(
                   Icons.add_circle_outline,
-                  color: const Color(0xFF2BB6A3),
+                  color: colors.accent,
                   size: 18,
                 ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'Add Segment',
                   style: TextStyle(
-                    color: Color(0xFF2BB6A3),
+                    color: colors.accent,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -426,13 +424,14 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  Widget _basalSegmentRow(BasalSegment seg, int index) {
+  Widget _basalSegmentRow(BuildContext context, BasalSegment seg, int index) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F7FA),
+        color: colors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,10 +440,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             children: [
               Text(
                 'Segment ${index + 1}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black54,
+                  color: colors.textSecondary,
                 ),
               ),
               const Spacer(),
@@ -465,6 +464,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             children: [
               Expanded(
                 child: _timePickerField(
+                  context,
                   label: 'Start',
                   hour: seg.startHour,
                   onChanged: (h) => setState(() => seg.startHour = h),
@@ -473,6 +473,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _timePickerField(
+                  context,
                   label: 'End',
                   hour: seg.endHour,
                   onChanged: (h) => setState(() => seg.endHour = h),
@@ -481,6 +482,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _numericField(
+                  context,
                   label: 'Rate',
                   unit: 'U/h',
                   initialValue: seg.rate.toString(),
@@ -497,11 +499,13 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  Widget _timePickerField({
+  Widget _timePickerField(
+    BuildContext context, {
     required String label,
     required int hour,
     required void Function(int) onChanged,
   }) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: () async {
         final picked = await showTimePicker(
@@ -517,30 +521,30 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: TextStyle(fontSize: 10, color: colors.textSecondary),
             ),
             const SizedBox(height: 2),
             Row(
               children: [
                 Text(
                   '${hour.toString().padLeft(2, '0')}:00',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A2B3C),
+                    color: colors.textPrimary,
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                Icon(Icons.access_time, size: 12, color: colors.textSecondary),
               ],
             ),
           ],
@@ -549,23 +553,25 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  Widget _numericField({
+  Widget _numericField(
+    BuildContext context, {
     required String label,
     required String unit,
     required String initialValue,
     required void Function(String) onChanged,
   }) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
           TextFormField(
             initialValue: initialValue,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -573,10 +579,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
             ],
             onChanged: onChanged,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A2B3C),
+              color: colors.textPrimary,
             ),
             decoration: InputDecoration(
               isDense: true,
@@ -584,7 +590,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               contentPadding: EdgeInsets.zero,
               suffix: Text(
                 unit,
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                style: TextStyle(fontSize: 10, color: colors.textSecondary),
               ),
             ),
           ),
@@ -593,13 +599,13 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── DOSING RATIOS ─────────────────────────────────────────
-
-  Widget _buildDosingRatiosCard() {
+  Widget _buildDosingRatiosCard(BuildContext context) {
     return _card(
+      context,
       child: Column(
         children: [
           _labeledField(
+            context,
             label: 'Insulin-to-Carb Ratio (ICR)',
             unit: 'g carbs per 1 U',
             controller: _icrCtrl,
@@ -614,6 +620,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           ),
           const SizedBox(height: 16),
           _labeledField(
+            context,
             label: 'Insulin Sensitivity Factor (ISF)',
             unit: 'mg/dL per 1 U',
             controller: _isfCtrl,
@@ -631,13 +638,14 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── AID LIMITS ────────────────────────────────────────────
-
-  Widget _buildAIDLimitsCard() {
+  Widget _buildAIDLimitsCard(BuildContext context) {
+    final colors = context.colors;
     return _card(
+      context,
       child: Column(
         children: [
           _labeledField(
+            context,
             label: 'Maximum Auto-Bolus',
             unit: 'units per event',
             controller: _maxBolusCtrl,
@@ -654,23 +662,23 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF3E0),
+              color: colors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
                   size: 14,
-                  color: Color(0xFFFF9F40),
+                  color: colors.warning,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'The AID system will never deliver more than this in a single automated correction.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF8B6000),
+                      color: colors.warning,
                       height: 1.4,
                     ),
                   ),
@@ -683,11 +691,11 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── APPOINTMENT ───────────────────────────────────────────
-
-  Widget _buildAppointmentCard() {
+  Widget _buildAppointmentCard(BuildContext context) {
+    final colors = context.colors;
     final date = _plan.nextAppointment;
     return _card(
+      context,
       child: GestureDetector(
         onTap: () async {
           final picked = await showDatePicker(
@@ -697,8 +705,8 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
             builder: (ctx, child) => Theme(
               data: Theme.of(ctx).copyWith(
-                colorScheme: const ColorScheme.light(
-                  primary: Color(0xFF2BB6A3),
+                colorScheme: ColorScheme.light(
+                  primary: colors.accent,
                   onPrimary: Colors.white,
                 ),
               ),
@@ -712,15 +720,15 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.calendar_today_outlined,
-                color: Color(0xFF2BB6A3),
+                color: colors.accent,
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -728,9 +736,9 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Next Appointment',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -741,14 +749,14 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: date != null
-                            ? const Color(0xFF1A2B3C)
-                            : Colors.grey.shade400,
+                            ? colors.textPrimary
+                            : colors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+              Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
             ],
           ),
         ),
@@ -756,57 +764,54 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── NOTES ─────────────────────────────────────────────────
-
-  Widget _buildNotesCard() {
+  Widget _buildNotesCard(BuildContext context) {
+    final colors = context.colors;
     return _card(
+      context,
       child: TextFormField(
         controller: _notesCtrl,
         maxLines: 5,
         minLines: 4,
         textCapitalization: TextCapitalization.sentences,
-        style: const TextStyle(fontSize: 14, height: 1.5),
+        style: TextStyle(fontSize: 14, height: 1.5, color: colors.textPrimary),
         decoration: InputDecoration(
           hintText:
               'Add instructions, reminders, or observations for this patient...',
           hintStyle: TextStyle(
-            color: Colors.grey.shade400,
+            color: colors.textSecondary,
             fontSize: 13,
             height: 1.5,
           ),
           contentPadding: const EdgeInsets.all(14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.grey.shade200),
+            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+            borderSide: BorderSide(color: colors.accent, width: 1.5),
           ),
           filled: true,
-          fillColor: Colors.grey.shade50,
+          fillColor: colors.surface,
         ),
       ),
     );
   }
 
-  // ─── SAVE BUTTON ───────────────────────────────────────────
-
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 54,
       child: ElevatedButton(
         onPressed: _isSaving ? null : _save,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2BB6A3),
-          disabledBackgroundColor: const Color(
-            0xFF2BB6A3,
-          ).withValues(alpha: 0.6),
+          backgroundColor: colors.accent,
+          disabledBackgroundColor: colors.accent.withValues(alpha: 0.6),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -840,14 +845,13 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  // ─── SHARED HELPERS ────────────────────────────────────────
-
-  Widget _card({required Widget child}) {
+  Widget _card(BuildContext context, {required Widget child}) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -861,7 +865,8 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
-  Widget _labeledField({
+  Widget _labeledField(
+    BuildContext context, {
     required String label,
     required String unit,
     required TextEditingController controller,
@@ -870,6 +875,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     TextInputType keyboardType = TextInputType.number,
     String? Function(String?)? validator,
   }) {
+    final colors = context.colors;
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
@@ -877,19 +883,19 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
       ],
       validator: validator,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF1A2B3C),
+        color: colors.textPrimary,
       ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+        labelStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
         hintText: hint,
         suffixText: unit,
-        suffixStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+        suffixStyle: TextStyle(fontSize: 12, color: colors.textSecondary),
         helperText: helperText,
-        helperStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+        helperStyle: TextStyle(fontSize: 11, color: colors.textSecondary),
         helperMaxLines: 2,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -897,15 +903,15 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2BB6A3), width: 1.5),
+          borderSide: BorderSide(color: colors.accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -916,7 +922,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: colors.surface,
       ),
     );
   }
