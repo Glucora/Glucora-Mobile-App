@@ -33,20 +33,23 @@ Future<Map<String, dynamic>?> getLatestGlucoseReading(int patientProfileId) asyn
   try {
     final response = await _db
         .from('glucose_readings')
-        .select()
+        .select('id, patient_id, value_mg_dl, recorded_at, trend, source')
         .eq('patient_id', patientProfileId)
         .order('recorded_at', ascending: false)
         .limit(1)
         .maybeSingle();
 
+    if (kDebugMode) {
+      print('[SupabaseService] glucose query response: $response');
+    }
+
     return response;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] getLatestGlucoseReading error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] getLatestGlucoseReading error: $e');
     return null;
   }
 }
+
 
 // ─── AI PREDICTIONS ───────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 // ─── RECOMMENDATION MODEL ─────────────────────────────────────────────────────
 
 /// A single structured recommendation parsed from the AI response.
@@ -22,8 +22,7 @@ class AIRecommendation {
 class AIService {
   // IMPORTANT: move this key to a .env file and add .env to .gitignore
   // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
-  static const String _apiKey = "OPENROUTER_API_KEY";
-  static const String _baseUrl =
+static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;  static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
   static const String _model = 'meta-llama/llama-3.2-3b-instruct:free';
 
