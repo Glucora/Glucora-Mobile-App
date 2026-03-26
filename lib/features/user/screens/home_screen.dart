@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -11,6 +12,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final supabase = Supabase.instance.client;
+    final String userName = supabase.auth.currentUser?.userMetadata?['full_name'] ?? "User";
+
     final colors = context.colors;
 
     SystemChrome.setPreferredOrientations([
@@ -38,7 +42,7 @@ class HomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Welcome Back, Malak!",
+                  "Welcome Back, $userName!",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
