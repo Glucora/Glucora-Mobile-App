@@ -586,6 +586,17 @@ Future<void> _loadProfileData() async {
         'liscense_number': result['license_number'], // Matches your schema typo
       }).eq('user_id', userId);
 
+      await supabase.auth.updateUser(
+        UserAttributes(
+          data: {
+            'full_name': result['full_name'],
+            'phone': result['phone_no'],
+            // You can even sync the role if you want
+            'role': 'doctor', 
+          },
+        ),
+      );
+
       // 3. Reload data to refresh UI
       await _loadProfileData();
     } catch (e) {
@@ -593,5 +604,14 @@ Future<void> _loadProfileData() async {
     } finally {
       setState(() => _isLoading = false);
     }
+
+    if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profile updated successfully!'),
+        backgroundColor: Colors.green, // Optional: makes it look better
+      ),
+    );
+  }
   }
 }}
