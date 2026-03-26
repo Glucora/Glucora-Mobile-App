@@ -75,7 +75,6 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   final String license;   // Add this
 
   const _EditDoctorProfileScreen({
-    super.key,
     required this.name,
     required this.age,
     required this.email,

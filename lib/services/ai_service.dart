@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // ─── RECOMMENDATION MODEL ─────────────────────────────────────────────────────
 
@@ -21,15 +20,12 @@ class AIRecommendation {
 // ─── AI SERVICE ───────────────────────────────────────────────────────────────
 
 class AIService {
-  static String get _apiKey {
-    final key = dotenv.env['OPENROUTER_API_KEY'];
-    if (key == null || key.isEmpty) {
-      throw Exception('OPENROUTER_API_KEY not found in environment variables. Please check your .env file.');
-    }
-    return key;
-  }
-  
-  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  // IMPORTANT: move this key to a .env file and add .env to .gitignore
+  // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
+  static const String _apiKey =
+      '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';
+  static const String _baseUrl =
+      'https://openrouter.ai/api/v1/chat/completions';
   static const String _model = 'meta-llama/llama-3.2-3b-instruct:free';
 
   /// Calls OpenRouter with the patient's glucose data and returns a structured
@@ -78,7 +74,7 @@ Rules:
           .post(
             Uri.parse(_baseUrl),
             headers: {
-              'Authorization': 'Bearer ${_apiKey}',  // ✅ Using the getter
+              'Authorization': 'Bearer $_apiKey',
               'Content-Type': 'application/json',
               'HTTP-Referer': 'https://glucora.app',
               'X-Title': 'Glucora AI Companion',
@@ -202,7 +198,7 @@ Rules:
           .post(
             Uri.parse(_baseUrl),
             headers: {
-              'Authorization': 'Bearer ${_apiKey}',  // ✅ Using the getter
+              'Authorization': 'Bearer $_apiKey',
               'Content-Type': 'application/json',
             },
             body: jsonEncode({

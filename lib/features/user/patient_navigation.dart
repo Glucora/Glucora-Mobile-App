@@ -156,7 +156,6 @@ class _EditProfileScreen extends StatefulWidget {
   final String weight;
 
   const _EditProfileScreen({
-    super.key,
     required this.name,
     required this.age,
     this.email,
