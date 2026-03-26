@@ -310,13 +310,21 @@ class _EditGuardianProfileScreenState
     final updatedEmail = _emailController.text.trim();
     final updatedPhone = _phoneController.text.trim();
 
+    if (updatedName.isEmpty || updatedEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name and Email are required')),
+      );
+      return;
+    }
+
     Navigator.pop(context, {
-      'name': updatedName.isEmpty ? widget.name : updatedName,
+      'name': updatedName,
       'age': updatedAge,
-      'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
-      'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
+      'email': updatedEmail,
+      'phone': updatedPhone,
     });
   }
+
 
   @override
   void dispose() {
@@ -339,11 +347,115 @@ class _GuardianProfileTab extends StatefulWidget {
 }
 
 class _GuardianProfileTabState extends State<_GuardianProfileTab> {
-  String _name = "Guardian Name";
-  int _age = 40;
-  String _email = "guardian@example.com";
-  String _phone = "01234567890";
+  String _name = "";
+  int _age = 0;
+  String _email = "";
+  String _phone = "";
+  bool _isLoading = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+Future<void> _loadProfileData() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      // 1. Fetch joined data: Users + Guardian Profile (Age)
+      final data = await supabase
+          .from('users')
+          .select('full_name, email, phone_no, guardian_profile(age)')
+          .eq('id', user.id)
+          .single();
+
+      setState(() {
+        _name = data['full_name'] ?? "Guardian";
+        _email = data['email'] ?? "";
+        _phone = data['phone_no'] ?? "";
+        
+        final profile = data['guardian_profile'];
+        if (profile != null) {
+          // If joined data is a list, take first; if map, take directly
+          final p = (profile is List) ? profile.first : profile;
+          _age = (p['age'] as num?)?.toInt() ?? 0;
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Fetch error: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _editProfile() async {
+  final Map<String, dynamic>? result = await Navigator.push<Map<String, dynamic>>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _EditGuardianProfileScreen(
+        name: _name,
+        age: _age,
+        email: _email,
+        phone: _phone,
+      ),
+    ),
+  );
+
+  if (result != null) {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Sync with Authentication Dashboard (raw_user_meta_data)
+       await supabase.auth.updateUser(
+        UserAttributes(
+          email: result['email'] != _email ? result['email'] : null,
+          data: {
+            'full_name': result['name'],
+            'phone': result['phone_no'],
+          },
+        ),
+      );
+
+      // 2. Update Public 'users' table
+      await supabase.from('users').update({
+        'full_name': result['name'],
+        'email': result['email'],
+        'phone_no': result['phone'],
+      }).eq('id', userId);
+
+      // 3. Update 'guardian_profile' table (This saves the AGE)
+      // We use .eq('user_id', userId) to match your schema connection
+      await supabase.from('guardian_profile').update({
+        'age': result['age'],
+      }).eq('user_id', userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
+      }
+      
+      // 4. Refresh local UI data
+      await _loadProfileData();
+      
+    } catch (e) {
+      debugPrint("Update error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
+  }
+}  
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
     showDialog(
@@ -613,28 +725,5 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
         ],
       ),
     );
-  }
-
-  void _editProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _EditGuardianProfileScreen(
-          name: _name,
-          age: _age,
-          email: _email,
-          phone: _phone,
-        ),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _email = result['email'];
-        _phone = result['phone'];
-      });
-    }
   }
 }
