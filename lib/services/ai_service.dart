@@ -22,8 +22,7 @@ class AIRecommendation {
 class AIService {
   // IMPORTANT: move this key to a .env file and add .env to .gitignore
   // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
-  static const String _apiKey =
-      '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';
+  static const String _apiKey = "OPENROUTER_API_KEY";
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
   static const String _model = 'meta-llama/llama-3.2-3b-instruct:free';
