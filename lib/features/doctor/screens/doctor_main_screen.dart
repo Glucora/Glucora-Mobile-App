@@ -247,11 +247,38 @@ class _DoctorProfileTab extends StatefulWidget {
 }
 
 class _DoctorProfileTabState extends State<_DoctorProfileTab> {
-  String _name = "Dr. Nouran";
-  int _age = 45;
-  String _email = "Nouran@gmail.com";
-  String _phone = "01118027001";
-  String _address = "123 Medical Center, Cairo";
+  String _name = "";
+  int _age = 0;
+  String _email = "";
+  String _phone = "";
+  String _address = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    _name = user.userMetadata?['full_name'] ?? '';
+    _email = user.email ?? '';
+    _phone = user.userMetadata?['phone'] ?? '';
+
+    final doctorRow = await Supabase.instance.client
+        .from('doctor_profile')
+        .select('age, clinic_address')
+        .eq('user_id', user.id)
+        .single();
+
+    if (!mounted) return;
+    setState(() {
+      _age = doctorRow['age'] != null ? (doctorRow['age'] as num).toInt() : 0;
+      _address = doctorRow['clinic_address'] ?? '';
+    });
+  }
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
@@ -530,14 +557,29 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
       ),
     );
 
-    if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _email = result['email'];
-        _phone = result['phone'];
-        _address = result['address'];
-      });
-    }
+    if (result == null) return;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    await Supabase.instance.client.auth.updateUser(
+      UserAttributes(
+        data: {'full_name': result['name'], 'phone': result['phone']},
+      ),
+    );
+
+    await Supabase.instance.client
+        .from('doctor_profile')
+        .update({'age': result['age'], 'clinic_address': result['address']})
+        .eq('user_id', user.id);
+
+    if (!mounted) return;
+    setState(() {
+      _name = result['name'];
+      _age = result['age'];
+      _email = result['email'];
+      _phone = result['phone'];
+      _address = result['address'];
+    });
   }
 }

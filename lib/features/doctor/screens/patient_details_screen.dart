@@ -4,10 +4,12 @@ import 'care_plan_editor_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
+  final int patientId;
   final String patientName;
 
   const PatientDetailsScreen({
     super.key,
+    required this.patientId,
     required this.patientName,
   });
 
