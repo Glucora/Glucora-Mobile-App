@@ -1,3 +1,4 @@
+// lib\features\doctor\screens\doctor_patients_screen.dart
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -9,13 +10,15 @@ final supabase = Supabase.instance.client;
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
 
 class _Patient {
+  final int id;
   final String name;
   final String status;
   final int glucoseValue;
   final String lastReadingTime;
-  final String trend; // 'up', 'down', 'stable'
+  final String trend;
 
   const _Patient({
+    required this.id,
     required this.name,
     required this.status,
     required this.glucoseValue,
@@ -55,38 +58,50 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   }
 
   Future<void> _fetchDoctorName() async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return; // user not logged in, do nothing
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-    final response = await supabase
-        .from('doctors')
-        .select('full_name')
-        .eq('id', userId) // guaranteed non-null now
-        .single();
-
+    final fullName = user.userMetadata?['full_name'] as String?;
+    if (!mounted) return;
     setState(() {
-      _doctorName = response['full_name'] ?? 'Doctor';
+      _doctorName = fullName ?? 'Doctor';
     });
   }
 
   Future<void> _fetchPatients() async {
-    final response = await supabase.from('patient_list_view').select();
-    setState(() {
-      _allPatients = (response as List)
-          .map(
-            (row) => _Patient(
-              name: row['full_name'],
-              glucoseValue: (row['value_mg_dl'] as num).toInt(),
-              trend: row['trend'] ?? 'stable',
-              lastReadingTime: _timeAgo(row['recorded_at']),
-              status: _calculateStatus((row['value_mg_dl'] as num).toInt()),
-            ),
-          )
-          .toList();
-      // Debugging
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final doctorRow = await supabase
+          .from('doctor_profile')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+      final doctorProfileId = doctorRow['id'] as String;
+
+      final response = await supabase
+          .from('patient_list_view')
+          .select()
+          .eq('doctor_id', doctorProfileId);
       print(response);
-      print(_allPatients.map((p) => p.status).toList());
-    });
+      setState(() {
+        _allPatients = (response as List)
+            .map(
+              (row) => _Patient(
+                id: (row['patient_id'] as num).toInt(),
+                name: row['full_name'],
+                glucoseValue: (row['value_mg_dl'] as num).toInt(),
+                trend: row['trend'] ?? 'stable',
+                lastReadingTime: row['recorded_at'] != null
+                    ? _timeAgo(row['recorded_at'])
+                    : 'No readings',
+                status: _calculateStatus((row['value_mg_dl'] as num).toInt()),
+              ),
+            )
+            .toList();
+      });
+    } catch (e) {
+      print('FETCH ERROR: $e');
+    }
   }
 
   String _calculateStatus(int glucose) {
@@ -198,7 +213,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Hi, Dr. Nouran 👋',
+                                'Hi, Dr. $_doctorName 👋',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -790,7 +805,10 @@ class _PatientCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => PatientDetailsScreen(patientName: patient.name),
+            builder: (_) => PatientDetailsScreen(
+              patientId: patient.id,
+              patientName: patient.name,
+            ),
           ),
         );
       },
