@@ -591,8 +591,6 @@ Future<void> _loadProfileData() async {
           data: {
             'full_name': result['full_name'],
             'phone': result['phone_no'],
-            // You can even sync the role if you want
-            'role': 'doctor', 
           },
         ),
       );

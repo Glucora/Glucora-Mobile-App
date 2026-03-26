@@ -415,10 +415,10 @@ Future<void> _loadProfileData() async {
       // 1. Sync with Authentication Dashboard (raw_user_meta_data)
        await supabase.auth.updateUser(
         UserAttributes(
-          email: result['email'] != _email ? result['email'] : null,
+           email: result['email'],
           data: {
             'full_name': result['name'],
-            'phone': result['phone_no'],
+            'phone': result['phone'],
           },
         ),
       );
