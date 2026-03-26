@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/features/doctor/screens/care_plan.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 final _mockPlan = CarePlan(
   targetGlucoseMin: 70,

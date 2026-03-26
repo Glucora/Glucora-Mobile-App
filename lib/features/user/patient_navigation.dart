@@ -280,19 +280,53 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     );
   }
 
-  void _save() {
-    final updatedName = _nameController.text.trim();
-    final updatedAge = int.tryParse(_ageController.text.trim()) ?? widget.age;
-    final updatedHeight = _heightController.text.trim();
-    final updatedWeight = _weightController.text.trim();
+Future<void> _save() async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return;
 
-    Navigator.pop(context, {
-      'name': updatedName.isEmpty ? widget.name : updatedName,
-      'age': updatedAge,
-      'height': updatedHeight.isEmpty ? widget.height : updatedHeight,
-      'weight': updatedWeight.isEmpty ? widget.weight : updatedWeight,
-    });
+  try {
+    // 1. Update the Users table
+    await Supabase.instance.client
+        .from('users')
+        .update({'full_name': _nameController.text})
+        .eq('id', user.id);
+
+    // 2. Extract values and Update Patient Profile
+    final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final ageValue = int.tryParse(_ageController.text) ?? 0;
+
+    await Supabase.instance.client
+        .from('patient_profile')
+        .update({
+          'weight_kg': weightValue,
+          'height_cm': heightValue,
+          'age': ageValue,
+        })
+        .eq('user_id', user.id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
+      
+      // RETURN THE DATA HERE
+      Navigator.pop(context, {
+        'name': _nameController.text,
+        'age': ageValue,
+        'height': "${heightValue.toInt()} cm",
+        'weight': "${weightValue.toInt()} kgs",
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
+}
+
 
   @override
   void dispose() {
@@ -806,11 +840,75 @@ class _ProfileTab extends StatefulWidget {
   State<_ProfileTab> createState() => _ProfileTabState();
 }
 
+
+
 class _ProfileTabState extends State<_ProfileTab> {
-  String _name = "Malak Mohamed";
-  int _age = 21;
-  String _height = "157 cm";
-  String _weight = "48 kgs";
+    String _name = "";
+    int _age = 0; 
+    String _height = "";
+    String _weight = "";
+
+    bool _isLoading = true;
+    final supabase = Supabase.instance.client;
+
+    @override
+    void initState() {
+      super.initState();
+      _loadProfile();
+    }
+
+Future<void> _loadProfile() async {
+  try {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    // 🔹 Try to get user
+    var userData = await supabase
+      .from('users')
+      .select()
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // 👉 If user doesn't exist → create it
+    userData ??= await supabase.from('users').insert({
+        'id': user.id,
+        'email': user.email,
+        'full_name': 'New User',
+      }).select().single();
+
+    // 🔹 Try to get patient profile
+  var patientData = await supabase
+      .from('patient_profile')
+      .select()
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // 👉 If patient profile doesn't exist → create it
+    patientData ??= await supabase.from('patient_profile').insert({
+        'user_id': user.id,
+        'height_cm': 0,
+        'weight_kg': 0,
+      }).select().single();
+    // ignore: avoid_print
+    print("USER DATA: $userData");
+    // ignore: avoid_print
+    print("PATIENT DATA: $patientData");
+    // ✅ Set UI
+    setState(() {
+  setState(() {
+    _name = userData?['full_name'] ?? "No Name";
+    _height = "${patientData?['height_cm'] ?? 0} cm";
+    _weight = "${patientData?['weight_kg'] ?? 0} kg";
+    _age = (patientData?['age'] ?? 0).toInt();
+    _isLoading = false;
+  });
+    });
+  } catch (e) {
+    // ignore: avoid_print
+    print("Error loading profile: $e");
+    setState(() => _isLoading = false);
+  }
+}
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
@@ -863,6 +961,10 @@ class _ProfileTabState extends State<_ProfileTab> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
+    
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1233,26 +1335,23 @@ class _ProfileTabState extends State<_ProfileTab> {
     );
   }
 
-  void _editProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _EditProfileScreen(
-          name: _name,
-          age: _age,
-          height: _height,
-          weight: _weight,
-        ),
+Future<void> _editProfile() async {
+  // Wait for the Edit screen to pop
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => _EditProfileScreen(
+        name: _name,
+        age: _age,
+        height: _height,
+        weight: _weight,
       ),
-    );
+    ),
+  );
 
-    if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _height = result['height'];
-        _weight = result['weight'];
-      });
-    }
+  // Once back, refresh the profile data from Supabase
+  if (mounted) {
+    _loadProfile(); 
   }
+}
 }
