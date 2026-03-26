@@ -71,24 +71,29 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   final String email;
   final String phone;
   final String address;
+  final String specialty; // Add this
+  final String license;   // Add this
 
   const _EditDoctorProfileScreen({
+    super.key,
     required this.name,
     required this.age,
     required this.email,
     required this.phone,
     required this.address,
+    required this.specialty, // Add this
+    required this.license,   // Add this
   });
 
   @override
-  State<_EditDoctorProfileScreen> createState() =>
-      _EditDoctorProfileScreenState();
+  State<_EditDoctorProfileScreen> createState() => _EditDoctorProfileScreenState();
 }
 
 class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   late TextEditingController _nameController;
-  late TextEditingController _ageController;
-  late TextEditingController _emailController;
+  late TextEditingController _ageController;      // Added for age
+  late TextEditingController _specialityController;
+  late TextEditingController _licenseController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
@@ -97,11 +102,27 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.name);
     _ageController = TextEditingController(text: widget.age.toString());
-    _emailController = TextEditingController(text: widget.email);
     _phoneController = TextEditingController(text: widget.phone);
     _addressController = TextEditingController(text: widget.address);
+    
+    // Use the actual data passed from the profile tab
+    _specialityController = TextEditingController(text: widget.specialty);
+    _licenseController = TextEditingController(text: widget.license);
   }
 
+
+  @override
+  void dispose() {
+    // Always dispose every controller you created in initState
+    _nameController.dispose();
+    _ageController.dispose();
+    _specialityController.dispose(); // Changed from _emailController
+    _licenseController.dispose();    // Added new controller
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -142,39 +163,24 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            _buildField(context, 'Name', _nameController, Icons.person_outline),
+            _buildField(context, 'Full Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
+            // NEW AGE FIELD
             _buildField(
-              context,
-              'Age',
-              _ageController,
-              Icons.cake_outlined,
-              keyboardType: TextInputType.number,
+              context, 
+              'Age', 
+              _ageController, 
+              Icons.cake_outlined, 
+              keyboardType: TextInputType.number
             ),
             const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Email',
-              _emailController,
-              Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
+            _buildField(context, 'Speciality', _specialityController, Icons.medical_services_outlined),
             const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Phone Number',
-              _phoneController,
-              Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-            ),
+            _buildField(context, 'License Number', _licenseController, Icons.badge_outlined),
             const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Address',
-              _addressController,
-              Icons.location_on_outlined,
-              keyboardType: TextInputType.streetAddress,
-            ),
+            _buildField(context, 'Clinic Phone', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            const SizedBox(height: 16),
+            _buildField(context, 'Clinic Address', _addressController, Icons.location_on_outlined),
           ],
         ),
       ),
@@ -210,29 +216,14 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   }
 
   void _save() {
-    final updatedName = _nameController.text.trim();
-    final updatedAge = int.tryParse(_ageController.text.trim()) ?? widget.age;
-    final updatedEmail = _emailController.text.trim();
-    final updatedPhone = _phoneController.text.trim();
-    final updatedAddress = _addressController.text.trim();
-
     Navigator.pop(context, {
-      'name': updatedName.isEmpty ? widget.name : updatedName,
-      'age': updatedAge,
-      'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
-      'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
-      'address': updatedAddress.isEmpty ? widget.address : updatedAddress,
+      'full_name': _nameController.text.trim(),
+      'age': int.tryParse(_ageController.text.trim()) ?? 0, // Ensure it's an int
+      'speciality': _specialityController.text.trim(),
+      'license_number': _licenseController.text.trim(),
+      'phone_no': _phoneController.text.trim(),
+      'clinic_address': _addressController.text.trim(),
     });
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _ageController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    super.dispose();
   }
 }
 
@@ -247,12 +238,55 @@ class _DoctorProfileTab extends StatefulWidget {
 }
 
 class _DoctorProfileTabState extends State<_DoctorProfileTab> {
-  String _name = "Dr. Nouran";
-  int _age = 45;
-  String _email = "Nouran@gmail.com";
-  String _phone = "01118027001";
-  String _address = "123 Medical Center, Cairo";
+  String _name = "";
+  int _age = 0;
+  String _email = "";
+  String _phone = "";
+  String _address = "";
+  String _license = "";
+  String _specialty = "";
+  bool _isLoading  = true;
 
+    @override
+    void initState() {
+      super.initState();
+      _loadProfileData();
+    }
+Future<void> _loadProfileData() async {
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
+
+  if (user == null) return;
+
+  try {
+    final response = await supabase
+        .from('users')
+        .select('full_name, phone_no, email, doctor_profile(age, clinic_address, liscense_number, speciality)') // Added speciality
+        .eq('id', user.id)
+        .single();
+
+    setState(() {
+      _name = response['full_name'] ?? "Unknown Doctor";
+      _phone = response['phone_no'] ?? "No Phone";
+      _email = response['email'] ?? "";
+
+      final dynamic profileData = response['doctor_profile'];
+      if (profileData != null) {
+        final profile = (profileData is List) ? profileData.first : profileData;
+        _age = (profile['age'] as num?)?.toInt() ?? 0;
+        _address = profile['clinic_address'] ?? "No Address Set";
+        _license = profile['liscense_number'] ?? "Not Set";
+        // Ensure this key matches your DB column exactly (speciality vs specialty)
+        _specialty = profile['speciality'] ?? "General Practitioner"; 
+      }
+      _isLoading = false;
+    });
+  } catch (e) {
+    debugPrint("Fetch error details: $e");
+    setState(() => _isLoading = false);
+  }
+}
+  
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
     showDialog(
@@ -385,18 +419,17 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                 ],
               ),
               child: Column(
-                children: [
-                  _infoRow(context, Icons.email_outlined, "Email", _email),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(context, Icons.phone_outlined, "Phone", _phone),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(
-                    context,
-                    Icons.location_on_outlined,
-                    "Address",
-                    _address,
-                  ),
-                ],
+                    children: [
+                      _infoRow(context, Icons.email_outlined, "Email", _email),
+                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                      _infoRow(context, Icons.phone_outlined, "Phone", _phone),
+                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                      _infoRow(context, Icons.badge_outlined, "License", _license),
+                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                      _infoRow(context, Icons.medical_services_outlined, "Specialty", _specialty),
+                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                      _infoRow(context, Icons.location_on_outlined, "Address", _address),
+                    ],
               ),
             ),
 
@@ -516,28 +549,49 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     );
   }
 
-  void _editProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _EditDoctorProfileScreen(
-          name: _name,
-          age: _age,
-          email: _email,
-          phone: _phone,
-          address: _address,
-        ),
+ Future<void> _editProfile() async {
+  final result = await Navigator.push<Map<String, dynamic>>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _EditDoctorProfileScreen(
+        name: _name,
+        age: _age,
+        email: _email,
+        phone: _phone,
+        address: _address,
+        specialty: _specialty, // Pass the local state variable
+        license: _license,     // Pass the local state variable
       ),
-    );
+    ),
+  );
 
-    if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _email = result['email'];
-        _phone = result['phone'];
-        _address = result['address'];
-      });
+  if (result != null) {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Update 'users' table
+      await supabase.from('users').update({
+        'full_name': result['full_name'],
+        'phone_no': result['phone_no'],
+      }).eq('id', userId!);
+
+      // 2. Update 'doctor_profile' table
+      await supabase.from('doctor_profile').update({
+        'age': result['age'],
+        'clinic_address': result['clinic_address'],
+        'speciality': result['speciality'],
+        'liscense_number': result['license_number'], // Matches your schema typo
+      }).eq('user_id', userId);
+
+      // 3. Reload data to refresh UI
+      await _loadProfileData();
+    } catch (e) {
+      debugPrint("Update error: $e");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
-}
+}}
