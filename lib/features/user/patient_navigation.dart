@@ -150,12 +150,17 @@ class _NavTile extends StatelessWidget {
 class _EditProfileScreen extends StatefulWidget {
   final String name;
   final int age;
+  final String? email; // Made optional
+  final String? phone; // Made optional
   final String height;
   final String weight;
 
   const _EditProfileScreen({
+    super.key,
     required this.name,
     required this.age,
+    this.email,
+    this.phone,
     required this.height,
     required this.weight,
   });
@@ -169,15 +174,19 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   late TextEditingController _ageController;
   late TextEditingController _heightController;
   late TextEditingController _weightController;
+  late TextEditingController _emailController; // Added
+  late TextEditingController _phoneController; // Added
 
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.name);
-    _ageController = TextEditingController(text: widget.age.toString());
-    _heightController = TextEditingController(text: widget.height);
-    _weightController = TextEditingController(text: widget.weight);
-  }
+@override
+void initState() {
+  super.initState();
+  _nameController = TextEditingController(text: widget.name);
+  _ageController = TextEditingController(text: widget.age.toString());
+  _heightController = TextEditingController(text: widget.height);
+  _weightController = TextEditingController(text: widget.weight);
+  _emailController = TextEditingController(text: widget.email);
+  _phoneController = TextEditingController(text: widget.phone);}
+
 
   @override
   Widget build(BuildContext context) {
@@ -215,84 +224,144 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           ),
         ],
       ),
-      body: Padding(
+       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
+            // ADD EMAIL FIELD HERE
             _buildField(
-              context,
-              'Age',
-              _ageController,
-              Icons.cake_outlined,
-              keyboardType: TextInputType.number,
+              context, 
+              'Email', 
+              _emailController, 
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Height',
-              _heightController,
-              Icons.height,
-              hint: 'e.g. 157 cm',
-            ),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Weight',
-              _weightController,
-              Icons.monitor_weight_outlined,
-              hint: 'e.g. 48 kgs',
-            ),
+              const SizedBox(height: 16),
+              _buildField(context, 'Height', _heightController, Icons.height, 
+              keyboardType: TextInputType.number, suffix: 'cm'),
+              const SizedBox(height: 16),
+              _buildField(context, 'Weight', _weightController, Icons.monitor_weight_outlined, 
+              keyboardType: TextInputType.number, suffix: 'kg'),
+              const SizedBox(height: 16),
+             _buildField(context, 'Age', _ageController, Icons.cake_outlined, 
+              keyboardType: TextInputType.number, suffix: 'years'),
+              const SizedBox(height: 16),
+              _buildField(context, 'Phone Number', _phoneController, Icons.phone_outlined, 
+              keyboardType: TextInputType.phone),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildField(
-    BuildContext context,
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    String? hint,
-  }) {
-    final colors = context.colors;
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, size: 20, color: colors.primary),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+
+Widget _buildField(
+  BuildContext context,
+  String label, // This should only be for the Label/Hint
+  TextEditingController controller,
+  IconData icon, {
+  TextInputType keyboardType = TextInputType.text,
+  String? suffix,
+}) {
+  final colors = context.colors;
+  return TextField(
+    controller: controller, // This holds the actual data (phone value)
+    keyboardType: keyboardType,
+    decoration: InputDecoration(
+      labelText: label, // 👈 Make sure 'Phone Number' is only here
+      suffixText: suffix,
+      prefixIcon: Icon(icon, size: 20, color: colors.primary),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF5F5F5),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    ),
+  );
+}
+
+
+Future<void> _save() async {
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
+
+  try {
+    final newEmail = _emailController.text.trim();
+    final newName = _nameController.text.trim();
+    final newPhone = _phoneController.text.trim(); // 1. Define this variable
+
+    // 2. Update Authentication (Dashboard)
+    await supabase.auth.updateUser(
+      UserAttributes(
+        email: newEmail != user.email ? newEmail : null,
+        // This updates the 'raw_user_meta_data' in the Auth tab
+        data: {
+          'full_name': newName,
+          'phone': newPhone, 
+        },
       ),
     );
-  }
 
-  void _save() {
-    final updatedName = _nameController.text.trim();
-    final updatedAge = int.tryParse(_ageController.text.trim()) ?? widget.age;
-    final updatedHeight = _heightController.text.trim();
-    final updatedWeight = _weightController.text.trim();
+    // 3. Update the Users table
+    await supabase
+        .from('users')
+        .update({
+          'full_name': newName,
+          'email': newEmail,
+          'phone_no': newPhone,
+        })
+        .eq('id', user.id);
 
-    Navigator.pop(context, {
-      'name': updatedName.isEmpty ? widget.name : updatedName,
-      'age': updatedAge,
-      'height': updatedHeight.isEmpty ? widget.height : updatedHeight,
-      'weight': updatedWeight.isEmpty ? widget.weight : updatedWeight,
-    });
+    // 4. Parse and Update Patient Profile
+    // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
+    final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final ageValue = int.tryParse(_ageController.text) ?? 0;
+
+    await supabase
+        .from('patient_profile')
+        .update({
+          'weight_kg': weightValue,
+          'height_cm': heightValue,
+          'age': ageValue,
+        })
+        .eq('user_id', user.id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Pass the new data back to the Profile Tab
+      Navigator.pop(context, {
+        'name': newName,
+        'email': newEmail,
+        'phone': newPhone, // Return the phone number too
+        'age': ageValue,
+        'height': "${heightValue.toInt()} cm",
+        'weight': "${weightValue.toInt()} kgs",
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating profile: $e'), 
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
+}
+
 
   @override
   void dispose() {
@@ -300,6 +369,8 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _emailController.dispose(); // Added
+
     super.dispose();
   }
 }
@@ -806,11 +877,79 @@ class _ProfileTab extends StatefulWidget {
   State<_ProfileTab> createState() => _ProfileTabState();
 }
 
+
+
 class _ProfileTabState extends State<_ProfileTab> {
-  String _name = "Malak Mohamed";
-  int _age = 21;
-  String _height = "157 cm";
-  String _weight = "48 kgs";
+    String _name = "";
+    int _age = 0; 
+    String _height = "";
+    String _phone = ""; // Add this
+    String _email = ""; // Add this
+    String _weight = "";
+
+    bool _isLoading = true;
+    final supabase = Supabase.instance.client;
+
+    @override
+    void initState() {
+      super.initState();
+      _loadProfile();
+    }
+
+Future<void> _loadProfile() async {
+  try {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    // 🔹 Try to get user
+    var userData = await supabase
+      .from('users')
+      .select()
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // 👉 If user doesn't exist → create it
+    userData ??= await supabase.from('users').insert({
+        'id': user.id,
+        'email': user.email,
+        'full_name': 'New User',
+      }).select().single();
+
+    // 🔹 Try to get patient profile
+  var patientData = await supabase
+      .from('patient_profile')
+      .select()
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // 👉 If patient profile doesn't exist → create it
+    patientData ??= await supabase.from('patient_profile').insert({
+        'user_id': user.id,
+        'height_cm': 0,
+        'weight_kg': 0,
+      }).select().single();
+    // ignore: avoid_print
+    print("USER DATA: $userData");
+    // ignore: avoid_print
+    print("PATIENT DATA: $patientData");
+    // ✅ Set UI
+    setState(() {
+      _name = userData?['full_name'] ?? "No Name";
+      _phone = userData?['phone_no'] ?? ""; // Add this
+      _email = userData?['email'] ?? ""; // Add this
+      
+      // Keep only the numbers in the variables for internal logic
+      _height = "${patientData?['height_cm'] ?? 0} cm";
+      _weight = "${patientData?['weight_kg'] ?? 0} kg";
+      _age = (patientData?['age'] ?? 0).toInt();
+      _isLoading = false;
+    });
+  } catch (e) {
+    // ignore: avoid_print
+    print("Error loading profile: $e");
+    setState(() => _isLoading = false);
+  }
+}
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
@@ -863,6 +1002,10 @@ class _ProfileTabState extends State<_ProfileTab> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
+    
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1233,26 +1376,33 @@ class _ProfileTabState extends State<_ProfileTab> {
     );
   }
 
-  void _editProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _EditProfileScreen(
-          name: _name,
-          age: _age,
-          height: _height,
-          weight: _weight,
-        ),
+Future<void> _editProfile() async {
+  // 1. Pass all variables to the constructor
+  final result = await Navigator.push<Map<String, dynamic>>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _EditProfileScreen(
+        name: _name,
+        age: _age,
+        email: _email,
+        phone: _phone, // Now this won't be empty in the edit screen!
+        height: _height,
+        weight: _weight,
       ),
-    );
+    ),
+  );
 
-    if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _height = result['height'];
-        _weight = result['weight'];
-      });
-    }
+  // 2. If the user saved, update the local UI variables
+  if (result != null) {
+    setState(() {
+      _name = result['name'];
+      _email = result['email'];
+      _phone = result['phone'];
+      _age = result['age'];
+      _height = result['height'];
+      _weight = result['weight'];
+    });
   }
+}
+
 }

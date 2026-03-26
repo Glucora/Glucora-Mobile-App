@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class AIPredictionScreen extends StatelessWidget {
   const AIPredictionScreen({super.key});
