@@ -52,6 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
         .trim()
         .toLowerCase();
 
+    if (normalizedRole == 'norole') {
+      _didNavigateAfterAuth = true;
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+      return;
+    }
+
     Widget? targetScreen;
     if (normalizedRole == 'patient') {
       targetScreen = const PatientNavigation();
