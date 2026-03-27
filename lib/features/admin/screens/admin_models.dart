@@ -1,14 +1,12 @@
 // ─── ADMIN SHARED MODELS ─────────────────────────────────────────────────────
-// Shared between Admin screens. Extracted here to avoid circular imports
-// between list screens and detail/form screens (see CLAUDE.md).
 
-enum UserRole { patient, doctor, admin }
+enum UserRole { patient, doctor, admin, guardian }
 
 class AdminUser {
   final String id;
   String name;
   String email;
-  UserRole role;
+  String role; // raw string from DB: 'patient', 'doctor', 'admin', 'guardian'
   bool isActive;
   final DateTime createdAt;
 
@@ -21,6 +19,19 @@ class AdminUser {
     required this.createdAt,
   });
 
+  factory AdminUser.fromMap(Map<String, dynamic> map) {
+    return AdminUser(
+      id: map['id'] as String,
+      name: map['full_name'] as String? ?? 'Unknown',
+      email: map['email'] as String? ?? '',
+      role: map['role'] as String? ?? 'patient',
+      isActive: map['is_active'] as bool? ?? true,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : DateTime.now(),
+    );
+  }
+
   String get initials {
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -29,12 +40,16 @@ class AdminUser {
 
   String get roleLabel {
     switch (role) {
-      case UserRole.patient:
+      case 'patient':
         return 'Patient';
-      case UserRole.doctor:
+      case 'doctor':
         return 'Doctor';
-      case UserRole.admin:
+      case 'admin':
         return 'Admin';
+      case 'guardian':
+        return 'Guardian';
+      default:
+        return role;
     }
   }
 }
@@ -64,13 +79,12 @@ class AdminDevice {
 class AdminAlertRule {
   final String id;
   String name;
-  String
-  conditionType; // 'Glucose High' | 'Glucose Low' | 'Sensor Disconnect' | 'Pump Failure' | 'Missed Dose' | 'Time Out of Range'
+  String conditionType;
   double? thresholdValue;
   int? durationMinutes;
   String severity; // 'Critical' | 'Warning' | 'Info'
   bool isEnabled;
-  String appliesToRole; // 'All Patients' | 'Specific Patient'
+  String appliesToRole;
 
   AdminAlertRule({
     required this.id,
@@ -98,87 +112,12 @@ class DoctorPatientAssignment {
   });
 }
 
-// ─── MOCK DATA ───────────────────────────────────────────────────────────────
+// ─── MOCK DATA (devices & alerts only — users are now from Supabase) ──────────
 
-final List<AdminUser> mockAdminUsers = [
-  AdminUser(
-    id: 'u1',
-    name: 'Walid Ahmed',
-    email: 'walid@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 6, 15),
-  ),
-  AdminUser(
-    id: 'u2',
-    name: 'Qamar Salah',
-    email: 'qamar@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 7, 3),
-  ),
-  AdminUser(
-    id: 'u3',
-    name: 'Omar Latif',
-    email: 'omar@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 8, 20),
-  ),
-  AdminUser(
-    id: 'u4',
-    name: 'Mayada Youssef',
-    email: 'mayada@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 9, 1),
-  ),
-  AdminUser(
-    id: 'u5',
-    name: 'Khaled Adel',
-    email: 'khaled@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 5, 10),
-  ),
-  AdminUser(
-    id: 'u6',
-    name: 'Carol Amr',
-    email: 'carol@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 10, 12),
-  ),
-  AdminUser(
-    id: 'u7',
-    name: 'Rana Fathy',
-    email: 'rana@glucora.com',
-    role: UserRole.patient,
-    createdAt: DateTime(2025, 11, 5),
-  ),
-  AdminUser(
-    id: 'd1',
-    name: 'Dr. Ahmed Hassan',
-    email: 'ahmed.h@glucora.com',
-    role: UserRole.doctor,
-    createdAt: DateTime(2025, 3, 1),
-  ),
-  AdminUser(
-    id: 'd2',
-    name: 'Dr. Sara El-Sayed',
-    email: 'sara.e@glucora.com',
-    role: UserRole.doctor,
-    createdAt: DateTime(2025, 4, 15),
-  ),
-  AdminUser(
-    id: 'd3',
-    name: 'Dr. Mostafa Ali',
-    email: 'mostafa.a@glucora.com',
-    role: UserRole.doctor,
-    createdAt: DateTime(2025, 5, 20),
-  ),
-  AdminUser(
-    id: 'a1',
-    name: 'System Admin',
-    email: 'admin@glucora.com',
-    role: UserRole.admin,
-    createdAt: DateTime(2025, 1, 1),
-  ),
-];
+// Kept as empty list so existing screens that haven't been migrated yet
+// (dashboard, assignments, device form) still compile without errors.
+// Remove this once those screens are wired to Supabase.
+final List<AdminUser> mockAdminUsers = [];
 
 final List<AdminDevice> mockAdminDevices = [
   AdminDevice(
@@ -320,33 +259,15 @@ final List<DoctorPatientAssignment> mockAssignments = [
     patientName: 'Qamar Salah',
   ),
   const DoctorPatientAssignment(
-    doctorId: 'd1',
-    doctorName: 'Dr. Ahmed Hassan',
-    patientId: 'u3',
-    patientName: 'Omar Latif',
-  ),
-  const DoctorPatientAssignment(
     doctorId: 'd2',
     doctorName: 'Dr. Sara El-Sayed',
     patientId: 'u4',
     patientName: 'Mayada Youssef',
   ),
   const DoctorPatientAssignment(
-    doctorId: 'd2',
-    doctorName: 'Dr. Sara El-Sayed',
-    patientId: 'u5',
-    patientName: 'Khaled Adel',
-  ),
-  const DoctorPatientAssignment(
     doctorId: 'd3',
     doctorName: 'Dr. Mostafa Ali',
     patientId: 'u6',
     patientName: 'Carol Amr',
-  ),
-  const DoctorPatientAssignment(
-    doctorId: 'd3',
-    doctorName: 'Dr. Mostafa Ali',
-    patientId: 'u7',
-    patientName: 'Rana Fathy',
   ),
 ];

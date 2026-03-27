@@ -24,7 +24,6 @@ class ThemeProvider extends ChangeNotifier {
     } else if (_themeMode == ThemeMode.dark) {
       setTheme(ThemeMode.light);
     } else {
-      // If system, toggle to light or dark based on current system
       final isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
       setTheme(isDark ? ThemeMode.light : ThemeMode.dark);
     }

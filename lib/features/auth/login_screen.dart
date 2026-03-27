@@ -31,51 +31,54 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       event,
-    ) {
+    ) async {
       if (!mounted) return;
 
       if ((event.event == AuthChangeEvent.signedIn ||
               event.event == AuthChangeEvent.initialSession ||
               event.event == AuthChangeEvent.tokenRefreshed) &&
           event.session != null) {
-        _navigateByRole(event.session?.user);
+        await _navigateByRole(event.session?.user);
       }
     });
   }
 
-  void _navigateByRole(User? user) {
-    if (!mounted || _didNavigateAfterAuth) return;
+  Future<void> _navigateByRole(User? user) async {
+    if (!mounted || _didNavigateAfterAuth || user == null) return;
 
-    final userMetaRole = user?.userMetadata?['role']?.toString();
-    final appMetaRole = user?.appMetadata['role']?.toString();
-    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
-        .trim()
-        .toLowerCase();
+    try {
+      final response = await Supabase.instance.client
+          .from('users') // 🔁 Change to your actual table name if different
+          .select('role')
+          .eq('id', user.id)
+          .single();
 
-    Widget? targetScreen;
-    if (normalizedRole == 'patient') {
-      targetScreen = const PatientNavigation();
-    } else if (normalizedRole == 'doctor') {
-      targetScreen = const DoctorMainScreen();
-    } else if (normalizedRole == 'guardian') {
-      targetScreen = const GuardianMainScreen();
-    } else if (normalizedRole == 'admin') {
-      targetScreen = const AdminMainScreen();
-    }
+      final normalizedRole =
+          (response['role'] as String? ?? '').trim().toLowerCase();
 
-    if (targetScreen != null) {
+      Widget? targetScreen;
+      if (normalizedRole == 'patient') {
+        targetScreen = const PatientNavigation();
+      } else if (normalizedRole == 'doctor') {
+        targetScreen = const DoctorMainScreen();
+      } else if (normalizedRole == 'guardian') {
+        targetScreen = const GuardianMainScreen();
+      } else if (normalizedRole == 'admin') {
+        targetScreen = const AdminMainScreen();
+      }
+
+      if (!mounted) return;
       _didNavigateAfterAuth = true;
+
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => targetScreen!),
+        MaterialPageRoute(
+          builder: (_) => targetScreen ?? const SignUpScreen(),
+        ),
         (route) => false,
       );
-      return;
+    } catch (e) {
+      _showErrorSnackBar('Could not load user role. Please try again.');
     }
-
-    _didNavigateAfterAuth = true;
-    Navigator.of(
-      context,
-    ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
   }
 
   Future<void> _login() async {
@@ -98,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      _navigateByRole(response.user);
+      await _navigateByRole(response.user);
     } on AuthException catch (e) {
       _showErrorSnackBar(e.message);
     } catch (_) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'admin_models.dart';
-import 'admin_user_form_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/features/admin/screens/admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminUserListScreen extends StatefulWidget {
@@ -15,18 +15,14 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   String _query = '';
   String _roleFilter = 'All';
 
-  List<AdminUser> get _filtered {
-    return mockAdminUsers.where((u) {
-      if (_query.isNotEmpty &&
-          !u.name.toLowerCase().contains(_query.toLowerCase()) &&
-          !u.email.toLowerCase().contains(_query.toLowerCase())) {
-        return false;
-      }
-      if (_roleFilter == 'Patient' && u.role != UserRole.patient) return false;
-      if (_roleFilter == 'Doctor' && u.role != UserRole.doctor) return false;
-      if (_roleFilter == 'Admin' && u.role != UserRole.admin) return false;
-      return true;
-    }).toList();
+  List<AdminUser> _allUsers = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
   }
 
   @override
@@ -35,27 +31,183 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     super.dispose();
   }
 
-  void _deleteUser(AdminUser user) {
-    showDialog(
+  Future<void> _fetchUsers() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name, email, role, is_active, created_at')
+          .order('created_at', ascending: false);
+
+      final users = (response as List)
+          .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
+          .toList();
+
+      if (mounted) setState(() { _allUsers = users; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  List<AdminUser> get _filtered {
+    return _allUsers.where((u) {
+      if (_query.isNotEmpty &&
+          !u.name.toLowerCase().contains(_query.toLowerCase()) &&
+          !u.email.toLowerCase().contains(_query.toLowerCase())) {
+        return false;
+      }
+      if (_roleFilter != 'All' && u.role != _roleFilter.toLowerCase()) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<void> _deleteUser(AdminUser user) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete "${user.name}"?'),
+        content: Text('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => mockAdminUsers.remove(user));
-              Navigator.pop(ctx);
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    try {
+      await Supabase.instance.client
+          .from('users')
+          .delete()
+          .eq('id', user.id);
+
+      if (mounted) {
+        setState(() => _allUsers.removeWhere((u) => u.id == user.id));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.name} deleted'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _editUser(AdminUser user) {
+    String selectedRole = user.role;
+    bool isActive = user.isActive;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Edit: ${user.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Email: ${user.email}',
+                style: TextStyle(fontSize: 12, color: ctx.colors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Role',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ctx.colors.primaryDark),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedRole,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: ['patient', 'doctor', 'guardian', 'admin']
+                    .map((r) => DropdownMenuItem(value: r, child: Text(_roleLabel(r))))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setDialogState(() => selectedRole = v);
+                },
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: const Text('Active'),
+                value: isActive,
+                onChanged: (v) => setDialogState(() => isActive = v),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _saveUserEdits(user, selectedRole, isActive);
+              },
+              child: const Text('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveUserEdits(AdminUser user, String newRole, bool newActive) async {
+    try {
+      await Supabase.instance.client
+          .from('users')
+          .update({'role': newRole, 'is_active': newActive})
+          .eq('id', user.id);
+
+      setState(() {
+        final index = _allUsers.indexWhere((u) => u.id == user.id);
+        if (index != -1) {
+          _allUsers[index].role = newRole;
+          _allUsers[index].isActive = newActive;
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User updated'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'patient': return 'Patient';
+      case 'doctor': return 'Doctor';
+      case 'admin': return 'Admin';
+      case 'guardian': return 'Guardian';
+      default: return role;
+    }
   }
 
   @override
@@ -72,22 +224,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminUserFormScreen()),
-              );
-              if (result == true) setState(() {});
-            },
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchUsers),
         ],
       ),
       backgroundColor: colors.background,
       body: Column(
         children: [
-          // Search bar
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
@@ -107,10 +249,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     : null,
                 filled: true,
                 fillColor: colors.surface,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 0,
-                  horizontal: 16,
-                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -119,13 +258,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
               onChanged: (v) => setState(() => _query = v),
             ),
           ),
-          // Filter chips
           SizedBox(
             height: 42,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: ['All', 'Patient', 'Doctor', 'Admin'].map((label) {
+              children: ['All', 'Patient', 'Doctor', 'Admin', 'Guardian'].map((label) {
                 final selected = _roleFilter == label;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -141,27 +279,28 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // List
           Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'No users found',
-                      style: TextStyle(color: colors.textSecondary),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, a2) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final user = filtered[index];
-                      return _userCard(context, user);
-                    },
-                  ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Failed to load users', style: TextStyle(color: colors.error)),
+                            const SizedBox(height: 8),
+                            ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+                          ],
+                        ),
+                      )
+                    : filtered.isEmpty
+                        ? Center(child: Text('No users found', style: TextStyle(color: colors.textSecondary)))
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) => _userCard(context, filtered[index]),
+                          ),
           ),
         ],
       ),
@@ -177,13 +316,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(builder: (_) => AdminUserFormScreen(user: user)),
-          );
-          if (result == true) setState(() {});
-        },
+        onTap: () => _editUser(user),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -193,11 +326,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 backgroundColor: roleColor.withValues(alpha: 0.15),
                 child: Text(
                   user.initials,
-                  style: TextStyle(
-                    color: roleColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: roleColor, fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
               const SizedBox(width: 12),
@@ -207,54 +336,34 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   children: [
                     Text(
                       user.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      user.email,
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                    ),
+                    Text(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: roleColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   user.roleLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: roleColor,
-                  ),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: roleColor),
                 ),
               ),
               const SizedBox(width: 4),
               if (!user.isActive)
                 Container(
                   margin: const EdgeInsets.only(left: 4),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: colors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(
-                    'Inactive',
-                    style: TextStyle(fontSize: 10, color: colors.error),
-                  ),
+                  child: Text('Inactive', style: TextStyle(fontSize: 10, color: colors.error)),
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) {
@@ -274,14 +383,13 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     );
   }
 
-  Color _roleColor(UserRole role) {
+  Color _roleColor(String role) {
     switch (role) {
-      case UserRole.patient:
-        return const Color(0xFF5B8CF5);
-      case UserRole.doctor:
-        return const Color(0xFF9B59B6);
-      case UserRole.admin:
-        return const Color(0xFFFF9F40);
+      case 'patient': return const Color(0xFF5B8CF5);
+      case 'doctor': return const Color(0xFF9B59B6);
+      case 'admin': return const Color(0xFFFF9F40);
+      case 'guardian': return const Color(0xFF2BB6A3);
+      default: return Colors.grey;
     }
   }
 }
