@@ -80,6 +80,10 @@ class _StartupGate extends StatelessWidget {
         .trim()
         .toLowerCase();
 
+    if (normalizedRole == 'norole') {
+      return const RoleSelectionScreen();
+    }
+
     if (normalizedRole == 'patient') {
       return const PatientNavigation();
     }
