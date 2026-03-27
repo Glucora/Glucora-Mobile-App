@@ -15,6 +15,16 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
 
+  Future<void> _saveRoleToProfiles({
+    required String userId,
+    required String role,
+  }) async {
+    await Supabase.instance.client
+        .from('users')
+        .update({'role': role})
+        .eq('id', userId);
+  }
+
   Future<void> _selectRole(String role) async {
     if (_saving) return;
 
@@ -22,10 +32,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
+
       if (user != null) {
         await Supabase.instance.client.auth.updateUser(
           UserAttributes(data: {'role': role}),
         );
+        await _saveRoleToProfiles(userId: user.id, role: role);
       }
 
       if (!mounted) return;
@@ -35,10 +47,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       );
     } on AuthException catch (e) {
       if (!mounted) return;
+      print(e.toString());
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), backgroundColor: Colors.red),
       );
-    } catch (_) {
+    } catch (ex) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

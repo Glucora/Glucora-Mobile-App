@@ -48,24 +48,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await Supabase.instance.client
-          .from('users') // 🔁 Change to your actual table name if different
+          .from('users')
           .select('role')
           .eq('id', user.id)
           .single();
 
-      final normalizedRole =
-          (response['role'] as String? ?? '').trim().toLowerCase();
+      final normalizedRole = (response['role'] as String? ?? '').trim().toLowerCase();
+      
+    if (normalizedRole == 'norole') {
+      _didNavigateAfterAuth = true;
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+      return;
+    }
 
-      Widget? targetScreen;
-      if (normalizedRole == 'patient') {
-        targetScreen = const PatientNavigation();
-      } else if (normalizedRole == 'doctor') {
-        targetScreen = const DoctorMainScreen();
-      } else if (normalizedRole == 'guardian') {
-        targetScreen = const GuardianMainScreen();
-      } else if (normalizedRole == 'admin') {
-        targetScreen = const AdminMainScreen();
-      }
+    Widget? targetScreen;
+    if (normalizedRole == 'patient') {
+      targetScreen = const PatientNavigation();
+    } else if (normalizedRole == 'doctor') {
+      targetScreen = const DoctorMainScreen();
+    } else if (normalizedRole == 'guardian') {
+      targetScreen = const GuardianMainScreen();
+    } else if (normalizedRole == 'admin') {
+      targetScreen = const AdminMainScreen();
+    }
+
+  
 
       if (!mounted) return;
       _didNavigateAfterAuth = true;
