@@ -14,10 +14,10 @@ import 'features/guardian/screens/guardian_main_screen.dart';
 import 'features/onboarding/screens/ai_explain_screen.dart';
 import 'features/onboarding/screens/landing_screen.dart';
 import 'features/onboarding/screens/who_are_we_screen.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await dotenv.load(fileName: ".env");
   await Supabase.initialize(
     url: "https://yzmkzfqgigsaqhnbsiyn.supabase.co",
     anonKey:

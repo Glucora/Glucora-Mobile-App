@@ -3,7 +3,6 @@ import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:glucora_ai_companion/features/auth/terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
