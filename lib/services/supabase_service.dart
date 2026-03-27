@@ -16,12 +16,9 @@ Future<int?> getPatientProfileId(String authUserId) async {
         .maybeSingle();
 
     if (row == null) return null;
-
     return row['id'] as int;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] getPatientProfileId error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] getPatientProfileId error: $e');
     return null;
   }
 }
@@ -39,17 +36,13 @@ Future<Map<String, dynamic>?> getLatestGlucoseReading(int patientProfileId) asyn
         .limit(1)
         .maybeSingle();
 
-    if (kDebugMode) {
-      print('[SupabaseService] glucose query response: $response');
-    }
-
+    if (kDebugMode) print('[SupabaseService] glucose query response: $response');
     return response;
   } catch (e) {
     if (kDebugMode) print('[SupabaseService] getLatestGlucoseReading error: $e');
     return null;
   }
 }
-
 
 // ─── AI PREDICTIONS ───────────────────────────────────────────────────────────
 
@@ -66,16 +59,33 @@ Future<Map<String, dynamic>?> getLatestPrediction(int patientProfileId) async {
 
     return response;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] getLatestPrediction error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] getLatestPrediction error: $e');
     return null;
+  }
+}
+/// Fetch the latest `limit` recommendations for a patient.
+Future<List<Map<String, dynamic>>> getLatestRecommendations({
+  required int patientProfileId,
+  int limit = 3, // fetch latest 3
+}) async {
+  try {
+    final response = await _db
+        .from('ai_recommendations')
+        .select()
+        .eq('patient_id', patientProfileId)
+        .order('created_at', ascending: false)
+        .limit(limit);
+
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getLatestRecommendations error: $e');
+    return [];
   }
 }
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────────
 
-/// Save a single recommendation row.
+/// Save a single recommendation row and return it for immediate display.
 /// [patientProfileId] = patient_profile.id (NOT auth user id).
 Future<Map<String, dynamic>?> saveRecommendation({
   required int patientProfileId,
@@ -92,9 +102,7 @@ Future<Map<String, dynamic>?> saveRecommendation({
       'created_at': DateTime.now().toUtc().toIso8601String(),
     };
 
-    if (predictionId != null) {
-      row['prediction_id'] = predictionId;
-    }
+    if (predictionId != null) row['prediction_id'] = predictionId;
 
     final response = await _db
         .from('ai_recommendations')
@@ -102,21 +110,16 @@ Future<Map<String, dynamic>?> saveRecommendation({
         .select()
         .single();
 
-    if (kDebugMode) {
-      print('[SupabaseService] Saved recommendation: ${response['id']}');
-    }
-
+    if (kDebugMode) print('[SupabaseService] Saved recommendation: ${response['id']}');
     return response;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] saveRecommendation error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] saveRecommendation error: $e');
     return null;
   }
 }
 
-/// Fetch saved recommendations for this patient.
-Future<List<Map<String, dynamic>>> getSavedRecommendations({
+/// Fetch only the latest `limit` recommendations for display.
+Future<List<Map<String, dynamic>>> getLatestRecommendation({
   required int patientProfileId,
   int limit = 20,
 }) async {
@@ -130,9 +133,7 @@ Future<List<Map<String, dynamic>>> getSavedRecommendations({
 
     return List<Map<String, dynamic>>.from(response);
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] getSavedRecommendations error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] getLatestRecommendations error: $e');
     return [];
   }
 }
@@ -147,9 +148,7 @@ Future<bool> markRecommendationAsRead(String recommendationId) async {
 
     return true;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] markRecommendationAsRead error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] markRecommendationAsRead error: $e');
     return false;
   }
 }
@@ -164,9 +163,7 @@ Future<bool> deleteRecommendation(String recommendationId) async {
 
     return true;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] deleteRecommendation error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] deleteRecommendation error: $e');
     return false;
   }
 }
@@ -182,9 +179,7 @@ Future<int> getUnreadCount(int patientProfileId) async {
 
     return (response as List).length;
   } catch (e) {
-    if (kDebugMode) {
-      print('[SupabaseService] getUnreadCount error: $e');
-    }
+    if (kDebugMode) print('[SupabaseService] getUnreadCount error: $e');
     return 0;
   }
 }

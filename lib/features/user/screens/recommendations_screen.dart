@@ -129,14 +129,18 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     }
   }
 
-  Future<void> _loadSaved() async {
-    final rows = await getSavedRecommendations(patientProfileId: _patientProfileId!, limit: 20);
-    if (!mounted) return;
-    setState(() {
-      _cards = rows.map(_RecCard.fromRow).toList();
-      _loading = false;
-    });
-  }
+Future<void> _loadSaved() async {
+  final rows = await getLatestRecommendations(
+      patientProfileId: _patientProfileId!,
+      limit: 3, // latest 3 recommendations
+  );
+
+  if (!mounted) return;
+  setState(() {
+    _cards = rows.map(_RecCard.fromRow).toList();
+    _loading = false;
+  });
+}
 
   Future<void> _refreshFromAPI() async {
     if (!mounted) return;
