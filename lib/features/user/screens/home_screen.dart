@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
@@ -738,31 +740,37 @@ Widget _recommendationsCard(BuildContext context) {
 // ── FETCH RECOMMENDATIONS FROM SUPABASE (OR ANY API) ──
 Future<List<String>> _fetchRecommendations(SupabaseClient supabase) async {
   try {
+    // 1️⃣ Get the current user's patient profile ID first
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return ["User not logged in"];
+
+    final patientProfileId = await getPatientProfileId(userId);
+    if (patientProfileId == null) return ["No patient profile found"];
+
+    // 2️⃣ Fetch latest 3 recommendations from ai_recommendations
     final response = await supabase
-        .from('recommendations')
-        .select('text')
+        .from('ai_recommendations')
+        .select('message')
+        .eq('patient_id', patientProfileId)
         .order('created_at', ascending: false)
         .limit(3);
-
-    print('Raw recommendations response: $response'); // debug output
 
     if (response == null || response.isEmpty) {
       return ["No recommendations available"];
     }
 
-    // Safely map each item to string
+    // 3️⃣ Convert to List<String>
     final List<String> recs = [];
     for (final item in response) {
-      if (item is Map && item.containsKey('text')) {
-        recs.add(item['text']?.toString() ?? '');
+      if (item is Map && item.containsKey('message')) {
+        recs.add(item['message']?.toString() ?? '');
       }
     }
 
-    if (recs.isEmpty) return ["No recommendations available"];
-
-    return recs;
+    return recs.isEmpty ? ["No recommendations available"] : recs;
   } catch (e) {
-    print('Exception fetching recommendations: $e');
+    // Print error in debug mode
+    if (kDebugMode) print('Failed to fetch recommendations: $e');
     return ["Failed to fetch recommendations"];
   }
 }
