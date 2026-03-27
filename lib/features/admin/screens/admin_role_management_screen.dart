@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
@@ -6,23 +7,23 @@ class AdminRoleManagementScreen extends StatefulWidget {
   const AdminRoleManagementScreen({super.key});
 
   @override
-  State<AdminRoleManagementScreen> createState() =>
-      _AdminRoleManagementScreenState();
+  State<AdminRoleManagementScreen> createState() => _AdminRoleManagementScreenState();
 }
 
 class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
-  List<AdminUser> get _filtered {
-    if (_query.isEmpty) return mockAdminUsers;
-    return mockAdminUsers
-        .where(
-          (u) =>
-              u.name.toLowerCase().contains(_query.toLowerCase()) ||
-              u.email.toLowerCase().contains(_query.toLowerCase()),
-        )
-        .toList();
+  List<AdminUser> _allUsers = [];
+  bool _loading = true;
+  String? _error;
+
+  static const _roles = ['patient', 'doctor', 'guardian', 'admin'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
   }
 
   @override
@@ -31,8 +32,35 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchUsers() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name, email, role, is_active, created_at')
+          .order('full_name');
+
+      final users = (response as List)
+          .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
+          .toList();
+
+      if (mounted) setState(() { _allUsers = users; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  List<AdminUser> get _filtered {
+    if (_query.isEmpty) return _allUsers;
+    return _allUsers.where(
+      (u) =>
+          u.name.toLowerCase().contains(_query.toLowerCase()) ||
+          u.email.toLowerCase().contains(_query.toLowerCase()),
+    ).toList();
+  }
+
   void _changeRole(AdminUser user) {
-    UserRole? newRole = user.role;
+    String selectedRole = user.role;
 
     showDialog(
       context: context,
@@ -41,21 +69,16 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
           title: Text('Change Role: ${user.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioGroup<UserRole>(
-                groupValue: newRole!,
-                onChanged: (v) => setDialogState(() => newRole = v),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: UserRole.values.map((role) {
-                    return RadioListTile<UserRole>(
-                      title: Text(_roleName(role)),
-                      value: role,
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+            children: _roles.map((role) {
+              return RadioListTile<String>(
+                title: Text(_roleLabel(role)),
+                value: role,
+                groupValue: selectedRole,
+                onChanged: (v) {
+                  if (v != null) setDialogState(() => selectedRole = v);
+                },
+              );
+            }).toList(),
           ),
           actions: [
             TextButton(
@@ -63,16 +86,11 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                if (newRole != null) {
-                  setState(() => user.role = newRole!);
-                }
+              onPressed: () async {
                 Navigator.pop(ctx);
+                await _saveRole(user, selectedRole);
               },
-              child: const Text(
-                'Save',
-                style: TextStyle(color: Color(0xFF2BB6A3)),
-              ),
+              child: const Text('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
             ),
           ],
         ),
@@ -80,25 +98,65 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
     );
   }
 
-  Color _roleColor(UserRole role) {
-    switch (role) {
-      case UserRole.patient:
-        return const Color(0xFF5B8CF5);
-      case UserRole.doctor:
-        return const Color(0xFF9B59B6);
-      case UserRole.admin:
-        return const Color(0xFFFF9F40);
+  Future<void> _saveRole(AdminUser user, String newRole) async {
+    if (newRole == user.role) return;
+
+    // Optimistically update UI
+    setState(() {
+      final index = _allUsers.indexWhere((u) => u.id == user.id);
+      if (index != -1) _allUsers[index].role = newRole;
+    });
+
+    try {
+      await Supabase.instance.client
+          .from('users')
+          .update({'role': newRole})
+          .eq('id', user.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${user.name} is now ${_roleLabel(newRole)}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert on failure
+      setState(() {
+        final index = _allUsers.indexWhere((u) => u.id == user.id);
+        if (index != -1) _allUsers[index].role = user.role;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update role: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  String _roleName(UserRole role) {
+  Color _roleColor(String role) {
     switch (role) {
-      case UserRole.patient:
-        return 'Patient';
-      case UserRole.doctor:
-        return 'Doctor';
-      case UserRole.admin:
-        return 'Admin';
+      case 'patient':
+        return const Color(0xFF5B8CF5);
+      case 'doctor':
+        return const Color(0xFF9B59B6);
+      case 'admin':
+        return const Color(0xFFFF9F40);
+      case 'guardian':
+        return const Color(0xFF2BB6A3);
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'patient': return 'Patient';
+      case 'doctor': return 'Doctor';
+      case 'admin': return 'Admin';
+      case 'guardian': return 'Guardian';
+      default: return role;
     }
   }
 
@@ -115,6 +173,9 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
         ),
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchUsers),
+        ],
       ),
       backgroundColor: colors.background,
       body: Column(
@@ -138,10 +199,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                     : null,
                 filled: true,
                 fillColor: colors.surface,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 0,
-                  horizontal: 16,
-                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -151,51 +209,44 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
             ),
           ),
           // Summary chips
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                _countChip(
-                  'Patients',
-                  mockAdminUsers
-                      .where((u) => u.role == UserRole.patient)
-                      .length,
-                  const Color(0xFF5B8CF5),
-                ),
-                const SizedBox(width: 8),
-                _countChip(
-                  'Doctors',
-                  mockAdminUsers.where((u) => u.role == UserRole.doctor).length,
-                  const Color(0xFF9B59B6),
-                ),
-                const SizedBox(width: 8),
-                _countChip(
-                  'Admins',
-                  mockAdminUsers.where((u) => u.role == UserRole.admin).length,
-                  const Color(0xFFFF9F40),
-                ),
-              ],
+          if (!_loading && _error == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  _countChip('Patients', _allUsers.where((u) => u.role == 'patient').length, const Color(0xFF5B8CF5)),
+                  const SizedBox(width: 8),
+                  _countChip('Doctors', _allUsers.where((u) => u.role == 'doctor').length, const Color(0xFF9B59B6)),
+                  const SizedBox(width: 8),
+                  _countChip('Admins', _allUsers.where((u) => u.role == 'admin').length, const Color(0xFFFF9F40)),
+                  const SizedBox(width: 8),
+                  _countChip('Guardians', _allUsers.where((u) => u.role == 'guardian').length, const Color(0xFF2BB6A3)),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'No users found',
-                      style: TextStyle(color: colors.textSecondary),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, a2) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) =>
-                        _userRoleCard(context, filtered[index]),
-                  ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Failed to load users', style: TextStyle(color: colors.error)),
+                            const SizedBox(height: 8),
+                            ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+                          ],
+                        ),
+                      )
+                    : filtered.isEmpty
+                        ? Center(child: Text('No users found', style: TextStyle(color: colors.textSecondary)))
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) => _userRoleCard(context, filtered[index]),
+                          ),
           ),
         ],
       ),
@@ -204,18 +255,14 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
 
   Widget _countChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         '$count $label',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
@@ -239,11 +286,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                 backgroundColor: color.withValues(alpha: 0.15),
                 child: Text(
                   user.initials,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
               const SizedBox(width: 12),
@@ -253,25 +296,15 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                   children: [
                     Text(
                       user.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      user.email,
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                    ),
+                    Text(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -281,11 +314,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                   children: [
                     Text(
                       user.roleLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.edit, size: 14, color: color),

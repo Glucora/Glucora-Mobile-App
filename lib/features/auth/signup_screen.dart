@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_screen.dart';
+import 'role_selection_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-
+import 'login_screen.dart'; 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -17,8 +17,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _phoneController =
-      TextEditingController(); // separate controller for phone
+  final _phoneController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _addressController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
@@ -42,20 +43,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await Supabase.instance.client.auth.signUp(
+      final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         data: {
           'full_name': _nameController.text.trim(),
-          'phone': _phoneController.text.trim(),
+          'phone_no': _phoneController.text.trim(),
+          'age': int.tryParse(_ageController.text.trim()) ?? 0,
+          'address': _addressController.text.trim(),
         },
       );
 
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
-      );
+
+      if (response.user != null) {
+        // Navigate directly to role selection screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+          (route) => false,
+        );
+      } else {
+        // If user is null (email confirmation required), show success and then login
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
+        );
+      }
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +245,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               // Phone number field
               TextFormField(
                 controller: _phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Enter your phone number',
                   labelStyle: TextStyle(color: colors.textSecondary),
@@ -256,17 +271,99 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your number';
+                    return 'Please enter your phone number';
                   }
                   final numberRegex = RegExp(r'^[0-9]+$');
                   if (!numberRegex.hasMatch(value)) {
                     return 'Please enter a valid number (numbers only)';
                   }
+                  if (value.length < 10) {
+                    return 'Please enter a valid phone number';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              const SizedBox(height: 8),
+              // Age field
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Enter your age',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.cake_outlined, color: colors.primary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: colors.surface,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your age';
+                  }
+                  final age = int.tryParse(value);
+                  if (age == null) {
+                    return 'Please enter a valid number';
+                  }
+                  if (age < 1 || age > 120) {
+                    return 'Please enter a valid age (1-120)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Address field
+              TextFormField(
+                controller: _addressController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Enter your address',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                  prefixIcon: Icon(Icons.location_on_outlined, color: colors.primary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.accent, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: colors.surface,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your address';
+                  }
+                  if (value.length < 5) {
+                    return 'Please enter a valid address';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               // Terms & Conditions checkbox with clickable links
               Row(
                 children: [
@@ -391,11 +488,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+    _ageController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 }
 
-// Success screen – now uses context.colors
+// Success screen – shown if email confirmation is required
 class SignUpSuccessScreen extends StatelessWidget {
   const SignUpSuccessScreen({super.key});
 
@@ -424,6 +523,12 @@ class SignUpSuccessScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Please check your email to confirm your account.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: colors.textSecondary),
+            ),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () {
@@ -441,7 +546,7 @@ class SignUpSuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Login', style: TextStyle(fontSize: 18)),
+              child: const Text('Go to Login', style: TextStyle(fontSize: 18)),
             ),
           ],
         ),

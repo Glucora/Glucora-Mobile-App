@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
-import 'package:glucora_ai_companion/core/theme/color_extension.dart'; // Fixed import
+import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class AdminAccountScreen extends StatefulWidget {
   const AdminAccountScreen({super.key});
@@ -12,11 +12,13 @@ class AdminAccountScreen extends StatefulWidget {
 }
 
 class _AdminAccountScreenState extends State<AdminAccountScreen> {
-  String _name = "Admin User";
-  int _age = 35;
-  String _email = "admin@glucora.com";
-  String _phone = "01012345678";
-  String _address = "Glucora HQ, Cairo";
+  String _name = "";
+  int _age = 0;
+  String _email = "";
+  String _phone = "";
+  String _address = "";
+  bool _loading = true;
+  String? _error;
 
   bool _notificationsEnabled = true;
   int _expandedFaqIndex = -1;
@@ -43,6 +45,46 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           'Access Role Management from the More tab. You can view existing roles, modify their permissions, or create custom roles to control access across the system.',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        throw Exception('Not logged in');
+      }
+
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name, email, role, is_active, created_at, phone_no, age, address')
+          .eq('id', session.user.id)
+          .single();
+
+      setState(() {
+        _name = response['full_name'] as String? ?? 'Admin User';
+        _email = response['email'] as String? ?? '';
+        _phone = response['phone_no'] as String? ?? '';
+        _age = response['age'] as int? ?? 0;
+        _address = response['address'] as String? ?? '';
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
@@ -91,10 +133,69 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     );
   }
 
+  Future<void> _saveUserEdits(String newName, String newEmail, String newPhone, String newAddress, int newAge) async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) return;
+
+      await Supabase.instance.client
+          .from('users')
+          .update({
+            'full_name': newName,
+            'email': newEmail,
+            'phone_no': newPhone,
+            'age': newAge,
+            'address': newAddress,
+          })
+          .eq('id', session.user.id);
+
+      setState(() {
+        _name = newName;
+        _email = newEmail;
+        _phone = newPhone;
+        _address = newAddress;
+        _age = newAge;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
+
+    if (_loading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: colors.primary)),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Failed to load profile', style: TextStyle(color: colors.error)),
+              const SizedBox(height: 8),
+              ElevatedButton(onPressed: _fetchUserData, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -103,7 +204,6 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -139,7 +239,6 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            // Profile
             Center(
               child: Column(
                 children: [
@@ -181,7 +280,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "$_age years",
+                    _age > 0 ? "$_age years" : "Age not set",
                     style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
                   const SizedBox(height: 4),
@@ -207,13 +306,14 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Contact card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -225,14 +325,14 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               child: Column(
                 children: [
                   _infoRow(context, Icons.email_outlined, "Email", _email),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                  _infoRow(context, Icons.phone_outlined, "Phone", _phone),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
+                  _infoRow(context, Icons.phone_outlined, "Phone", _phone.isNotEmpty ? _phone : "Not set"),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(
                     context,
                     Icons.location_on_outlined,
                     "Address",
-                    _address,
+                    _address.isNotEmpty ? _address : "Not set",
                   ),
                 ],
               ),
@@ -331,6 +431,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   ) {
     final colors = context.colors;
     final isExpanded = _expandedFaqIndex == index;
+    
     return GestureDetector(
       onTap: () => setState(() => _expandedFaqIndex = isExpanded ? -1 : index),
       child: AnimatedContainer(
@@ -343,7 +444,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           border: Border.all(
             color: isExpanded
                 ? colors.primary.withValues(alpha: 0.3)
-                : const Color(0xFFEEEEEE),
+                : colors.textSecondary.withValues(alpha: 0.3),
           ),
         ),
         child: Column(
@@ -395,13 +496,13 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
       ),
     );
     if (result != null) {
-      setState(() {
-        _name = result['name'];
-        _age = result['age'];
-        _email = result['email'];
-        _phone = result['phone'];
-        _address = result['address'];
-      });
+      await _saveUserEdits(
+        result['name'],
+        result['email'],
+        result['phone'],
+        result['address'],
+        result['age'],
+      );
     }
   }
 }
@@ -449,6 +550,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colors.surface,
@@ -484,41 +586,43 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildField(context, 'Name', _nameController, Icons.person_outline),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Age',
-              _ageController,
-              Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Email',
-              _emailController,
-              Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Phone',
-              _phoneController,
-              Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            _buildField(
-              context,
-              'Address',
-              _addressController,
-              Icons.location_on_outlined,
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildField(context, 'Name', _nameController, Icons.person_outline),
+              const SizedBox(height: 16),
+              _buildField(
+                context,
+                'Age',
+                _ageController,
+                Icons.cake_outlined,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              _buildField(
+                context,
+                'Email',
+                _emailController,
+                Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              _buildField(
+                context,
+                'Phone',
+                _phoneController,
+                Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              _buildField(
+                context,
+                'Address',
+                _addressController,
+                Icons.location_on_outlined,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -530,22 +634,37 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
-    String? hint,
   }) {
     final colors = context.colors;
+    
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(
+        color: colors.textPrimary,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        hintText: hint,
+        labelStyle: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 13,
+        ),
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
         filled: true,
-        fillColor: const Color(0xFFF5F5F5),
+        fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -674,12 +793,13 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     final colors = context.colors;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
