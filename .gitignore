@@ -1,4 +1,12 @@
 # Miscellaneous
+# .gitignore
+.env
+*.env
+!.env.example
+keys/
+secrets/
+*.pem
+*.key
 *.class
 *.log
 *.pyc

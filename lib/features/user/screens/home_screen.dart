@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -11,8 +12,11 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final supabase = Supabase.instance.client;
+    final String userName = supabase.auth.currentUser?.userMetadata?['full_name'] ?? "User";
+
     final colors = context.colors;
-    
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -33,11 +37,12 @@ class HomeScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
+            // ── Header ──
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Welcome Back, Malak!",
+                  "Welcome Back, $userName!",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -65,12 +70,23 @@ class HomeScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
+            // ── Landscape vs Portrait layouts ──
             isLandscape
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: _glucoseCard(context)),
+                      // Left: glucose + IOB/battery
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _glucoseCard(context),
+                            const SizedBox(height: 12),
+                            _statusIndicatorsRow(context),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 16),
+                      // Right: prediction + recommendations + care plan
                       Expanded(
                         child: Column(
                           children: [
@@ -88,7 +104,8 @@ class HomeScreen extends StatelessWidget {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const RecommendationsScreen(),
+                                  builder: (_) =>
+                                      const RecommendationsScreen(),
                                 ),
                               ),
                               child: _recommendationsCard(context),
@@ -98,7 +115,8 @@ class HomeScreen extends StatelessWidget {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const PatientCarePlanScreen(),
+                                  builder: (_) =>
+                                      const PatientCarePlanScreen(),
                                 ),
                               ),
                               child: _carePlanCard(context),
@@ -111,6 +129,8 @@ class HomeScreen extends StatelessWidget {
                 : Column(
                     children: [
                       _glucoseCard(context),
+                      const SizedBox(height: 12),
+                      _statusIndicatorsRow(context),
                       const SizedBox(height: 16),
                       GestureDetector(
                         onTap: () => Navigator.push(
@@ -151,6 +171,217 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // ════════════════════════════════════════════════════
+  // IOB + BATTERY ROW
+  // ════════════════════════════════════════════════════
+  Widget _statusIndicatorsRow(BuildContext context) {
+    final colors = context.colors;
+
+    // IOB values
+    const double iobValue = 2.4;
+    // ignore: unnecessary_string_escapes
+    const String iobUnit = "U";
+
+    // Battery values
+    const double batteryPercent = 0.80;
+    const int batteryDisplay = 80;
+
+    // Battery color: green > 50%, amber 20–50%, red < 20%
+    final Color batteryColor = batteryPercent > 0.5
+        ? const Color(0xFF4CAF50)
+        : batteryPercent > 0.2
+            ? const Color(0xFFFFB300)
+            : const Color(0xFFEF1616);
+
+    return Row(
+      children: [
+        // ── IOB card ──────────────────────────────────
+        Expanded(
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Icon bubble
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.water_drop_rounded,
+                    size: 19,
+                    color: colors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "IOB",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            "$iobValue",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            " $iobUnit",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Insulin on board",
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: colors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        // ── Battery card ───────────────────────────────
+        Expanded(
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Icon bubble — color matches battery level
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: batteryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    batteryPercent > 0.2
+                        ? Icons.battery_charging_full_rounded
+                        : Icons.battery_alert_rounded,
+                    size: 19,
+                    color: batteryColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Sensor Battery",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            "$batteryDisplay",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            " %",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      // Progress bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: batteryPercent,
+                          minHeight: 5,
+                          backgroundColor:
+                              colors.textSecondary.withValues(alpha: 0.15),
+                          valueColor:
+                              AlwaysStoppedAnimation(batteryColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // GLUCOSE CARD
+  // ════════════════════════════════════════════════════
   Widget _glucoseCard(BuildContext context) {
     final colors = context.colors;
     return Container(
@@ -158,7 +389,8 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -224,12 +456,14 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, thickness: 1, color: colors.textSecondary.withValues(alpha:0.2)),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -244,21 +478,24 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _dot(Color c, String label, GlucoraColors colors) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 5),
-      Text(
-        label,
-        style: TextStyle(fontSize: 12, color: colors.textSecondary),
-      ),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+          ),
+        ],
+      );
 
+  // ════════════════════════════════════════════════════
+  // AI PREDICTION CARD
+  // ════════════════════════════════════════════════════
   Widget _predictionCard(BuildContext context) {
     final colors = context.colors;
     return Container(
@@ -266,7 +503,8 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -317,7 +555,8 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
                   " mg/dL",
-                  style: TextStyle(fontSize: 18, color: colors.textSecondary),
+                  style: TextStyle(
+                      fontSize: 18, color: colors.textSecondary),
                 ),
               ),
             ],
@@ -326,11 +565,7 @@ class HomeScreen extends StatelessWidget {
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(
-                Icons.arrow_upward,
-                color: colors.error,
-                size: 14,
-              ),
+              Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
               Text(
                 "22.73%",
@@ -343,38 +578,44 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 "Expected glucose in 30 minutes",
-                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                style: TextStyle(
+                    fontSize: 12, color: colors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             "Glucose from 10:21pm 15 Jan, 2026",
-            style: TextStyle(fontSize: 11, color: colors.textSecondary),
+            style:
+                TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
           const SizedBox(height: 14),
           SizedBox(
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: _ChartPainter(),
+              painter: _ChartPainter(primaryColor: colors.primary),
             ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Container(width: 14, height: 2.5, color: colors.primary),
+              Container(
+                  width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
               Text(
                 "Next 60 minutes",
-                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                style: TextStyle(
+                    fontSize: 11, color: colors.textSecondary),
               ),
               const SizedBox(width: 16),
-              Container(width: 14, height: 2.5, color: Colors.grey),
+              Container(
+                  width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
               Text(
                 "Last Hour",
-                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                style: TextStyle(
+                    fontSize: 11, color: colors.textSecondary),
               ),
             ],
           ),
@@ -383,6 +624,9 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // ════════════════════════════════════════════════════
+  // RECOMMENDATIONS CARD
+  // ════════════════════════════════════════════════════
   Widget _recommendationsCard(BuildContext context) {
     final colors = context.colors;
     return Container(
@@ -390,7 +634,8 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -445,7 +690,8 @@ class HomeScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   "Recommendations are supportive and not a medical diagnosis.",
-                  style: TextStyle(fontSize: 10, color: colors.textSecondary),
+                  style: TextStyle(
+                      fontSize: 10, color: colors.textSecondary),
                 ),
               ),
             ],
@@ -456,32 +702,37 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _rec(GlucoraColors colors, String text) => Row(
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: colors.primary,
-          shape: BoxShape.circle,
-        ),
-      ),
-      const SizedBox(width: 10),
-      Flexible(
-        child: Text(
-          text,
-          style: TextStyle(fontSize: 14, color: colors.textPrimary),
-        ),
-      ),
-    ],
-  );
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              text,
+              style:
+                  TextStyle(fontSize: 14, color: colors.textPrimary),
+            ),
+          ),
+        ],
+      );
 
+  // ════════════════════════════════════════════════════
+  // CARE PLAN CARD
+  // ════════════════════════════════════════════════════
   Widget _carePlanCard(BuildContext context) {
     final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -538,7 +789,8 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       'Dr. Sarah Johnson  ·  Target: 70–180 mg/dL',
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.textSecondary),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -569,7 +821,13 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+// ════════════════════════════════════════════════════
+// CHART PAINTER
+// ════════════════════════════════════════════════════
 class _ChartPainter extends CustomPainter {
+  final Color primaryColor;
+  const _ChartPainter({required this.primaryColor});
+
   @override
   void paint(Canvas canvas, Size size) {
     const lh = 18.0;
@@ -589,7 +847,8 @@ class _ChartPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: xl[i],
-          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
+          style: const TextStyle(
+              fontSize: 10, color: Color(0xFFAAAAAA)),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -617,7 +876,7 @@ class _ChartPainter extends CustomPainter {
     canvas.drawPath(
       fill,
       Paint()
-        ..color = const Color(0xFF199A8E).withValues(alpha: 0.10)
+        ..color = primaryColor.withValues(alpha: 0.10)
         ..style = PaintingStyle.fill,
     );
 
@@ -633,14 +892,14 @@ class _ChartPainter extends CustomPainter {
     canvas.drawPath(
       _sp(grn),
       Paint()
-        ..color = const Color(0xFF199A8E)
+        ..color = primaryColor
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
 
     for (final pt in [gry.last, grn.last]) {
-      canvas.drawCircle(pt, 5, Paint()..color = const Color(0xFF199A8E));
+      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
       canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
     }
   }
@@ -649,7 +908,8 @@ class _ChartPainter extends CustomPainter {
     final p = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (int i = 1; i < pts.length; i++) {
       final a = pts[i - 1], b = pts[i];
-      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+      p.cubicTo(
+          (a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
     }
     return p;
   }

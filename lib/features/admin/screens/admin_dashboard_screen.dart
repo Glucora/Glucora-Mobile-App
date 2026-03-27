@@ -1,29 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  List<AdminUser> _allUsers = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+  }
+
+  Future<void> _fetchUsers() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('id, full_name, email, role, is_active, created_at')
+          .order('created_at', ascending: false);
+
+      final users = (response as List)
+          .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
+          .toList();
+
+      if (mounted) setState(() {
+        _allUsers = users;
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    final patients = mockAdminUsers
-        .where((u) => u.role == UserRole.patient)
-        .toList();
-    final doctors = mockAdminUsers
-        .where((u) => u.role == UserRole.doctor)
-        .toList();
-    final admins = mockAdminUsers
-        .where((u) => u.role == UserRole.admin)
-        .toList();
+    final patients = _allUsers.where((u) => u.role == 'patient').toList();
+    final doctors = _allUsers.where((u) => u.role == 'doctor').toList();
+    final admins = _allUsers.where((u) => u.role == 'admin').toList();
+    final guardians = _allUsers.where((u) => u.role == 'guardian').toList();
+
     final activeDevices = mockAdminDevices.where((d) => d.isActive).length;
     final inactiveDevices = mockAdminDevices.where((d) => !d.isActive).length;
     final enabledRules = mockAlertRules.where((r) => r.isEnabled).length;
     final criticalRules = mockAlertRules
         .where((r) => r.severity == 'Critical')
         .length;
+
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Admin Dashboard',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: colors.primaryDark,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Admin Dashboard',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: colors.primaryDark,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Failed to load data', style: TextStyle(color: colors.error)),
+              const SizedBox(height: 8),
+              ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -51,7 +127,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         child: _statCard(
                           context,
                           'Total Users',
-                          '${mockAdminUsers.length}',
+                          '${_allUsers.length}',
                           Icons.people,
                           colors.accent,
                         ),
@@ -80,10 +156,10 @@ class AdminDashboardScreen extends StatelessWidget {
                       Expanded(
                         child: _statCard(
                           context,
-                          'Admins',
-                          '${admins.length}',
-                          Icons.admin_panel_settings,
-                          const Color(0xFFFF9F40),
+                          'Guardians',
+                          '${guardians.length}',
+                          Icons.family_restroom,
+                          const Color(0xFF2BB6A3),
                         ),
                       ),
                     ],
@@ -184,7 +260,7 @@ class AdminDashboardScreen extends StatelessWidget {
                       child: _statCard(
                         context,
                         'Total Users',
-                        '${mockAdminUsers.length}',
+                        '${_allUsers.length}',
                         Icons.people,
                         colors.accent,
                       ),
@@ -217,10 +293,10 @@ class AdminDashboardScreen extends StatelessWidget {
                     Expanded(
                       child: _statCard(
                         context,
-                        'Admins',
-                        '${admins.length}',
-                        Icons.admin_panel_settings,
-                        const Color(0xFFFF9F40),
+                        'Guardians',
+                        '${guardians.length}',
+                        Icons.family_restroom,
+                        const Color(0xFF2BB6A3),
                       ),
                     ),
                   ],

@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Custom colors used throughout the app.
-/// All colors are dynamic based on brightness.
+
 class GlucoraColors extends ThemeExtension<GlucoraColors> {
-  final Color primary;      // Main teal
-  final Color primaryDark;  // Darker teal for app bars
-  final Color accent;       // Accent teal (e.g., buttons)
-  final Color background;   // Screen background
-  final Color surface;      // Card backgrounds
-  final Color textPrimary;  // Main text
-  final Color textSecondary;// Secondary text
-  final Color error;        // Error/alert
-  final Color warning;      // Warning
-  final Color success;      // Success
+  final Color primary;      
+  final Color primaryDark;  
+  final Color accent;       
+  final Color background;   
+  final Color surface;      
+  final Color textPrimary;  
+  final Color textSecondary;
+  final Color error;        
+  final Color warning;      
+  final Color success;      
 
   const GlucoraColors({
     required this.primary,
@@ -72,7 +71,6 @@ class GlucoraColors extends ThemeExtension<GlucoraColors> {
   }
 }
 
-/// Light theme data.
 final lightTheme = ThemeData(
   brightness: Brightness.light,
   primaryColor: const Color(0xFF199A8E),
@@ -104,7 +102,6 @@ final lightTheme = ThemeData(
   ],
 );
 
-/// Dark theme data.
 final darkTheme = ThemeData(
   brightness: Brightness.dark,
   primaryColor: const Color(0xFF199A8E),
@@ -116,7 +113,7 @@ final darkTheme = ThemeData(
     surface: Color(0xFF1E1E1E),
   ),
   appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFF0F5E54), // darker teal
+    backgroundColor: Color(0xFF0F5E54), 
     foregroundColor: Colors.white,
     elevation: 0,
   ),
