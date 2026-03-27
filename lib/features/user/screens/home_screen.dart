@@ -627,101 +627,167 @@ class HomeScreen extends StatelessWidget {
   // ════════════════════════════════════════════════════
   // RECOMMENDATIONS CARD
   // ════════════════════════════════════════════════════
-  Widget _recommendationsCard(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+ // ── UPDATED RECOMMENDATIONS CARD ──
+Widget _recommendationsCard(BuildContext context) {
+  final colors = context.colors;
+  final supabase = Supabase.instance.client;
+
+  return FutureBuilder<List<String>>(
+    future: _fetchRecommendations(supabase),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Recommendations",
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              Text(
-                "View details",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _rec(colors, "Avoid high-carbohydrate meals"),
-          const SizedBox(height: 10),
-          _rec(colors, "Take a short walk"),
-          const SizedBox(height: 10),
-          _rec(colors, "Recheck glucose in 30 minutes"),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Icon(
-                  Icons.warning_amber_rounded,
-                  size: 12,
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  "Recommendations are supportive and not a medical diagnosis.",
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      final recs = snapshot.data ?? [];
+
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: colors.textSecondary.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Recommendations",
                   style: TextStyle(
-                      fontSize: 10, color: colors.textSecondary),
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const RecommendationsScreen()),
+                  ),
+                  child: Text(
+                    "View details",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-  Widget _rec(GlucoraColors colors, String text) => Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: colors.primary,
-              shape: BoxShape.circle,
+            // Recommendations previews
+            ...recs.map((rec) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _rec(colors, rec),
+                )),
+
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    "Recommendations are supportive and not a medical diagnosis.",
+                    style: TextStyle(
+                        fontSize: 10, color: colors.textSecondary),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              text,
-              style:
-                  TextStyle(fontSize: 14, color: colors.textPrimary),
-            ),
-          ),
-        ],
+          ],
+        ),
       );
+    },
+  );
+}
 
+// ── FETCH RECOMMENDATIONS FROM SUPABASE (OR ANY API) ──
+Future<List<String>> _fetchRecommendations(SupabaseClient supabase) async {
+  try {
+    final response = await supabase
+        .from('recommendations')
+        .select('text')
+        .order('created_at', ascending: false)
+        .limit(3);
+
+    print('Raw recommendations response: $response'); // debug output
+
+    if (response == null || response.isEmpty) {
+      return ["No recommendations available"];
+    }
+
+    // Safely map each item to string
+    final List<String> recs = [];
+    for (final item in response) {
+      if (item is Map && item.containsKey('text')) {
+        recs.add(item['text']?.toString() ?? '');
+      }
+    }
+
+    if (recs.isEmpty) return ["No recommendations available"];
+
+    return recs;
+  } catch (e) {
+    print('Exception fetching recommendations: $e');
+    return ["Failed to fetch recommendations"];
+  }
+}
+// ── TRUNCATED RECOMMENDATION ROW ──
+Widget _rec(GlucoraColors colors, String recText) => Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: colors.primary,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            recText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 14, color: colors.textPrimary),
+          ),
+        ),
+      ],
+    );
   // ════════════════════════════════════════════════════
   // CARE PLAN CARD
   // ════════════════════════════════════════════════════
