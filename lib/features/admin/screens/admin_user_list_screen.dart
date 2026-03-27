@@ -88,6 +88,56 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     if (confirmed != true) return;
 
     try {
+      if (user.role == 'doctor') {
+        // Get doctor_profile.id (bigint) for this user
+        final profileResponse = await Supabase.instance.client
+            .from('doctor_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (profileResponse != null) {
+          final profileId = profileResponse['id'];
+          // Delete connections using the bigint profile id
+          await Supabase.instance.client
+              .from('doctor_patient_connections')
+              .delete()
+              .eq('doctor_id', profileId);
+          // Delete doctor profile
+          await Supabase.instance.client
+              .from('doctor_profile')
+              .delete()
+              .eq('user_id', user.id);
+        }
+      } else if (user.role == 'patient') {
+        // Get patient_profile.id (bigint) for this user
+        final profileResponse = await Supabase.instance.client
+            .from('patient_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (profileResponse != null) {
+          final profileId = profileResponse['id'];
+          // Delete glucose readings first
+          await Supabase.instance.client
+              .from('glucose_readings')
+              .delete()
+              .eq('patient_id', profileId);
+          // Delete doctor_patient_connections
+          await Supabase.instance.client
+              .from('doctor_patient_connections')
+              .delete()
+              .eq('patient_id', profileId);
+          // Delete patient profile
+          await Supabase.instance.client
+              .from('patient_profile')
+              .delete()
+              .eq('user_id', user.id);
+        }
+      }
+
+      // Finally delete the user row
       await Supabase.instance.client
           .from('users')
           .delete()
