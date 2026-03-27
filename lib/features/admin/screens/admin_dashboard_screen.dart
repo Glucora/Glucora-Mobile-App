@@ -36,15 +36,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
           .toList();
 
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _allUsers = users;
         _loading = false;
       });
+      }
     } catch (e) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _error = e.toString();
         _loading = false;
       });
+      }
     }
   }
 

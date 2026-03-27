@@ -24,17 +24,35 @@ class _RecCard {
     required this.createdAt,
   });
 
-  factory _RecCard.fromRow(Map<String, dynamic> row) {
-    final category = (row['category'] as String? ?? 'general');
-    return _RecCard(
-      id: row['id'] as String,
-      category: category,
-      title: _titleFor(category),
-      message: row['message'] as String? ?? '',
-      isRead: row['is_read'] as bool? ?? false,
-      createdAt: DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now(),
-    );
+factory _RecCard.fromRow(Map<String, dynamic> row) {
+  // convert all fields safely
+  final id = row['id']?.toString() ?? '';
+  final category = row['category']?.toString() ?? 'general';
+  final message = row['message']?.toString() ?? '';
+  final isRead = row['is_read'] as bool? ?? false;
+
+  DateTime createdAt;
+  final rawCreated = row['created_at'];
+  if (rawCreated is String) {
+    createdAt = DateTime.tryParse(rawCreated) ?? DateTime.now();
+  } else if (rawCreated is DateTime) {
+    createdAt = rawCreated;
+  } else if (rawCreated is int) {
+    // epoch milliseconds
+    createdAt = DateTime.fromMillisecondsSinceEpoch(rawCreated);
+  } else {
+    createdAt = DateTime.now();
   }
+
+  return _RecCard(
+    id: id,
+    category: category,
+    title: _titleFor(category),
+    message: message,
+    isRead: isRead,
+    createdAt: createdAt,
+  );
+}
 
   static String _titleFor(String category) {
     switch (category) {
@@ -242,10 +260,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       );
 
   Widget _buildBody(dynamic colors) {
-    if (_error != null) return Padding(
+    if (_error != null) {
+      return Padding(
       padding: const EdgeInsets.all(16),
       child: _buildErrorBanner(colors),
     );
+    }
 
     if (_cards.isEmpty) return _buildEmptyState(colors);
 

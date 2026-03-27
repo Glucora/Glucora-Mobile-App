@@ -24,10 +24,7 @@ class AIService {
   // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
 static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;  static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-  static const String _model = 'meta-llama/llama-3.2-3b-instruct:free';
-
-  /// Calls OpenRouter with the patient's glucose data and returns a structured
-  /// list of [AIRecommendation] objects ready to display and save to DB.
+static const String _model = 'openai/gpt-3.5-turbo';
   static Future<List<AIRecommendation>> getRecommendations({
     required double currentGlucose,
     required double predictedGlucose,
