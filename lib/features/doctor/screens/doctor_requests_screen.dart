@@ -122,6 +122,7 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
       builder: (_) => _SearchPatientSheet(
         onSendRequest: _sendRequest,
         existingConnections: _requests,
+        onRequestChanged: _fetchRequests,
       ),
     );
   }
@@ -715,10 +716,12 @@ class _SearchPatientSheet extends StatefulWidget {
   })
   onSendRequest;
   final List<ConnectionRequest> existingConnections;
+  final VoidCallback onRequestChanged;
 
   const _SearchPatientSheet({
     required this.onSendRequest,
     required this.existingConnections,
+    required this.onRequestChanged,
   });
 
   @override
@@ -741,17 +744,27 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
 
   Future<void> _loadDoctorProfileId() async {
     final userId = supabase.auth.currentUser!.id;
+    print('Loading doctor profile for user: $userId');
+
     final row = await supabase
         .from('doctor_profile')
         .select('id')
         .eq('user_id', userId)
         .single();
     setState(() => _doctorProfileId = row['id'] as String);
+    print('Doctor profile id loaded: $_doctorProfileId');
   }
 
   Future<void> _search() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty || _doctorProfileId == null) return;
+    print('Search triggered with phone: "$phone"');
+
+    if (phone.isEmpty || _doctorProfileId == null) {
+      print(
+        'Blocked: phone empty = ${phone.isEmpty}, doctorId null = ${_doctorProfileId == null}',
+      );
+      return;
+    }
 
     setState(() {
       _isSearching = true;
@@ -760,14 +773,15 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
     });
 
     try {
-      // Find user by phone with role patient
       final userRows = await supabase
           .from('users')
           .select('id, full_name, phone_no')
           .eq('phone_no', phone)
-          .eq('phone_no', phone)
           .ilike('role', 'patient');
+      print('Users found: ${(userRows as List).length} — $userRows');
+
       if ((userRows as List).isEmpty) {
+        print('UI will show: No patient found with this phone number.');
         setState(() {
           _errorMessage = 'No patient found with this phone number.';
           _isSearching = false;
@@ -778,40 +792,64 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
       final List<Map<String, dynamic>> found = [];
 
       for (final user in userRows) {
-        // Get patient_profile id
+        print('Checking user: ${user['full_name']} id: ${user['id']}');
+
         final profileRows = await supabase
             .from('patient_profile')
             .select('id')
             .eq('user_id', user['id'] as String);
+        print(
+          'Patient profiles found: ${(profileRows as List).length} — $profileRows',
+        );
 
-        if ((profileRows as List).isEmpty) continue;
+        if ((profileRows as List).isEmpty) {
+          print('No patient_profile for user ${user['id']}, skipping');
+          continue;
+        }
 
         final patientProfileId = profileRows[0]['id'] as int;
 
-        // Check if already connected or pending
-        final existing = await supabase
+        // Check connection with THIS doctor
+        final myConnection = await supabase
             .from('doctor_patient_connections')
             .select('id, status')
             .eq('doctor_id', _doctorProfileId!)
             .eq('patient_id', patientProfileId);
 
-        final alreadyLinked = (existing as List).any(
-          (row) => row['status'] == 'pending' || row['status'] == 'accepted',
+        print(
+          ' My connection with patient $patientProfileId: ${(myConnection as List)}',
         );
+        // Check connection with ANY other doctor
+        final otherDoctorConnection = await supabase
+            .from('doctor_patient_connections')
+            .select('id, status')
+            .eq('patient_id', patientProfileId)
+            .neq('doctor_id', _doctorProfileId!)
+            .eq('status', 'accepted');
+        print('Other doctor connection: ${(otherDoctorConnection as List)}');
 
-        if (!alreadyLinked) {
-          found.add({
-            'patientProfileId': patientProfileId,
-            'full_name': user['full_name'] as String,
-            'phone_no': user['phone_no'] as String,
-          });
+        String connectionStatus = 'none';
+
+        if ((myConnection as List).isNotEmpty) {
+          connectionStatus = myConnection[0]['status'] as String;
+        } else if ((otherDoctorConnection as List).isNotEmpty) {
+          connectionStatus = 'other_doctor';
         }
+
+        found.add({
+          'patientProfileId': patientProfileId,
+          'connectionId': (myConnection as List).isNotEmpty
+              ? myConnection[0]['id'].toString()
+              : null,
+          'full_name': user['full_name'] as String,
+          'phone_no': user['phone_no'] as String,
+          'connectionStatus': connectionStatus,
+        });
       }
 
       setState(() {
         _results = found;
-        if (found.isEmpty)
-          _errorMessage = "Patient already connected or has a pending request.";
+        if (found.isEmpty) _errorMessage = 'No patient profile found.';
         _isSearching = false;
       });
     } catch (e) {
@@ -829,6 +867,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
         patientProfileId: patient['patientProfileId'] as int,
         patientName: patient['full_name'] as String,
       );
+      widget.onRequestChanged();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() {
@@ -838,10 +877,162 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
     }
   }
 
+  Future<void> _withdraw(Map<String, dynamic> patient) async {
+    setState(() => _isSending = true);
+    try {
+      await supabase
+          .from('doctor_patient_connections')
+          .delete()
+          .eq('id', int.parse(patient['connectionId'] as String));
+
+      setState(() {
+        _results = _results.map((p) {
+          if (p['patientProfileId'] == patient['patientProfileId']) {
+            return {...p, 'connectionStatus': 'none', 'connectionId': null};
+          }
+          return p;
+        }).toList();
+        _isSending = false;
+      });
+      widget.onRequestChanged();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to withdraw request.';
+        _isSending = false;
+      });
+    }
+  }
+
   String _initials(String name) {
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return parts[0][0].toUpperCase();
+  }
+
+  Widget _buildStatusWidget(Map<String, dynamic> patient) {
+    final colors = context.colors;
+    final status = patient['connectionStatus'] as String;
+
+    switch (status) {
+      case 'accepted':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            'Already your patient',
+            style: TextStyle(
+              color: Colors.green,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      case 'pending':
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Request pending',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _isSending ? null : () => _withdraw(patient),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Withdraw',
+                  style: TextStyle(
+                    color: colors.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      case 'declined':
+        return ElevatedButton(
+          onPressed: _isSending ? null : () => _add(patient),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.accent,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: const Text(
+            'Send Again',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        );
+      case 'other_doctor':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: colors.textSecondary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'Has another doctor',
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      default:
+        return ElevatedButton(
+          onPressed: _isSending ? null : () => _add(patient),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.accent,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: _isSending
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text(
+                  'Add',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+        );
+    }
   }
 
   @override
@@ -1019,34 +1210,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: _isSending ? null : () => _add(patient),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.accent,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: _isSending
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Add',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                    ),
+                    _buildStatusWidget(patient),
                   ],
                 ),
               ),
