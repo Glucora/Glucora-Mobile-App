@@ -82,6 +82,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
           .from('patient_list_view')
           .select()
           .eq('doctor_id', doctorProfileId);
+
       print(response);
       setState(() {
         _allPatients = (response as List)
@@ -302,8 +303,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                   childAspectRatio: 3.4,
                                 ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _PatientCard(patient: filtered[index]),
+                              (context, index) => _PatientCard(
+                                patient: filtered[index],
+                                onTap: () async {
+                                  final removed = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailsScreen(
+                                        patientId: filtered[index].id,
+                                        patientName: filtered[index].name,
+                                      ),
+                                    ),
+                                  );
+                                  if (removed == true) _fetchPatients();
+                                },
+                              ),
                               childCount: filtered.length,
                             ),
                           ),
@@ -312,8 +326,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _PatientCard(patient: filtered[index]),
+                              (context, index) => _PatientCard(
+                                patient: filtered[index],
+                                onTap: () async {
+                                  final removed = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailsScreen(
+                                        patientId: filtered[index].id,
+                                        patientName: filtered[index].name,
+                                      ),
+                                    ),
+                                  );
+                                  if (removed == true) _fetchPatients();
+                                },
+                              ),
                               childCount: filtered.length,
                             ),
                           ),
@@ -768,8 +795,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
 class _PatientCard extends StatelessWidget {
   final _Patient patient;
-
-  const _PatientCard({required this.patient});
+  final VoidCallback? onTap;
+  const _PatientCard({required this.patient, this.onTap});
 
   Color _statusColor() {
     switch (patient.status) {
@@ -801,17 +828,7 @@ class _PatientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PatientDetailsScreen(
-              patientId: patient.id,
-              patientName: patient.name,
-            ),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
