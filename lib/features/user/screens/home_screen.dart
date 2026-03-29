@@ -9,13 +9,68 @@ import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _doctorName = '';
+  String _targetRange = '– mg/dL';
+  String _nextAppointment = '–';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCarePlanSummary();
+  }
+
+  Future<void> _fetchCarePlanSummary() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      print('USER ID: $userId');
+      if (userId == null) return;
+      final patientProfileId = await getPatientProfileId(userId);
+      print('PATIENT PROFILE ID: $patientProfileId');
+      if (patientProfileId == null) return;
+      final response = await supabase
+          .from('care_plans')
+          .select(
+            'target_glucose_min, target_glucose_max, next_appointment, doctor_profile(full_name)',
+          )
+          .eq('patient_id', patientProfileId)
+          .order('updated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      print('CARE PLAN RESPONSE: $response');
+      if (response == null) return;
+      final doctorProfile = response['doctor_profile'];
+      print('DOCTOR PROFILE: $doctorProfile');
+      final doctorName = doctorProfile?['full_name'] ?? 'Your Doctor';
+      print('DOCTOR NAME: $doctorName');
+      final min = response['target_glucose_min'];
+      final max = response['target_glucose_max'];
+      final appt = response['next_appointment'];
+      setState(() {
+        _doctorName = doctorName;
+        _targetRange = (min != null && max != null)
+            ? '$min–$max mg/dL'
+            : '– mg/dL';
+        _nextAppointment = appt ?? '–';
+      });
+    } catch (e) {
+      if (kDebugMode) print('Failed to fetch care plan summary: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final supabase = Supabase.instance.client;
-    final String userName = supabase.auth.currentUser?.userMetadata?['full_name'] ?? "User";
+    final String userName =
+        supabase.auth.currentUser?.userMetadata?['full_name'] ?? "User";
 
     final colors = context.colors;
 
@@ -106,8 +161,7 @@ class HomeScreen extends StatelessWidget {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const RecommendationsScreen(),
+                                  builder: (_) => const RecommendationsScreen(),
                                 ),
                               ),
                               child: _recommendationsCard(context),
@@ -117,8 +171,7 @@ class HomeScreen extends StatelessWidget {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const PatientCarePlanScreen(),
+                                  builder: (_) => const PatientCarePlanScreen(),
                                 ),
                               ),
                               child: _carePlanCard(context),
@@ -192,21 +245,21 @@ class HomeScreen extends StatelessWidget {
     final Color batteryColor = batteryPercent > 0.5
         ? const Color(0xFF4CAF50)
         : batteryPercent > 0.2
-            ? const Color(0xFFFFB300)
-            : const Color(0xFFEF1616);
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFEF1616);
 
     return Row(
       children: [
         // ── IOB card ──────────────────────────────────
         Expanded(
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -289,13 +342,13 @@ class HomeScreen extends StatelessWidget {
         // ── Battery card ───────────────────────────────
         Expanded(
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -364,10 +417,10 @@ class HomeScreen extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: batteryPercent,
                           minHeight: 5,
-                          backgroundColor:
-                              colors.textSecondary.withValues(alpha: 0.15),
-                          valueColor:
-                              AlwaysStoppedAnimation(batteryColor),
+                          backgroundColor: colors.textSecondary.withValues(
+                            alpha: 0.15,
+                          ),
+                          valueColor: AlwaysStoppedAnimation(batteryColor),
                         ),
                       ),
                     ],
@@ -391,8 +444,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -480,20 +532,17 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _dot(Color c, String label, GlucoraColors colors) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: colors.textSecondary),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+    ],
+  );
 
   // ════════════════════════════════════════════════════
   // AI PREDICTION CARD
@@ -505,8 +554,7 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -557,8 +605,7 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
                   " mg/dL",
-                  style: TextStyle(
-                      fontSize: 18, color: colors.textSecondary),
+                  style: TextStyle(fontSize: 18, color: colors.textSecondary),
                 ),
               ),
             ],
@@ -580,16 +627,14 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 "Expected glucose in 30 minutes",
-                style: TextStyle(
-                    fontSize: 12, color: colors.textSecondary),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             "Glucose from 10:21pm 15 Jan, 2026",
-            style:
-                TextStyle(fontSize: 11, color: colors.textSecondary),
+            style: TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -602,22 +647,18 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Container(
-                  width: 14, height: 2.5, color: colors.primary),
+              Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
               Text(
                 "Next 60 minutes",
-                style: TextStyle(
-                    fontSize: 11, color: colors.textSecondary),
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
               const SizedBox(width: 16),
-              Container(
-                  width: 14, height: 2.5, color: Colors.grey),
+              Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
               Text(
                 "Last Hour",
-                style: TextStyle(
-                    fontSize: 11, color: colors.textSecondary),
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
             ],
           ),
@@ -629,173 +670,180 @@ class HomeScreen extends StatelessWidget {
   // ════════════════════════════════════════════════════
   // RECOMMENDATIONS CARD
   // ════════════════════════════════════════════════════
- // ── UPDATED RECOMMENDATIONS CARD ──
-Widget _recommendationsCard(BuildContext context) {
-  final colors = context.colors;
-  final supabase = Supabase.instance.client;
+  // ── UPDATED RECOMMENDATIONS CARD ──
+  Widget _recommendationsCard(BuildContext context) {
+    final colors = context.colors;
+    final supabase = Supabase.instance.client;
 
-  return FutureBuilder<List<String>>(
-    future: _fetchRecommendations(supabase),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder<List<String>>(
+      future: _fetchRecommendations(supabase),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final recs = snapshot.data ?? [];
+
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: colors.textSecondary.withValues(alpha: 0.2),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          child: const Center(child: CircularProgressIndicator()),
-        );
-      }
-
-      final recs = snapshot.data ?? [];
-
-      return Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: colors.textSecondary.withValues(alpha: 0.2)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Recommendations",
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const RecommendationsScreen()),
-                  ),
-                  child: Text(
-                    "View details",
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Recommendations",
                     style: TextStyle(
-                      fontSize: 13,
-                      color: colors.primary,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecommendationsScreen(),
+                      ),
+                    ),
+                    child: Text(
+                      "View details",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
 
-            // Recommendations previews
-            ...recs.map((rec) => Padding(
+              // Recommendations previews
+              ...recs.map(
+                (rec) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _rec(colors, rec),
-                )),
-
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    size: 12,
-                    color: colors.textSecondary,
-                  ),
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    "Recommendations are supportive and not a medical diagnosis.",
-                    style: TextStyle(
-                        fontSize: 10, color: colors.textSecondary),
+              ),
+
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 12,
+                      color: colors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-// ── FETCH RECOMMENDATIONS FROM SUPABASE (OR ANY API) ──
-Future<List<String>> _fetchRecommendations(SupabaseClient supabase) async {
-  try {
-    // 1️⃣ Get the current user's patient profile ID first
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return ["User not logged in"];
-
-    final patientProfileId = await getPatientProfileId(userId);
-    if (patientProfileId == null) return ["No patient profile found"];
-
-    // 2️⃣ Fetch latest 3 recommendations from ai_recommendations
-    final response = await supabase
-        .from('ai_recommendations')
-        .select('message')
-        .eq('patient_id', patientProfileId)
-        .order('created_at', ascending: false)
-        .limit(3);
-
-    if (response == null || response.isEmpty) {
-      return ["No recommendations available"];
-    }
-
-    // 3️⃣ Convert to List<String>
-    final List<String> recs = [];
-    for (final item in response) {
-      if (item is Map && item.containsKey('message')) {
-        recs.add(item['message']?.toString() ?? '');
-      }
-    }
-
-    return recs.isEmpty ? ["No recommendations available"] : recs;
-  } catch (e) {
-    // Print error in debug mode
-    if (kDebugMode) print('Failed to fetch recommendations: $e');
-    return ["Failed to fetch recommendations"];
-  }
-}
-// ── TRUNCATED RECOMMENDATION ROW ──
-Widget _rec(GlucoraColors colors, String recText) => Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: colors.primary,
-            shape: BoxShape.circle,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      "Recommendations are supportive and not a medical diagnosis.",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            recText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 14, color: colors.textPrimary),
-          ),
-        ),
-      ],
+        );
+      },
     );
+  }
+
+  // ── FETCH RECOMMENDATIONS FROM SUPABASE (OR ANY API) ──
+  Future<List<String>> _fetchRecommendations(SupabaseClient supabase) async {
+    try {
+      // 1️⃣ Get the current user's patient profile ID first
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return ["User not logged in"];
+
+      final patientProfileId = await getPatientProfileId(userId);
+      if (patientProfileId == null) return ["No patient profile found"];
+
+      // 2️⃣ Fetch latest 3 recommendations from ai_recommendations
+      final response = await supabase
+          .from('ai_recommendations')
+          .select('message')
+          .eq('patient_id', patientProfileId)
+          .order('created_at', ascending: false)
+          .limit(3);
+
+      if (response == null || response.isEmpty) {
+        return ["No recommendations available"];
+      }
+
+      // 3️⃣ Convert to List<String>
+      final List<String> recs = [];
+      for (final item in response) {
+        if (item is Map && item.containsKey('message')) {
+          recs.add(item['message']?.toString() ?? '');
+        }
+      }
+
+      return recs.isEmpty ? ["No recommendations available"] : recs;
+    } catch (e) {
+      // Print error in debug mode
+      if (kDebugMode) print('Failed to fetch recommendations: $e');
+      return ["Failed to fetch recommendations"];
+    }
+  }
+
+  // ── TRUNCATED RECOMMENDATION ROW ──
+  Widget _rec(GlucoraColors colors, String recText) => Row(
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: colors.primary,
+          shape: BoxShape.circle,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Flexible(
+        child: Text(
+          recText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+        ),
+      ),
+    ],
+  );
   // ════════════════════════════════════════════════════
   // CARE PLAN CARD
   // ════════════════════════════════════════════════════
@@ -805,8 +853,7 @@ Widget _rec(GlucoraColors colors, String recText) => Row(
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -862,9 +909,11 @@ Widget _rec(GlucoraColors colors, String recText) => Row(
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Dr. Sarah Johnson  ·  Target: 70–180 mg/dL',
+                      '$_doctorName  ·  Target: $_targetRange',
                       style: TextStyle(
-                          fontSize: 12, color: colors.textSecondary),
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -876,7 +925,7 @@ Widget _rec(GlucoraColors colors, String recText) => Row(
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Next appointment: Apr 5, 2026',
+                          'Next appointment: $_nextAppointment',
                           style: TextStyle(
                             fontSize: 11,
                             color: colors.textSecondary,
@@ -921,8 +970,7 @@ class _ChartPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: xl[i],
-          style: const TextStyle(
-              fontSize: 10, color: Color(0xFFAAAAAA)),
+          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -982,8 +1030,7 @@ class _ChartPainter extends CustomPainter {
     final p = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (int i = 1; i < pts.length; i++) {
       final a = pts[i - 1], b = pts[i];
-      p.cubicTo(
-          (a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
     }
     return p;
   }

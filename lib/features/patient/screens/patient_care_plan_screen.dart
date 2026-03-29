@@ -1,35 +1,137 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/features/doctor/screens/care_plan.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-final _mockPlan = CarePlan(
-  targetGlucoseMin: 70,
-  targetGlucoseMax: 180,
-  insulinType: 'NovoLog (Fast-Acting)',
-  basalProgram: [
-    BasalSegment(startHour: 0, endHour: 6, rate: 0.85),
-    BasalSegment(startHour: 6, endHour: 12, rate: 1.00),
-    BasalSegment(startHour: 12, endHour: 24, rate: 0.90),
-  ],
-  insulinToCarbRatio: 12,
-  sensitivityFactor: 45,
-  maxAutoBolus: 4.0,
-  nextAppointment: DateTime(2026, 4, 5),
-  doctorNotes:
-      'Maintain current basal program. Avoid skipping meals — always bolus before eating. '
-      'If glucose drops below 70 mg/dL, take 15g fast-acting carbs and recheck in 15 minutes. '
-      'Contact the clinic if you experience two or more unexplained highs above 250 mg/dL in a week.',
-);
-
-const _doctorName = 'Dr. Sarah Johnson';
-const _lastUpdated = 'Mar 5, 2026';
-
-class PatientCarePlanScreen extends StatelessWidget {
+class PatientCarePlanScreen extends StatefulWidget {
   const PatientCarePlanScreen({super.key});
+
+  @override
+  State<PatientCarePlanScreen> createState() => _PatientCarePlanScreenState();
+}
+
+class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
+  CarePlan? _plan;
+  String _doctorName = 'Your Doctor';
+  String _lastUpdated = '';
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCarePlan();
+  }
+
+  Future<void> _fetchCarePlan() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+
+      final patientProfileId = await getPatientProfileId(userId);
+      if (patientProfileId == null) throw Exception('No patient profile found');
+
+      final response = await supabase
+          .from('care_plans')
+          .select('*, doctor_profile(user_id, users(full_name))')
+          .eq('patient_id', patientProfileId)
+          .order('updated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        setState(() {
+          _isLoading = false;
+          _error = 'No care plan assigned yet.';
+        });
+        return;
+      }
+
+      List<BasalSegment> basalProgram = [];
+      final rawBasal = response['basal_program'];
+      if (rawBasal != null && rawBasal is List) {
+        basalProgram = rawBasal
+            .map(
+              (seg) => BasalSegment(
+                startHour: (seg['start_hour'] as num).toInt(),
+                endHour: (seg['end_hour'] as num).toInt(),
+                rate: (seg['rate'] as num).toDouble(),
+              ),
+            )
+            .toList();
+      }
+      if (basalProgram.isEmpty) {
+        basalProgram = [BasalSegment(startHour: 0, endHour: 24, rate: 0.9)];
+      }
+
+      final plan = CarePlan(
+        targetGlucoseMin: response['target_glucose_min'] != null
+            ? (response['target_glucose_min'] as num).toInt()
+            : 70,
+        targetGlucoseMax: response['target_glucose_max'] != null
+            ? (response['target_glucose_max'] as num).toInt()
+            : 180,
+        insulinType: response['insulin_type'] ?? 'NovoLog (Fast-Acting)',
+        basalProgram: basalProgram,
+        insulinToCarbRatio: response['carb_ratio'] != null
+            ? (response['carb_ratio'] as num).toDouble()
+            : 12,
+        sensitivityFactor: response['insulin_sensitivity_factor'] != null
+            ? double.tryParse(
+                    response['insulin_sensitivity_factor'].toString(),
+                  ) ??
+                  45
+            : 45,
+        maxAutoBolus: response['max_auto_dose_units'] != null
+            ? (response['max_auto_dose_units'] as num).toDouble()
+            : 4.0,
+        doctorNotes: response['notes'] ?? '',
+        nextAppointment: response['next_appointment'] != null
+            ? DateTime.tryParse(response['next_appointment'])
+            : null,
+      );
+
+      final doctorProfile = response['doctor_profile'];
+      final doctorName = doctorProfile?['users']?['full_name'] ?? 'Your Doctor';
+
+      final updatedAt = response['updated_at'];
+      final lastUpdated = updatedAt != null
+          ? _fmtDate(DateTime.tryParse(updatedAt)!)
+          : '';
+
+      setState(() {
+        _plan = plan;
+        _doctorName = doctorName;
+        _lastUpdated = lastUpdated;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Failed to load: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+
+    if (_isLoading)
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+
+    if (_error != null || _plan == null)
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: Center(child: Text(_error ?? 'No care plan found.')),
+      );
+
+    final plan = _plan!;
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -67,34 +169,46 @@ class PatientCarePlanScreen extends StatelessWidget {
             _infoChip(context),
             const SizedBox(height: 28),
 
-            _sectionHeader(context, Icons.track_changes_outlined, 'Target Glucose Range'),
+            _sectionHeader(
+              context,
+              Icons.track_changes_outlined,
+              'Target Glucose Range',
+            ),
             const SizedBox(height: 12),
-            _targetRangeCard(context, _mockPlan),
+            _targetRangeCard(context, plan),
             const SizedBox(height: 28),
 
-            _sectionHeader(context, Icons.water_drop_outlined, 'Insulin & Basal Program'),
+            _sectionHeader(
+              context,
+              Icons.water_drop_outlined,
+              'Insulin & Basal Program',
+            ),
             const SizedBox(height: 12),
-            _insulinBasalCard(context, _mockPlan),
+            _insulinBasalCard(context, plan),
             const SizedBox(height: 28),
 
             _sectionHeader(context, Icons.calculate_outlined, 'Dosing Ratios'),
             const SizedBox(height: 12),
-            _dosingRatiosCard(context, _mockPlan),
+            _dosingRatiosCard(context, plan),
             const SizedBox(height: 28),
 
             _sectionHeader(context, Icons.bolt_outlined, 'AID Settings'),
             const SizedBox(height: 12),
-            _aidSettingsCard(context, _mockPlan),
+            _aidSettingsCard(context, plan),
             const SizedBox(height: 28),
 
-            _sectionHeader(context, Icons.calendar_today_outlined, 'Next Appointment'),
+            _sectionHeader(
+              context,
+              Icons.calendar_today_outlined,
+              'Next Appointment',
+            ),
             const SizedBox(height: 12),
-            _appointmentCard(context, _mockPlan),
+            _appointmentCard(context, plan),
             const SizedBox(height: 28),
 
             _sectionHeader(context, Icons.notes_outlined, 'Doctor Notes'),
             const SizedBox(height: 12),
-            _notesCard(context, _mockPlan),
+            _notesCard(context, plan),
 
             const SizedBox(height: 16),
             _lastUpdatedFooter(context),
@@ -111,9 +225,7 @@ class PatientCarePlanScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colors.primary.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -166,13 +278,15 @@ class PatientCarePlanScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              _rangeChip(context,
+              _rangeChip(
+                context,
                 label: 'Minimum',
                 value: '${plan.targetGlucoseMin} mg/dL',
                 color: colors.accent,
               ),
               const SizedBox(width: 12),
-              _rangeChip(context,
+              _rangeChip(
+                context,
                 label: 'Maximum',
                 value: '${plan.targetGlucoseMax} mg/dL',
                 color: colors.warning,
@@ -208,7 +322,8 @@ class PatientCarePlanScreen extends StatelessWidget {
     );
   }
 
-  Widget _rangeChip(BuildContext context, {
+  Widget _rangeChip(
+    BuildContext context, {
     required String label,
     required String value,
     required Color color,
@@ -300,14 +415,24 @@ class PatientCarePlanScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ...plan.basalProgram.asMap().entries.map(
-            (e) => _basalSegmentRow(context, e.key, e.value, plan.basalProgram.length),
+            (e) => _basalSegmentRow(
+              context,
+              e.key,
+              e.value,
+              plan.basalProgram.length,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _basalSegmentRow(BuildContext context, int index, BasalSegment seg, int total) {
+  Widget _basalSegmentRow(
+    BuildContext context,
+    int index,
+    BasalSegment seg,
+    int total,
+  ) {
     final colors = context.colors;
     final isLast = index == total - 1;
     return Column(
@@ -317,7 +442,9 @@ class PatientCarePlanScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
           child: Row(
             children: [
@@ -463,7 +590,10 @@ class PatientCarePlanScreen extends StatelessWidget {
               height: 1,
             ),
           ),
-          Text(unit, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+          Text(
+            unit,
+            style: TextStyle(fontSize: 10, color: colors.textSecondary),
+          ),
           const SizedBox(height: 8),
           Text(
             subtitle,
@@ -516,7 +646,10 @@ class PatientCarePlanScreen extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           'U / event',
-                          style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -651,7 +784,9 @@ class PatientCarePlanScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2),
+          ),
         ),
         child: Text(
           plan.doctorNotes,
@@ -746,23 +881,56 @@ class _GlucoseRangeBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('40', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
-            Text('54', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
-            Text('70', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
-            Text('180', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
-            Text('250', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
-            Text('400', style: TextStyle(fontSize: 9, color: colors.textSecondary)),
+            Text(
+              '40',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
+            Text(
+              '54',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
+            Text(
+              '70',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
+            Text(
+              '180',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
+            Text(
+              '250',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
+            Text(
+              '400',
+              style: TextStyle(fontSize: 9, color: colors.textSecondary),
+            ),
           ],
         ),
         const SizedBox(height: 2),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Very Low', style: TextStyle(fontSize: 8, color: Color(0xFFB71C1C))),
-            Text('Low', style: TextStyle(fontSize: 8, color: Color(0xFFFBC02D))),
-            Text('In Range', style: TextStyle(fontSize: 8, color: Color(0xFF2BB6A3))),
-            Text('High', style: TextStyle(fontSize: 8, color: Color(0xFFFF9F40))),
-            Text('Very High', style: TextStyle(fontSize: 8, color: Color(0xFFD32F2F))),
+            Text(
+              'Very Low',
+              style: TextStyle(fontSize: 8, color: Color(0xFFB71C1C)),
+            ),
+            Text(
+              'Low',
+              style: TextStyle(fontSize: 8, color: Color(0xFFFBC02D)),
+            ),
+            Text(
+              'In Range',
+              style: TextStyle(fontSize: 8, color: Color(0xFF2BB6A3)),
+            ),
+            Text(
+              'High',
+              style: TextStyle(fontSize: 8, color: Color(0xFFFF9F40)),
+            ),
+            Text(
+              'Very High',
+              style: TextStyle(fontSize: 8, color: Color(0xFFD32F2F)),
+            ),
           ],
         ),
       ],
