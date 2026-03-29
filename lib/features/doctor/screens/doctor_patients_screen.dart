@@ -84,13 +84,16 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
           .eq('doctor_id', doctorProfileId);
 
       print(response);
+      if (!mounted) return;
       setState(() {
         _allPatients = (response as List)
             .map(
               (row) => _Patient(
                 id: (row['patient_id'] as num).toInt(),
                 name: row['full_name'],
-                glucoseValue: (row['value_mg_dl'] as num).toInt(),
+                glucoseValue: row['value_mg_dl'] != null
+                    ? (row['value_mg_dl'] as num).toInt()
+                    : 0,
                 trend: row['trend'] ?? 'stable',
                 lastReadingTime: row['recorded_at'] != null
                     ? _timeAgo(row['recorded_at'])

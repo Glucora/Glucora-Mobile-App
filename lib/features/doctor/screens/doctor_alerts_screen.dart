@@ -105,7 +105,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
 
   void _openEditPlan(DoctorAlert alert) {
     _markRead(alert);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => CarePlanEditorScreen(patientName: alert.patientName)));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => CarePlanEditorScreen(patientId:alert.id ,patientName: alert.patientName)));
   }
 
   void _openPatient(DoctorAlert alert) {

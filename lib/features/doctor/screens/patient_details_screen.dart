@@ -1321,14 +1321,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final updated = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        CarePlanEditorScreen(patientName: widget.patientName),
+                    builder: (_) => CarePlanEditorScreen(
+                      patientName: widget.patientName,
+                      patientId: widget.patientId,
+                      existingPlan: _carePlan,
+                    ),
                   ),
                 );
+                if (updated == true) _fetchPatientData();
               },
               icon: const Icon(
                 Icons.edit_outlined,
