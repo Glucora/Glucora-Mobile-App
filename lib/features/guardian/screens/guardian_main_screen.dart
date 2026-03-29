@@ -1,3 +1,5 @@
+/*\lib\features\guardian\screens\guardian_main_screen.dart */
+
 import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
@@ -8,6 +10,11 @@ import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final supabase = Supabase.instance.client;
+final user = supabase.auth.currentUser;
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -304,17 +311,35 @@ class _EditGuardianProfileScreenState
     );
   }
 
-  void _save() {
+  void _save() async {
     final updatedName = _nameController.text.trim();
     final updatedAge = int.tryParse(_ageController.text.trim()) ?? widget.age;
     final updatedEmail = _emailController.text.trim();
     final updatedPhone = _phoneController.text.trim();
 
+    final userId = supabase.auth.currentUser!.id;
+
+    // Update users table for name, email, phone
+    await supabase
+        .from('users')
+        .update({
+          'full_name': updatedName,
+          'email': updatedEmail,
+          'phone_no': updatedPhone,
+        })
+        .eq('id', userId);
+
+    // Update guardian_profile for age
+    await supabase
+        .from('guardian_profile')
+        .update({'age': updatedAge})
+        .eq('user_id', userId);
+
     Navigator.pop(context, {
-      'name': updatedName.isEmpty ? widget.name : updatedName,
+      'name': updatedName,
       'age': updatedAge,
-      'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
-      'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
+      'email': updatedEmail,
+      'phone': updatedPhone,
     });
   }
 
@@ -339,10 +364,33 @@ class _GuardianProfileTab extends StatefulWidget {
 }
 
 class _GuardianProfileTabState extends State<_GuardianProfileTab> {
-  String _name = "Guardian Name";
-  int _age = 40;
-  String _email = "guardian@example.com";
-  String _phone = "01234567890";
+  String _name = "";
+  int _age = 0;
+  String _email = "";
+  String _phone = "";
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    final userId = supabase.auth.currentUser!.id;
+
+    final data = await supabase
+        .from('guardian_profile')
+        .select('age, users(full_name, email, phone_no)')
+        .eq('user_id', userId)
+        .single();
+
+    setState(() {
+      _name = data['users']['full_name'] ?? '';
+      _email = data['users']['email'] ?? '';
+      _phone = data['users']['phone_no'] ?? '';
+      _age = data['age'] != null ? (data['age'] as num).toInt() : 0;
+    });
+  }
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
