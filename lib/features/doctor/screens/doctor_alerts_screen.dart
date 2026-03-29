@@ -19,7 +19,7 @@ enum AlertType {
 }
 
 class DoctorAlert {
-  final String id;
+  final int id;
   final String patientName;
   final String patientInitials;
   final AlertSeverity severity;
@@ -58,14 +58,14 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
   final List<String> _filters = ['All', 'Critical', 'Warning', 'Info'];
 
   final List<DoctorAlert> _alerts = [
-    DoctorAlert(id: '1', patientName: 'Qamar Salah', patientInitials: 'QS', severity: AlertSeverity.critical, type: AlertType.glucoseCriticalHigh, title: 'Critical High Glucose', description: 'Glucose reached 298 mg/dL — AID auto-correction delivered 3.5 U. Patient unresponsive to correction after 20 min.', timeAgo: '3 min ago'),
-    DoctorAlert(id: '2', patientName: 'Carol Amr', patientInitials: 'CA', severity: AlertSeverity.critical, type: AlertType.glucoseCriticalLow, title: 'Critical Low Glucose', description: 'Glucose dropped to 52 mg/dL — AID suspended basal insulin. Patient may need immediate carb intake.', timeAgo: '8 min ago'),
-    DoctorAlert(id: '3', patientName: 'Rana Fathy', patientInitials: 'RF', severity: AlertSeverity.critical, type: AlertType.incident, title: 'Incident: Severe Hypoglycemia', description: 'Patient experienced severe hypo at 6:02 AM (48 mg/dL). Basal suspended for 45 min. CGM trend was falling fast. AID intervention logged.', timeAgo: '2 hours ago'),
-    DoctorAlert(id: '4', patientName: 'Khaled Adel', patientInitials: 'KA', severity: AlertSeverity.warning, type: AlertType.pumpFailure, title: 'Pump Connection Lost', description: 'Omnipod 5 lost connection at 10:15 AM. AID system paused. Patient switched to manual mode. Reconnection not confirmed.', timeAgo: '25 min ago'),
-    DoctorAlert(id: '5', patientName: 'Walid Ahmed', patientInitials: 'WA', severity: AlertSeverity.warning, type: AlertType.missedDose, title: 'Missed Mealtime Bolus', description: 'No bolus recorded around lunch (12:00-13:00). Glucose rose to 188 mg/dL post-meal. Patient did not confirm meal.', timeAgo: '1 hour ago'),
-    DoctorAlert(id: '6', patientName: 'Mayada Youssef', patientInitials: 'MY', severity: AlertSeverity.warning, type: AlertType.sensorDisconnect, title: 'CGM Sensor Disconnected', description: 'Dexcom G7 signal lost for 38 minutes. AID running in open loop fallback. Sensor reconnected at 2:44 PM.', timeAgo: '3 hours ago', isRead: true),
-    DoctorAlert(id: '7', patientName: 'Omar Latif', patientInitials: 'OL', severity: AlertSeverity.info, type: AlertType.timeOutOfRange, title: 'High Time Above Range', description: 'Patient spent 34% of today above 180 mg/dL. 7-day average TIR is 61%. Care plan review recommended.', timeAgo: '5 hours ago', isRead: true),
-    DoctorAlert(id: '8', patientName: 'Qamar Salah', patientInitials: 'QS', severity: AlertSeverity.info, type: AlertType.patientInactivity, title: 'No CGM Reading for 4 Hours', description: 'Last reading recorded at 9:18 AM. Sensor may be expired or detached. Patient has not opened the app today.', timeAgo: '6 hours ago', isRead: true),
+    DoctorAlert(id: 1, patientName: 'Qamar Salah', patientInitials: 'QS', severity: AlertSeverity.critical, type: AlertType.glucoseCriticalHigh, title: 'Critical High Glucose', description: 'Glucose reached 298 mg/dL — AID auto-correction delivered 3.5 U. Patient unresponsive to correction after 20 min.', timeAgo: '3 min ago'),
+    DoctorAlert(id: 2, patientName: 'Carol Amr', patientInitials: 'CA', severity: AlertSeverity.critical, type: AlertType.glucoseCriticalLow, title: 'Critical Low Glucose', description: 'Glucose dropped to 52 mg/dL — AID suspended basal insulin. Patient may need immediate carb intake.', timeAgo: '8 min ago'),
+    DoctorAlert(id: 3, patientName: 'Rana Fathy', patientInitials: 'RF', severity: AlertSeverity.critical, type: AlertType.incident, title: 'Incident: Severe Hypoglycemia', description: 'Patient experienced severe hypo at 6:02 AM (48 mg/dL). Basal suspended for 45 min. CGM trend was falling fast. AID intervention logged.', timeAgo: '2 hours ago'),
+    DoctorAlert(id: 4, patientName: 'Khaled Adel', patientInitials: 'KA', severity: AlertSeverity.warning, type: AlertType.pumpFailure, title: 'Pump Connection Lost', description: 'Omnipod 5 lost connection at 10:15 AM. AID system paused. Patient switched to manual mode. Reconnection not confirmed.', timeAgo: '25 min ago'),
+    DoctorAlert(id: 5, patientName: 'Walid Ahmed', patientInitials: 'WA', severity: AlertSeverity.warning, type: AlertType.missedDose, title: 'Missed Mealtime Bolus', description: 'No bolus recorded around lunch (12:00-13:00). Glucose rose to 188 mg/dL post-meal. Patient did not confirm meal.', timeAgo: '1 hour ago'),
+    DoctorAlert(id: 6, patientName: 'Mayada Youssef', patientInitials: 'MY', severity: AlertSeverity.warning, type: AlertType.sensorDisconnect, title: 'CGM Sensor Disconnected', description: 'Dexcom G7 signal lost for 38 minutes. AID running in open loop fallback. Sensor reconnected at 2:44 PM.', timeAgo: '3 hours ago', isRead: true),
+    DoctorAlert(id: 7, patientName: 'Omar Latif', patientInitials: 'OL', severity: AlertSeverity.info, type: AlertType.timeOutOfRange, title: 'High Time Above Range', description: 'Patient spent 34% of today above 180 mg/dL. 7-day average TIR is 61%. Care plan review recommended.', timeAgo: '5 hours ago', isRead: true),
+    DoctorAlert(id: 8, patientName: 'Qamar Salah', patientInitials: 'QS', severity: AlertSeverity.info, type: AlertType.patientInactivity, title: 'No CGM Reading for 4 Hours', description: 'Last reading recorded at 9:18 AM. Sensor may be expired or detached. Patient has not opened the app today.', timeAgo: '6 hours ago', isRead: true),
   ];
 
   List<DoctorAlert> get _visibleAlerts {
@@ -105,12 +105,12 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
 
   void _openEditPlan(DoctorAlert alert) {
     _markRead(alert);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => CarePlanEditorScreen(patientName: alert.patientName)));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => CarePlanEditorScreen(patientId:alert.id ,patientName: alert.patientName)));
   }
 
   void _openPatient(DoctorAlert alert) {
     _markRead(alert);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => PatientDetailsScreen(patientName: alert.patientName)));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => PatientDetailsScreen(patientId:alert.id,patientName: alert.patientName)));
   }
 
   @override

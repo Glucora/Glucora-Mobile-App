@@ -1,4 +1,5 @@
-// Shared model used across all guardian screens
+/* lib\features\guardian\screens\guardian_patient_model.dart
+ */// Shared model used across all guardian screens
 
 class GuardianPatient {
   final String id;

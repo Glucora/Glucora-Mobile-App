@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'care_plan.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final supabase = Supabase.instance.client;
+
 // ─── SCREEN ──────────────────────────────────────────────────────────────────
 
 class CarePlanEditorScreen extends StatefulWidget {
   final String patientName;
-  final CarePlan? existingPlan;
+  final int patientId;
+  final Map<String, dynamic>? existingPlan;
 
   const CarePlanEditorScreen({
     super.key,
     required this.patientName,
+    required this.patientId,
     this.existingPlan,
   });
 
@@ -21,6 +28,7 @@ class CarePlanEditorScreen extends StatefulWidget {
 class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   late CarePlan _plan;
+  bool _manual_inslun_enabled = false;
 
   // Controllers
   late TextEditingController _targetMinCtrl;
@@ -40,13 +48,35 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
   ];
 
   bool _isSaving = false;
-
   @override
   void initState() {
     super.initState();
-    _plan =
-        widget.existingPlan ??
-        CarePlan(nextAppointment: DateTime.now().add(const Duration(days: 30)));
+
+    final ep = widget.existingPlan;
+    _manual_inslun_enabled =
+        widget.existingPlan?['manual_inslun_enabled'] ?? false;
+    _plan = CarePlan(
+      targetGlucoseMin: ep?['target_glucose_min'] != null
+          ? (ep!['target_glucose_min'] as num).toInt()
+          : 70,
+      targetGlucoseMax: ep?['target_glucose_max'] != null
+          ? (ep!['target_glucose_max'] as num).toInt()
+          : 180,
+      insulinType: ep?['insulin_type'] ?? 'NovoLog (Fast-Acting)',
+      insulinToCarbRatio: ep?['carb_ratio'] != null
+          ? (ep!['carb_ratio'] as num).toDouble()
+          : 12,
+      sensitivityFactor: ep?['insulin_sensitivity_factor'] != null
+          ? double.tryParse(ep!['insulin_sensitivity_factor'].toString()) ?? 45
+          : 45,
+      maxAutoBolus: ep?['max_auto_dose_units'] != null
+          ? (ep!['max_auto_dose_units'] as num).toDouble()
+          : 4.0,
+      doctorNotes: ep?['notes'] ?? '',
+      nextAppointment: ep?['next_appointment'] != null
+          ? DateTime.tryParse(ep!['next_appointment'])
+          : DateTime.now().add(const Duration(days: 30)),
+    );
 
     _targetMinCtrl = TextEditingController(
       text: _plan.targetGlucoseMin.toString(),
@@ -74,7 +104,6 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
   Future<void> _save() async {
     final colors = context.colors;
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSaving = true);
 
     _plan.targetGlucoseMin = int.tryParse(_targetMinCtrl.text) ?? 70;
@@ -84,31 +113,80 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     _plan.maxAutoBolus = double.tryParse(_maxBolusCtrl.text) ?? 4.0;
     _plan.doctorNotes = _notesCtrl.text.trim();
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final doctorRow = await supabase
+          .from('doctor_profile')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+      final doctorId = doctorRow['id'] as String;
 
-    if (!mounted) return;
-    setState(() => _isSaving = false);
+      final data = {
+        'patient_id': widget.patientId,
+        'doctor_id': doctorId,
+        'target_glucose_min': _plan.targetGlucoseMin,
+        'target_glucose_max': _plan.targetGlucoseMax,
+        'insulin_type': _plan.insulinType,
+        'carb_ratio': _plan.insulinToCarbRatio,
+        'insulin_sensitivity_factor': _plan.sensitivityFactor.toString(),
+        'max_auto_dose_units': _plan.maxAutoBolus,
+        'manual_inslun_enabled': _manual_inslun_enabled,
+        'notes': _plan.doctorNotes,
+        'next_appointment': _plan.nextAppointment?.toIso8601String().split(
+          'T',
+        )[0],
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text(
-              'Care plan saved successfully',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
+      if (widget.existingPlan != null && widget.existingPlan!['id'] != null) {
+        // Update existing
+        await supabase
+            .from('care_plans')
+            .update(data)
+            .eq('id', widget.existingPlan!['id'] as int);
+      } else {
+        // Insert new
+        await supabase.from('care_plans').insert(data);
+      }
+
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Care plan saved successfully',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: colors.accent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: colors.accent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
 
-    Navigator.pop(context, _plan);
+      Navigator.pop(context, true);
+    } catch (e) {
+      print('Error saving care plan: $e');
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save: $e'),
+          backgroundColor: colors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -128,12 +206,20 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               _patientChip(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(context, Icons.track_changes_outlined, 'Target Glucose Range'),
+              _sectionHeader(
+                context,
+                Icons.track_changes_outlined,
+                'Target Glucose Range',
+              ),
               const SizedBox(height: 12),
               _buildTargetRangeCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(context, Icons.water_drop_outlined, 'Insulin Type'),
+              _sectionHeader(
+                context,
+                Icons.water_drop_outlined,
+                'Insulin Type',
+              ),
               const SizedBox(height: 12),
               _buildInsulinTypeCard(context),
               const SizedBox(height: 28),
@@ -143,17 +229,40 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               _buildBasalProgramCard(context),
               const SizedBox(height: 28),
 
-              _sectionHeader(context, Icons.calculate_outlined, 'Dosing Ratios'),
+              _sectionHeader(
+                context,
+                Icons.calculate_outlined,
+                'Dosing Ratios',
+              ),
               const SizedBox(height: 12),
               _buildDosingRatiosCard(context),
               const SizedBox(height: 28),
 
               _sectionHeader(context, Icons.bolt_outlined, 'AID Limits'),
               const SizedBox(height: 12),
-              _buildAIDLimitsCard(context),
+              Opacity(
+                opacity: _manual_inslun_enabled ? 0.5 : 1,
+                child: IgnorePointer(
+                  ignoring: _manual_inslun_enabled,
+                  child: _buildAIDLimitsCard(context),
+                ),
+              ),
               const SizedBox(height: 28),
 
-              _sectionHeader(context, Icons.calendar_today_outlined, 'Next Appointment'),
+              _sectionHeader(
+                context,
+                Icons.settings_outlined,
+                'Manual Control',
+              ),
+              const SizedBox(height: 12),
+              _buildManualInsulinToggle(context),
+              const SizedBox(height: 28),
+
+              _sectionHeader(
+                context,
+                Icons.calendar_today_outlined,
+                'Next Appointment',
+              ),
               const SizedBox(height: 12),
               _buildAppointmentCard(context),
               const SizedBox(height: 28),
@@ -208,9 +317,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       decoration: BoxDecoration(
         color: colors.accent.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colors.accent.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: colors.accent.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -349,11 +456,15 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+            borderSide: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.3),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+            borderSide: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.3),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -401,11 +512,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.add_circle_outline,
-                  color: colors.accent,
-                  size: 18,
-                ),
+                Icon(Icons.add_circle_outline, color: colors.accent, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   'Add Segment',
@@ -522,7 +629,9 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.2),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,7 +679,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: colors.textSecondary),
+          ),
           TextFormField(
             initialValue: initialValue,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -690,6 +802,49 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
     );
   }
 
+  Widget _buildManualInsulinToggle(BuildContext context) {
+    final colors = context.colors;
+
+    return _card(
+      context,
+      child: Row(
+        children: [
+          Icon(Icons.tune, color: colors.primaryDark, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Manual Insulin',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Allow manual insulin dosing',
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _manual_inslun_enabled,
+            onChanged: (val) {
+              setState(() {
+                _manual_inslun_enabled = val;
+              });
+            },
+            activeColor: colors.accent,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppointmentCard(BuildContext context) {
     final colors = context.colors;
     final date = _plan.nextAppointment;
@@ -721,7 +876,9 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           decoration: BoxDecoration(
             color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
           child: Row(
             children: [
@@ -737,7 +894,10 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                   children: [
                     Text(
                       'Next Appointment',
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -784,11 +944,15 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           contentPadding: const EdgeInsets.all(14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+            borderSide: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+            borderSide: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -902,11 +1066,15 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+          borderSide: BorderSide(
+            color: colors.textSecondary.withValues(alpha: 0.2),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+          borderSide: BorderSide(
+            color: colors.textSecondary.withValues(alpha: 0.2),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

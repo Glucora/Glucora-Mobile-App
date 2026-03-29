@@ -1,13 +1,20 @@
+// lib\features\doctor\screens\patient_details_screen.dart
+
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'care_plan_editor_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final supabase = Supabase.instance.client;
 
 class PatientDetailsScreen extends StatefulWidget {
+  final int patientId;
   final String patientName;
 
   const PatientDetailsScreen({
     super.key,
+    required this.patientId,
     required this.patientName,
   });
 
@@ -18,71 +25,54 @@ class PatientDetailsScreen extends StatefulWidget {
 class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  Map<String, dynamic>? _patientProfile;
+  Map<String, dynamic>? _carePlan;
+  List<Map<String, dynamic>> _glucoseReadings = [];
+  List<Map<String, dynamic>> _insulinDoses = [];
+  List<Map<String, dynamic>> _alerts = [];
+  Map<String, dynamic>? _device;
+  bool _isLoading = true;
+  List<GlucoseReading> get glucoseHistory => _glucoseReadings.map((r) {
+    final dt = DateTime.parse(r['recorded_at']).toLocal();
+    final hour = dt.hour;
+    final min = dt.minute;
+    final period = hour < 12 ? 'am' : 'pm';
+    final displayHour = hour == 0
+        ? 12
+        : hour > 12
+        ? hour - 12
+        : hour;
+    final time = min == 0
+        ? '$displayHour$period'
+        : '$displayHour:${min.toString().padLeft(2, '0')}';
+    return GlucoseReading(time: time, value: (r['value_mg_dl'] as num).toInt());
+  }).toList();
 
-  final List<GlucoseReading> glucoseHistory = [
-    GlucoseReading(time: '12am', value: 142),
-    GlucoseReading(time: '12:30', value: 138),
-    GlucoseReading(time: '1am', value: 130),
-    GlucoseReading(time: '1:30', value: 124),
-    GlucoseReading(time: '2am', value: 118),
-    GlucoseReading(time: '2:30', value: 115),
-    GlucoseReading(time: '3am', value: 112),
-    GlucoseReading(time: '3:30', value: 108),
-    GlucoseReading(time: '4am', value: 104),
-    GlucoseReading(time: '4:30', value: 98),
-    GlucoseReading(time: '5am', value: 95),
-    GlucoseReading(time: '5:30', value: 92),
-    GlucoseReading(time: '6am', value: 88),
-    GlucoseReading(time: '6:30', value: 102),
-    GlucoseReading(time: '7am', value: 118),
-    GlucoseReading(time: '7:30', value: 145),
-    GlucoseReading(time: '8am', value: 172, mealTag: 'Breakfast'),
-    GlucoseReading(time: '8:30', value: 198),
-    GlucoseReading(time: '9am', value: 185),
-    GlucoseReading(time: '9:30', value: 162),
-    GlucoseReading(time: '10am', value: 145),
-    GlucoseReading(time: '10:30', value: 132),
-    GlucoseReading(time: '11am', value: 120),
-    GlucoseReading(time: '11:30', value: 115),
-    GlucoseReading(time: '12pm', value: 112, mealTag: 'Lunch'),
-    GlucoseReading(time: '12:30', value: 168),
-    GlucoseReading(time: '1pm', value: 188),
-    GlucoseReading(time: '1:30', value: 175),
-    GlucoseReading(time: '2pm', value: 158),
-    GlucoseReading(time: '2:30', value: 140),
-    GlucoseReading(time: '3pm', value: 128),
-    GlucoseReading(time: '3:30', value: 120),
-    GlucoseReading(time: '4pm', value: 118),
-    GlucoseReading(time: '4:30', value: 115),
-    GlucoseReading(time: '5pm', value: 110),
-    GlucoseReading(time: '5:30', value: 108),
-    GlucoseReading(time: '6pm', value: 130, mealTag: 'Dinner'),
-    GlucoseReading(time: '6:30', value: 162),
-    GlucoseReading(time: '7pm', value: 178),
-    GlucoseReading(time: '7:30', value: 165),
-    GlucoseReading(time: '8pm', value: 148),
-    GlucoseReading(time: '8:30', value: 135),
-    GlucoseReading(time: '9pm', value: 128),
-    GlucoseReading(time: '9:30', value: 122),
-    GlucoseReading(time: '10pm', value: 118),
-    GlucoseReading(time: '10:30', value: 115),
-    GlucoseReading(time: '11pm', value: 112),
-    GlucoseReading(time: '11:30', value: 120),
-  ];
-
-  final List<InsulinDose> insulinLog = [
-    InsulinDose(time: '8:02 AM', type: 'Bolus', units: 4.5, reason: 'Meal — Breakfast', source: 'AID Auto'),
-    InsulinDose(time: '8:35 AM', type: 'Correction', units: 1.2, reason: 'High correction', source: 'AID Auto'),
-    InsulinDose(time: '12:05 PM', type: 'Bolus', units: 5.0, reason: 'Meal — Lunch', source: 'Manual'),
-    InsulinDose(time: '1:40 PM', type: 'Correction', units: 0.8, reason: 'High correction', source: 'AID Auto'),
-    InsulinDose(time: '6:10 PM', type: 'Bolus', units: 4.2, reason: 'Meal — Dinner', source: 'AID Auto'),
-    InsulinDose(time: '9:00 PM', type: 'Basal', units: 12.0, reason: 'Nightly basal', source: 'Pump Program'),
-  ];
+  List<InsulinDose> get insulinLog => _insulinDoses.map((d) {
+    final dt = DateTime.parse(d['delivered_at']).toLocal();
+    final hour = dt.hour;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = hour < 12 ? 'AM' : 'PM';
+    final displayHour = hour == 0
+        ? 12
+        : hour > 12
+        ? hour - 12
+        : hour;
+    final time = '$displayHour:$min $period';
+    return InsulinDose(
+      time: time,
+      type: d['dose_type'] as String,
+      units: (d['units'] as num).toDouble(),
+      reason: d['reason'] as String? ?? '',
+      source: d['delivery_method'] == 'Pump' ? 'AID Auto' : 'Manual',
+    );
+  }).toList();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchPatientData();
   }
 
   @override
@@ -91,8 +81,80 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     super.dispose();
   }
 
+  Future<void> _fetchPatientData() async {
+    try {
+      final profile = await supabase
+          .from('patient_profile')
+          .select('*, users(full_name)')
+          .eq('id', widget.patientId)
+          .single();
+
+      final userId = profile['user_id'] as String;
+
+      final results = await Future.wait([
+        supabase
+            .from('care_plans')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+        supabase
+            .from('glucose_readings')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('recorded_at', ascending: true),
+        supabase
+            .from('insulin_doses')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('delivered_at', ascending: true),
+        supabase
+            .from('alerts')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('triggered_at', ascending: false)
+            .limit(5),
+        supabase
+            .from('devices')
+            .select()
+            .eq('patient_id', userId) // ← correct: uuid not int
+            .eq('is_active', true)
+            .maybeSingle(),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _patientProfile = profile;
+        _carePlan = results[0] as Map<String, dynamic>?;
+        _glucoseReadings = (results[1] as List).cast<Map<String, dynamic>>();
+        _insulinDoses = (results[2] as List).cast<Map<String, dynamic>>();
+        _alerts = (results[3] as List).cast<Map<String, dynamic>>();
+        _device = results[4] as Map<String, dynamic>?;
+        _isLoading = false;
+        print('Profile: $_patientProfile');
+        print('Glucose readings: ${_glucoseReadings.length}');
+        print('Insulin doses: ${_insulinDoses.length}');
+        print('Alerts: ${_alerts.length}');
+        print('Care plan: $_carePlan');
+        print('Device: $_device');
+      });
+    } catch (e) {
+      print('Error fetching patient data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: context.colors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.background,
@@ -128,11 +190,19 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           Text(
             widget.patientName,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
           ),
           const Text(
             'Patient ID: #PT-20481',
-            style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w400),
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white70,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
@@ -142,16 +212,36 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           onPressed: () {},
           tooltip: 'Alerts',
         ),
-        IconButton(
-          icon: const Icon(Icons.more_vert),
-          onPressed: () {},
-        ),
+        IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
       ],
     );
   }
 
   Widget _buildPatientHeader(BuildContext context) {
     final colors = context.colors;
+    final age = _patientProfile?['age']?.toString() ?? '—';
+    final gender = _patientProfile?['gender'] ?? '—';
+    final name = widget.patientName;
+    final initials = name
+        .trim()
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
+
+    // Latest glucose reading
+    final latest = _glucoseReadings.isNotEmpty ? _glucoseReadings.last : null;
+    final latestValue = latest != null
+        ? (latest['value_mg_dl'] as num).toInt().toString()
+        : '—';
+    final trend = latest?['trend'] as String? ?? 'stable';
+    final trendIcon = trend == 'up'
+        ? Icons.trending_up
+        : trend == 'down'
+        ? Icons.trending_down
+        : Icons.trending_flat;
+
     return Container(
       color: colors.primaryDark,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
@@ -160,27 +250,44 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: const Text('AK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Age 24 • Male • Type 1 Diabetes',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                Text(
+                  'Age $age • $gender • Type 1 Diabetes',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _headerChip(Icons.bluetooth, 'CGM Online', Colors.greenAccent),
+                    _headerChip(
+                      Icons.bluetooth,
+                      'CGM Online',
+                      Colors.greenAccent,
+                    ),
                     const SizedBox(width: 8),
-                    _headerChip(Icons.water_drop_outlined, 'Pump Active', Colors.lightBlueAccent),
+                    _headerChip(
+                      Icons.water_drop_outlined,
+                      'Pump Active',
+                      Colors.lightBlueAccent,
+                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),
-          _buildLiveGlucoseChip(),
+          _buildLiveGlucoseChip(latestValue, trendIcon),
         ],
       ),
     );
@@ -191,12 +298,19 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       children: [
         Icon(icon, size: 11, color: color),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildLiveGlucoseChip() {
+  Widget _buildLiveGlucoseChip(String value, IconData trendIcon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -209,18 +323,36 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('120', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(width: 4),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.trending_up, color: Colors.greenAccent, size: 14),
-                  const Text('mg/dL', style: TextStyle(color: Colors.white70, fontSize: 9)),
+                  Icon(trendIcon, color: Colors.greenAccent, size: 14),
+                  const Text(
+                    'mg/dL',
+                    style: TextStyle(color: Colors.white70, fontSize: 9),
+                  ),
                 ],
               ),
             ],
           ),
-          const Text('LIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+          const Text(
+            'LIVE',
+            style: TextStyle(
+              color: Colors.greenAccent,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
+            ),
+          ),
         ],
       ),
     );
@@ -237,7 +369,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         indicatorColor: colors.accent,
         indicatorWeight: 3,
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
         tabs: const [
           Tab(text: 'Overview'),
           Tab(text: 'CGM Trends'),
@@ -326,7 +461,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         ),
         content: RichText(
           text: TextSpan(
-            style: TextStyle(fontSize: 14, color: colors.textPrimary, height: 1.5),
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.textPrimary,
+              height: 1.5,
+            ),
             children: [
               const TextSpan(text: 'Are you sure you want to remove '),
               TextSpan(
@@ -334,7 +473,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               const TextSpan(
-                text: ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
+                text:
+                    ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
               ),
             ],
           ),
@@ -350,25 +490,52 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                     onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: colors.textSecondary.withValues(alpha:0.3)),
+                      side: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: const Text(
                       'Cancel',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(ctx);
-                      Navigator.pop(context);
+                      try {
+                        final doctorRow = await supabase
+                            .from('doctor_profile')
+                            .select('id')
+                            .eq('user_id', supabase.auth.currentUser!.id)
+                            .single();
+
+                        await supabase
+                            .from('doctor_patient_connections')
+                            .delete()
+                            .eq('doctor_id', doctorRow['id'] as String)
+                            .eq('patient_id', widget.patientId);
+
+                        if (mounted) Navigator.pop(context, true);
+                      } catch (e) {
+                        print('Error removing patient: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                'Failed to remove patient. Please try again.',
+                              ),
+                              backgroundColor: context.colors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors.error,
@@ -397,46 +564,150 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildGlucoseSummaryCards(BuildContext context) {
     final colors = context.colors;
+    final values = _glucoseReadings
+        .map((r) => (r['value_mg_dl'] as num).toDouble())
+        .toList();
+
+    final avg = values.isEmpty
+        ? 0.0
+        : values.reduce((a, b) => a + b) / values.length;
+
+    // GMI formula: 3.31 + 0.02392 * avg_mg_dl
+    final gmi = values.isEmpty ? 0.0 : 3.31 + 0.02392 * avg;
+
+    // CV = (stddev / mean) * 100
+    double cv = 0;
+    if (values.length > 1) {
+      final mean = avg;
+      final variance =
+          values.map((v) => math.pow(v - mean, 2)).reduce((a, b) => a + b) /
+          values.length;
+      cv = (math.sqrt(variance) / mean) * 100;
+    }
+
+    final inRange = values.isEmpty
+        ? 0
+        : (values.where((v) => v >= 70 && v <= 180).length /
+                  values.length *
+                  100)
+              .round();
+
     return Row(
       children: [
-        Expanded(child: _statCard(context, 'Average\nGlucose', '132', 'mg/dL', colors.accent)),
+        Expanded(
+          child: _statCard(
+            context,
+            'Average\nGlucose',
+            avg.toStringAsFixed(0),
+            'mg/dL',
+            colors.accent,
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'GMI\nEst. A1C', '6.8', '%', const Color(0xFF5B8CF5))),
+        Expanded(
+          child: _statCard(
+            context,
+            'GMI\nEst. A1C',
+            gmi.toStringAsFixed(1),
+            '%',
+            const Color(0xFF5B8CF5),
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'Glucose\nVariability', '18', 'CV%', colors.warning)),
+        Expanded(
+          child: _statCard(
+            context,
+            'Glucose\nVariability',
+            cv.toStringAsFixed(0),
+            'CV%',
+            colors.warning,
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'Sensor\nUsage', '96', '%', const Color(0xFF6FCF97))),
+        Expanded(
+          child: _statCard(
+            context,
+            'Time\nIn Range',
+            '$inRange',
+            '%',
+            const Color(0xFF6FCF97),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _statCard(BuildContext context, String label, String value, String unit, Color color) {
+  Widget _statCard(
+    BuildContext context,
+    String label,
+    String value,
+    String unit,
+    Color color,
+  ) {
     final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(unit, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+          Text(
+            unit,
+            style: TextStyle(
+              fontSize: 10,
+              color: color.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: colors.textSecondary, height: 1.4)),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              color: colors.textSecondary,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTimeInRangeCard(BuildContext context) {
-    const double inRange = 72;
-    const double aboveRange = 18;
-    const double belowRange = 6;
-    const double veryLow = 4;
+    final values = _glucoseReadings
+        .map((r) => (r['value_mg_dl'] as num).toDouble())
+        .toList();
+    final total = values.length;
 
+    int pct(bool Function(double) test) =>
+        total == 0 ? 0 : (values.where(test).length / total * 100).round();
+
+    final veryHigh = pct((v) => v > 250);
+    final high = pct((v) => v > 180 && v <= 250);
+    final inRange = pct((v) => v >= 70 && v <= 180);
+    final low = pct((v) => v >= 54 && v < 70);
+    final veryLow = pct((v) => v < 54);
+
+    // rest of your TIR widget, replacing the hardcoded consts with these variables
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
@@ -448,15 +719,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _tirRow('Very High (>250)', 4, const Color(0xFFD32F2F)),
+                    _tirRow(
+                      'Very High (>250)',
+                      veryHigh,
+                      const Color(0xFFD32F2F),
+                    ),
                     const SizedBox(height: 6),
-                    _tirRow('High (181–250)', aboveRange.toInt(), const Color(0xFFFF9F40)),
+                    _tirRow('High (181–250)', high, const Color(0xFFFF9F40)),
                     const SizedBox(height: 6),
-                    _tirRow('In Range (70–180)', inRange.toInt(), const Color(0xFF2BB6A3)),
+                    _tirRow(
+                      'In Range (70–180)',
+                      inRange,
+                      const Color(0xFF2BB6A3),
+                    ),
                     const SizedBox(height: 6),
-                    _tirRow('Low (54–69)', belowRange.toInt(), const Color(0xFFFBC02D)),
+                    _tirRow('Low (54–69)', low, const Color(0xFFFBC02D)),
                     const SizedBox(height: 6),
-                    _tirRow('Very Low (<54)', veryLow.toInt(), const Color(0xFFB71C1C)),
+                    _tirRow('Very Low (<54)', veryLow, const Color(0xFFB71C1C)),
                   ],
                 ),
               ),
@@ -467,19 +746,44 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: CustomPaint(
                   painter: TIRPieChartPainter(
                     segments: [
-                      TIRSegment(percent: 4, color: const Color(0xFFD32F2F)),
-                      TIRSegment(percent: aboveRange, color: const Color(0xFFFF9F40)),
-                      TIRSegment(percent: inRange, color: const Color(0xFF2BB6A3)),
-                      TIRSegment(percent: belowRange, color: const Color(0xFFFBC02D)),
-                      TIRSegment(percent: veryLow, color: const Color(0xFFB71C1C)),
+                      TIRSegment(
+                        percent: veryHigh.toDouble(),
+                        color: const Color(0xFFD32F2F),
+                      ),
+                      TIRSegment(
+                        percent: high.toDouble(),
+                        color: const Color(0xFFFF9F40),
+                      ),
+                      TIRSegment(
+                        percent: inRange.toDouble(),
+                        color: const Color(0xFF2BB6A3),
+                      ),
+                      TIRSegment(
+                        percent: low.toDouble(),
+                        color: const Color(0xFFFBC02D),
+                      ),
+                      TIRSegment(
+                        percent: veryLow.toDouble(),
+                        color: const Color(0xFFB71C1C),
+                      ),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('72%', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF2BB6A3))),
-                        Text('TIR', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text(
+                          '$inRange%',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2BB6A3),
+                          ),
+                        ),
+                        const Text(
+                          'TIR',
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -492,11 +796,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             borderRadius: BorderRadius.circular(6),
             child: Row(
               children: [
-                _tirBar(4, const Color(0xFFD32F2F)),
-                _tirBar(aboveRange, const Color(0xFFFF9F40)),
-                _tirBar(inRange, const Color(0xFF2BB6A3)),
-                _tirBar(belowRange, const Color(0xFFFBC02D)),
-                _tirBar(veryLow, const Color(0xFFB71C1C)),
+                _tirBar(veryHigh.toDouble(), const Color(0xFFD32F2F)),
+                _tirBar(high.toDouble(), const Color(0xFFFF9F40)),
+                _tirBar(inRange.toDouble(), const Color(0xFF2BB6A3)),
+                _tirBar(low.toDouble(), const Color(0xFFFBC02D)),
+                _tirBar(veryLow.toDouble(), const Color(0xFFB71C1C)),
               ],
             ),
           ),
@@ -508,17 +812,34 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   Widget _tirRow(String label, int percent, Color color) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87))),
-        Text('$percent%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.black87),
+          ),
+        ),
+        Text(
+          '$percent%',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
       ],
     );
   }
 
   Widget _tirBar(double percent, Color color) {
+    final flex = percent.toInt().clamp(1, 100); // never 0
     return Flexible(
-      flex: percent.toInt(),
+      flex: flex,
       child: Container(height: 10, color: color),
     );
   }
@@ -545,8 +866,21 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Omnipod 5 — Pump', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: colors.textPrimary)),
-                    Text('Last sync: 2 min ago', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                    Text(
+                      'Omnipod 5 — Pump',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Last sync: 2 min ago',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -556,11 +890,32 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _pumpStat('Reservoir', '142 U', 'Remaining', const Color(0xFF5B8CF5))),
+              Expanded(
+                child: _pumpStat(
+                  'Reservoir',
+                  '142 U',
+                  'Remaining',
+                  const Color(0xFF5B8CF5),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _pumpStat('Battery', '78%', 'Pump battery', const Color(0xFF6FCF97))),
+              Expanded(
+                child: _pumpStat(
+                  'Battery',
+                  '78%',
+                  'Pump battery',
+                  const Color(0xFF6FCF97),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _pumpStat('Basal Rate', '0.85 U/h', 'Current', colors.warning)),
+              Expanded(
+                child: _pumpStat(
+                  'Basal Rate',
+                  '0.85 U/h',
+                  'Current',
+                  colors.warning,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -568,11 +923,32 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _pumpStat('Total Daily\nDose', '38.7 U', 'Today so far', colors.accent)),
+              Expanded(
+                child: _pumpStat(
+                  'Total Daily\nDose',
+                  '38.7 U',
+                  'Today so far',
+                  colors.accent,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _pumpStat('Basal Today', '20.4 U', 'Delivered', Colors.blueGrey)),
+              Expanded(
+                child: _pumpStat(
+                  'Basal Today',
+                  '20.4 U',
+                  'Delivered',
+                  Colors.blueGrey,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _pumpStat('Bolus Today', '18.3 U', 'Delivered', const Color(0xFFFF6B6B))),
+              Expanded(
+                child: _pumpStat(
+                  'Bolus Today',
+                  '18.3 U',
+                  'Delivered',
+                  const Color(0xFFFF6B6B),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -604,9 +980,24 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black87, fontWeight: FontWeight.w600, height: 1.4)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            height: 1.4,
+          ),
+        ),
         const SizedBox(height: 1),
         Text(sub, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
@@ -629,15 +1020,28 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.auto_awesome, color: Color(0xFF5B8CF5), size: 22),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFF5B8CF5),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('AI-Powered AID System', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    Text('Model: ClosedLoop v3.2 • Adaptive mode', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(
+                      'AI-Powered AID System',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      'Model: ClosedLoop v3.2 • Adaptive mode',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -645,17 +1049,47 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ],
           ),
           const SizedBox(height: 18),
-          _aidRow(Icons.show_chart, 'Predicted Glucose (30 min)', '126 mg/dL', colors.textPrimary),
+          _aidRow(
+            Icons.show_chart,
+            'Predicted Glucose (30 min)',
+            '126 mg/dL',
+            colors.textPrimary,
+          ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(Icons.trending_up, 'Current Glucose Trend', '↗ Rising slowly (+2 mg/dL·min)', colors.accent),
+          _aidRow(
+            Icons.trending_up,
+            'Current Glucose Trend',
+            '↗ Rising slowly (+2 mg/dL·min)',
+            colors.accent,
+          ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(Icons.bolt, 'Next Auto-Bolus', '0.3 U in ~8 min (predicted high)', colors.warning),
+          _aidRow(
+            Icons.bolt,
+            'Next Auto-Bolus',
+            '0.3 U in ~8 min (predicted high)',
+            colors.warning,
+          ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(Icons.do_not_disturb_alt, 'Suspend Guard', 'Active below 70 mg/dL', colors.error),
+          _aidRow(
+            Icons.do_not_disturb_alt,
+            'Suspend Guard',
+            'Active below 70 mg/dL',
+            colors.error,
+          ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(Icons.tune, 'Insulin Sensitivity Factor', '1 U : 45 mg/dL (current)', Colors.blueGrey),
+          _aidRow(
+            Icons.tune,
+            'Insulin Sensitivity Factor',
+            '1 U : 45 mg/dL (current)',
+            Colors.blueGrey,
+          ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(Icons.rice_bowl_outlined, 'Insulin-to-Carb Ratio', '1 U : 12g carbs', Colors.blueGrey),
+          _aidRow(
+            Icons.rice_bowl_outlined,
+            'Insulin-to-Carb Ratio',
+            '1 U : 12g carbs',
+            Colors.blueGrey,
+          ),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(12),
@@ -665,7 +1099,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle_outline, color: colors.success, size: 16),
+                Icon(
+                  Icons.check_circle_outline,
+                  color: colors.success,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -688,32 +1126,88 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           Icon(icon, size: 15, color: Colors.grey),
           const SizedBox(width: 10),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54))),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
           const SizedBox(width: 8),
-          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: valueColor)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildAlertsCard(BuildContext context) {
-    final colors = context.colors;
+    if (_alerts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: _cardDecoration(context),
+        child: const Center(
+          child: Text('No recent alerts', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
       child: Column(
-        children: [
-          _alertRow(Icons.warning_amber_rounded, 'HIGH ALERT', 'Glucose reached 198 mg/dL at 8:30 AM — Auto correction delivered', colors.warning, '8:30 AM'),
-          const Divider(height: 20),
-          _alertRow(Icons.arrow_downward_rounded, 'LOW PREDICTED', 'Predictive low alert at 6:00 AM — Basal suspended for 30 min', const Color(0xFFFBC02D), '6:00 AM'),
-          const Divider(height: 20),
-          _alertRow(Icons.check_circle_outline, 'RESOLVED', 'Glucose stabilized after correction at 9:30 AM', colors.success, '9:30 AM'),
-        ],
+        children: _alerts.asMap().entries.map((entry) {
+          final i = entry.key;
+          final alert = entry.value;
+          final type = alert['alert_type'] as String? ?? '';
+          final title = alert['title'] as String? ?? type.toUpperCase();
+          final message = alert['message'] as String? ?? '';
+          final dt = DateTime.parse(alert['triggered_at']).toLocal();
+          final hour = dt.hour > 12
+              ? dt.hour - 12
+              : dt.hour == 0
+              ? 12
+              : dt.hour;
+          final min = dt.minute.toString().padLeft(2, '0');
+          final period = dt.hour < 12 ? 'AM' : 'PM';
+          final time = '$hour:$min $period';
+
+          IconData icon;
+          Color color;
+          if (type.contains('high')) {
+            icon = Icons.warning_amber_rounded;
+            color = context.colors.warning;
+          } else if (type.contains('low')) {
+            icon = Icons.arrow_downward_rounded;
+            color = const Color(0xFFFBC02D);
+          } else {
+            icon = Icons.check_circle_outline;
+            color = context.colors.success;
+          }
+
+          return Column(
+            children: [
+              if (i > 0) const Divider(height: 20),
+              _alertRow(icon, title, message, color, time),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
 
-  Widget _alertRow(IconData icon, String tag, String message, Color color, String time) {
+  Widget _alertRow(
+    IconData icon,
+    String tag,
+    String message,
+    Color color,
+    String time,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -726,16 +1220,39 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                    child: Text(tag, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
                   ),
                   const Spacer(),
-                  Text(time, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(
+                    time,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(message, style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4)),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+              ),
             ],
           ),
         ),
@@ -745,22 +1262,54 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildCarePlanCard(BuildContext context) {
     final colors = context.colors;
+    final plan = _carePlan;
+
+    final targetMin = plan?['target_glucose_min']?.toString() ?? '70';
+    final targetMax = plan?['target_glucose_max']?.toString() ?? '180';
+    final insulinType = plan?['insulin_type'] ?? '—';
+    final maxDose = plan?['max_auto_dose_units']?.toString() ?? '—';
+    final notes = plan?['notes'] ?? '—';
+    final nextAppt = plan?['next_appointment'] as String?;
+    String apptDisplay = '—';
+    if (nextAppt != null) {
+      final dt = DateTime.tryParse(nextAppt);
+      if (dt != null) {
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        apptDisplay = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
       child: Column(
         children: [
-          _carePlanRow('Target Range', '70 – 180 mg/dL', context),
+          _carePlanRow(
+            'Target Range',
+            '$targetMin – $targetMax mg/dL',
+            context,
+          ),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          _carePlanRow('Insulin Type', 'NovoLog (Fast-Acting)', context),
+          _carePlanRow('Insulin Type', insulinType, context),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          _carePlanRow('Daily Basal Program', '0.85 U/h (00:00–06:00), 1.0 U/h (06:00–12:00), 0.9 U/h (12:00–24:00)', context),
+          _carePlanRow('Max Auto-Bolus', '$maxDose U per event', context),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          _carePlanRow('Max Auto-Bolus', '4.0 U per event', context),
+          _carePlanRow('Notes', notes, context),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          _carePlanRow('Physician', 'Dr. Sarah El-Amin, Endocrinology', context),
-          const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          _carePlanRow('Next Appointment', 'March 15, 2025', context),
+          _carePlanRow('Next Appointment', apptDisplay, context),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -768,20 +1317,35 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primaryDark,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final updated = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => CarePlanEditorScreen(
                       patientName: widget.patientName,
+                      patientId: widget.patientId,
+                      existingPlan: _carePlan,
                     ),
                   ),
                 );
+                if (updated == true) _fetchPatientData();
               },
-              icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
-              label: const Text('Edit Care Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Edit Care Plan',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ],
@@ -798,9 +1362,25 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           SizedBox(
             width: 130,
-            child: Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary, fontWeight: FontWeight.w500)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 12, color: colors.textPrimary, fontWeight: FontWeight.w600))),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -814,6 +1394,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── 1. Chart ──────────────────────────────────────
           _sectionTitle(context, '24-Hour Glucose Trace'),
           const SizedBox(height: 12),
           Container(
@@ -834,21 +1415,40 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 220,
-                  child: CustomPaint(
-                    size: const Size(double.infinity, 220),
-                    painter: GlucoseChartPainter(readings: glucoseHistory),
-                  ),
+                  child: glucoseHistory.length < 2
+                      ? const Center(
+                          child: Text(
+                            'Not enough data',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : CustomPaint(
+                          size: const Size(double.infinity, 220),
+                          painter: GlucoseChartPainter(
+                            readings: glucoseHistory,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: ['12am', '6am', '12pm', '6pm', '12am']
-                      .map((t) => Text(t, style: TextStyle(fontSize: 10, color: colors.textSecondary)))
+                      .map(
+                        (t) => Text(
+                          t,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ],
             ),
           ),
+
+          // ── 2. Device Info ────────────────────────────────
           const SizedBox(height: 36),
           _sectionTitle(context, 'CGM Device Info'),
           const SizedBox(height: 12),
@@ -857,36 +1457,70 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             decoration: _cardDecoration(context),
             child: Column(
               children: [
-                _cgmRow('Device', 'Dexcom G7', context),
-                _cgmRow('Sensor Serial', 'SN-47291-G7', context),
-                _cgmRow('Sensor Age', '6 days, 4 hours', context),
-                _cgmRow('Sensor Expiry', '1 day, 20 hours remaining', context),
-                _cgmRow('Signal Strength', '●●●●○  Good', context),
-                _cgmRow('Calibration', 'Factory calibrated (no fingerstick)', context),
-                _cgmRow('MARD', '8.2% (mean absolute relative diff.)', context),
+                _cgmRow('Device', _device?['device_name'] ?? '—', context),
+                _cgmRow('Type', _device?['device_type'] ?? '—', context),
+                _cgmRow(
+                  'Firmware',
+                  _device?['firmware_version'] ?? '—',
+                  context,
+                ),
+                _cgmRow('Battery', _device?['battery_health'] ?? '—', context),
+                _cgmRow(
+                  'Last Sync',
+                  _device?['last_sync_at'] != null
+                      ? _timeAgo(_device!['last_sync_at'] as String)
+                      : '—',
+                  context,
+                ),
+                _cgmRow(
+                  'Status',
+                  _device?['is_active'] == true ? 'Active' : 'Inactive',
+                  context,
+                ),
               ],
             ),
           ),
+
+          // ── 3. Recent Readings ────────────────────────────
           const SizedBox(height: 36),
           _sectionTitle(context, 'Recent Readings (Last 12)'),
           const SizedBox(height: 12),
           Container(
             decoration: _cardDecoration(context),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: 12,
-              separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
-              itemBuilder: (context, index) {
-                final reading = glucoseHistory.reversed.toList()[index];
-                return _readingListTile(reading, context);
-              },
-            ),
+            child: glucoseHistory.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: Text(
+                        'No readings available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: math.min(12, glucoseHistory.length),
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                    itemBuilder: (context, index) {
+                      final reading = glucoseHistory.reversed.toList()[index];
+                      return _readingListTile(reading, context);
+                    },
+                  ),
           ),
           const SizedBox(height: 16),
         ],
       ),
     );
+  }
+
+  String _timeAgo(String isoString) {
+    final diff = DateTime.now().difference(DateTime.parse(isoString).toLocal());
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} hr ago';
+    return '${diff.inDays} days ago';
   }
 
   Widget _readingListTile(GlucoseReading reading, BuildContext context) {
@@ -914,18 +1548,43 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
-          child: Text('${reading.value}', style: TextStyle(fontWeight: FontWeight.w800, color: valueColor, fontSize: 13)),
+          child: Text(
+            '${reading.value}',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+              fontSize: 13,
+            ),
+          ),
         ),
       ),
-      title: Text('${reading.time}  •  $status', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+      title: Text(
+        '${reading.time}  •  $status',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
+      ),
       subtitle: reading.mealTag != null
-          ? Row(children: [
-              const Icon(Icons.restaurant, size: 11, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(reading.mealTag!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ])
-          : const Text('CGM reading', style: TextStyle(fontSize: 11, color: Colors.grey)),
-      trailing: Text('mg/dL', style: TextStyle(fontSize: 10, color: colors.textSecondary)),
+          ? Row(
+              children: [
+                const Icon(Icons.restaurant, size: 11, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  reading.mealTag!,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            )
+          : const Text(
+              'CGM reading',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+      trailing: Text(
+        'mg/dL',
+        style: TextStyle(fontSize: 10, color: colors.textSecondary),
+      ),
     );
   }
 
@@ -936,8 +1595,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 140, child: Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary))),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary))),
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -946,7 +1620,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   Widget _legendDot(Color color, String label) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 4),
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
@@ -955,8 +1633,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildInsulinTab(BuildContext context) {
     final colors = context.colors;
-    final totalBolus = insulinLog.where((d) => d.type != 'Basal').fold(0.0, (s, d) => s + d.units);
-    final totalBasal = insulinLog.where((d) => d.type == 'Basal').fold(0.0, (s, d) => s + d.units);
+    final totalBolus = insulinLog
+        .where((d) => d.type != 'Basal')
+        .fold(0.0, (s, d) => s + d.units);
+    final totalBasal = insulinLog
+        .where((d) => d.type == 'Basal')
+        .fold(0.0, (s, d) => s + d.units);
 
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
@@ -968,13 +1650,48 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _statCard(context, 'Total\nBolus', totalBolus.toStringAsFixed(1), 'units', colors.accent)),
+              Expanded(
+                child: _statCard(
+                  context,
+                  'Total\nBolus',
+                  totalBolus.toStringAsFixed(1),
+                  'units',
+                  colors.accent,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _statCard(context, 'Total\nBasal', totalBasal.toStringAsFixed(1), 'units', const Color(0xFF5B8CF5))),
+              Expanded(
+                child: _statCard(
+                  context,
+                  'Total\nBasal',
+                  totalBasal.toStringAsFixed(1),
+                  'units',
+                  const Color(0xFF5B8CF5),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _statCard(context, 'Total\nDelivered', (totalBolus + totalBasal).toStringAsFixed(1), 'units', colors.warning)),
+              Expanded(
+                child: _statCard(
+                  context,
+                  'Total\nDelivered',
+                  (totalBolus + totalBasal).toStringAsFixed(1),
+                  'units',
+                  colors.warning,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _statCard(context, 'Auto\nDoses', '4', 'by AID', const Color(0xFF6FCF97))),
+              Expanded(
+                child: _statCard(
+                  context,
+                  'Auto\nDoses',
+                  insulinLog
+                      .where((d) => d.source == 'AID Auto')
+                      .length
+                      .toString(),
+                  'by AID',
+                  const Color(0xFF6FCF97),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 36),
@@ -986,8 +1703,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: insulinLog.length,
-              separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
-              itemBuilder: (context, i) => _insulinLogTile(insulinLog[i], context),
+              separatorBuilder: (context, index) =>
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+              itemBuilder: (context, i) =>
+                  _insulinLogTile(insulinLog[i], context),
             ),
           ),
           const SizedBox(height: 36),
@@ -1001,30 +1720,62 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               children: [
                 Row(
                   children: [
-                    const Text('1.4 U', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xFF5B8CF5))),
+                    const Text(
+                      '1.4 U',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF5B8CF5),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Insulin on Board', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: colors.textPrimary)),
-                          Text('Estimated from last 3h doses', style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+                          Text(
+                            'Insulin on Board',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Estimated from last 3h doses',
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text('DIA: 4h', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF5B8CF5))),
+                      child: const Text(
+                        'DIA: 4h',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF5B8CF5),
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('IOB decays to 0 around 2:30 PM. AID will account for active insulin before issuing next auto-bolus.',
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                Text(
+                  'IOB decays to 0 around 2:30 PM. AID will account for active insulin before issuing next auto-bolus.',
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
               ],
             ),
           ),
@@ -1060,17 +1811,29 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       leading: Container(
         width: 40,
         height: 40,
-        decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+          color: typeColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Icon(typeIcon, color: typeColor, size: 18),
       ),
       title: Row(
         children: [
-          Text('${dose.units} U  •  ${dose.type}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+          Text(
+            '${dose.units} U  •  ${dose.type}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: dose.source == 'AID Auto' ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+              color: dose.source == 'AID Auto'
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -1078,26 +1841,50 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                color: dose.source == 'AID Auto' ? Colors.green : colors.textSecondary,
+                color: dose.source == 'AID Auto'
+                    ? Colors.green
+                    : colors.textSecondary,
               ),
             ),
           ),
         ],
       ),
-      subtitle: Text('${dose.time}  •  ${dose.reason}', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+      subtitle: Text(
+        '${dose.time}  •  ${dose.reason}',
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
     );
   }
 
   Widget _sectionTitle(BuildContext context, String title) {
     final colors = context.colors;
-    return Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary, letterSpacing: -0.3, height: 1.0));
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w800,
+        color: colors.textPrimary,
+        letterSpacing: -0.3,
+        height: 1.0,
+      ),
+    );
   }
 
   Widget _statusBadge(BuildContext context, String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -1106,7 +1893,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     return BoxDecoration(
       color: colors.surface,
       borderRadius: BorderRadius.circular(20),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 3))],
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 16,
+          offset: const Offset(0, 3),
+        ),
+      ],
     );
   }
 }
@@ -1124,7 +1917,13 @@ class InsulinDose {
   final double units;
   final String reason;
   final String source;
-  InsulinDose({required this.time, required this.type, required this.units, required this.reason, required this.source});
+  InsulinDose({
+    required this.time,
+    required this.type,
+    required this.units,
+    required this.reason,
+    required this.source,
+  });
 }
 
 class GlucoseChartPainter extends CustomPainter {
@@ -1141,10 +1940,12 @@ class GlucoseChartPainter extends CustomPainter {
     double xStep = size.width / (readings.length - 1);
 
     double toY(double val) {
-      return size.height - ((val - minGlucose) / (maxGlucose - minGlucose)) * size.height;
+      return size.height -
+          ((val - minGlucose) / (maxGlucose - minGlucose)) * size.height;
     }
 
-    final rangePaint = Paint()..color = const Color(0xFF2BB6A3).withValues(alpha: 0.07);
+    final rangePaint = Paint()
+      ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.07);
     canvas.drawRect(
       Rect.fromLTRB(0, toY(targetHigh), size.width, toY(targetLow)),
       rangePaint,
@@ -1155,16 +1956,29 @@ class GlucoseChartPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
-    _drawDashedLine(canvas, Offset(0, toY(targetHigh)), Offset(size.width, toY(targetHigh)), linePaint);
-    _drawDashedLine(canvas, Offset(0, toY(targetLow)), Offset(size.width, toY(targetLow)), linePaint);
+    _drawDashedLine(
+      canvas,
+      Offset(0, toY(targetHigh)),
+      Offset(size.width, toY(targetHigh)),
+      linePaint,
+    );
+    _drawDashedLine(
+      canvas,
+      Offset(0, toY(targetLow)),
+      Offset(size.width, toY(targetLow)),
+      linePaint,
+    );
 
     final fillPath = Path();
     fillPath.moveTo(0, size.height);
     for (int i = 0; i < readings.length; i++) {
       final x = i * xStep;
       final y = toY(readings[i].value.toDouble());
-      if (i == 0) { fillPath.lineTo(x, y); }
-      else { fillPath.lineTo(x, y); }
+      if (i == 0) {
+        fillPath.lineTo(x, y);
+      } else {
+        fillPath.lineTo(x, y);
+      }
     }
     fillPath.lineTo((readings.length - 1) * xStep, size.height);
     fillPath.close();
@@ -1172,10 +1986,15 @@ class GlucoseChartPainter extends CustomPainter {
     final gradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [const Color(0xFF2BB6A3).withValues(alpha: 0.2), const Color(0xFF2BB6A3).withValues(alpha: 0.0)],
+      colors: [
+        const Color(0xFF2BB6A3).withValues(alpha: 0.2),
+        const Color(0xFF2BB6A3).withValues(alpha: 0.0),
+      ],
     );
     final fillPaint = Paint()
-      ..shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      ..shader = gradient.createShader(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+      );
     canvas.drawPath(fillPath, fillPaint);
 
     final curvePaint = Paint()
@@ -1189,8 +2008,11 @@ class GlucoseChartPainter extends CustomPainter {
     for (int i = 0; i < readings.length; i++) {
       final x = i * xStep;
       final y = toY(readings[i].value.toDouble());
-      if (i == 0) { path.moveTo(x, y); }
-      else { path.lineTo(x, y); }
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
     }
     canvas.drawPath(path, curvePaint);
 
@@ -1200,7 +2022,14 @@ class GlucoseChartPainter extends CustomPainter {
         final y = toY(readings[i].value.toDouble());
         final markerPaint = Paint()..color = const Color(0xFFFF9F40);
         canvas.drawCircle(Offset(x, y), 5, markerPaint);
-        canvas.drawCircle(Offset(x, y), 5, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 1.5);
+        canvas.drawCircle(
+          Offset(x, y),
+          5,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+        );
       }
     }
 

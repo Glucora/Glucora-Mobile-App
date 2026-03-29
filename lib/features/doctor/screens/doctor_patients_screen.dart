@@ -1,17 +1,24 @@
+// lib\features\doctor\screens\doctor_patients_screen.dart
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final supabase = Supabase.instance.client;
 
 // ─── DATA MODEL ──────────────────────────────────────────────────────────────
 
 class _Patient {
+  final int id;
   final String name;
   final String status;
   final int glucoseValue;
   final String lastReadingTime;
-  final String trend; // 'up', 'down', 'stable'
+  final String trend;
 
   const _Patient({
+    required this.id,
     required this.name,
     required this.status,
     required this.glucoseValue,
@@ -40,6 +47,84 @@ class DoctorPatientsScreen extends StatefulWidget {
 }
 
 class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
+  List<_Patient> _allPatients = [];
+  String _doctorName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPatients();
+    _fetchDoctorName();
+  }
+
+  Future<void> _fetchDoctorName() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    final fullName = user.userMetadata?['full_name'] as String?;
+    if (!mounted) return;
+    setState(() {
+      _doctorName = fullName ?? 'Doctor';
+    });
+  }
+
+  Future<void> _fetchPatients() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final doctorRow = await supabase
+          .from('doctor_profile')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+      final doctorProfileId = doctorRow['id'] as String;
+
+      final response = await supabase
+          .from('patient_list_view')
+          .select()
+          .eq('doctor_id', doctorProfileId);
+
+      print(response);
+      if (!mounted) return;
+      setState(() {
+        _allPatients = (response as List)
+            .map(
+              (row) => _Patient(
+                id: (row['patient_id'] as num).toInt(),
+                name: row['full_name'],
+                glucoseValue: row['value_mg_dl'] != null
+                    ? (row['value_mg_dl'] as num).toInt()
+                    : 0,
+                trend: row['trend'] ?? 'stable',
+                lastReadingTime: row['recorded_at'] != null
+                    ? _timeAgo(row['recorded_at'])
+                    : 'No readings',
+                status: _calculateStatus((row['value_mg_dl'] as num).toInt()),
+              ),
+            )
+            .toList();
+      });
+    } catch (e) {
+      print('FETCH ERROR: $e');
+    }
+  }
+
+  String _calculateStatus(int glucose) {
+    if (glucose < 70) return 'Low';
+    if (glucose <= 180) return 'Normal';
+    if (glucose <= 250) return 'High Risk';
+    return 'Critical';
+  }
+
+  String _timeAgo(String isoString) {
+    final dateTime = DateTime.parse(isoString).toLocal();
+    final diff = DateTime.now().difference(dateTime);
+
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} hr ago';
+    return '${diff.inDays} days ago';
+  }
+
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
@@ -49,16 +134,6 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
 
   bool get _hasActiveFilters =>
       _filterStatus != null || _filterTrend != null || _filterRange != null;
-
-  final List<_Patient> _allPatients = const [
-    _Patient(name: 'Walid Ahmed',    status: 'Stable',    glucoseValue: 120, lastReadingTime: '5 min ago',  trend: 'stable'),
-    _Patient(name: 'Qamar Salah',    status: 'High Risk', glucoseValue: 240, lastReadingTime: '2 min ago',  trend: 'up'),
-    _Patient(name: 'Omar Latif',     status: 'Normal',    glucoseValue: 105, lastReadingTime: '8 min ago',  trend: 'down'),
-    _Patient(name: 'Mayada Youssef', status: 'Stable',    glucoseValue: 120, lastReadingTime: '12 min ago', trend: 'stable'),
-    _Patient(name: 'Khaled Adel',    status: 'Normal',    glucoseValue: 108, lastReadingTime: '3 min ago',  trend: 'stable'),
-    _Patient(name: 'Carol Amr',      status: 'High Risk', glucoseValue: 240, lastReadingTime: '1 min ago',  trend: 'up'),
-    _Patient(name: 'Rana Fathy',     status: 'High Risk', glucoseValue: 240, lastReadingTime: '7 min ago',  trend: 'up'),
-  ];
 
   String _glucoseRange(_Patient p) {
     if (p.glucoseValue < 70) return 'Low';
@@ -74,17 +149,11 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       }
       if (_filterStatus != null && p.status != _filterStatus) return false;
       if (_filterTrend != null && p.trend != _filterTrend) return false;
-      if (_filterRange != null && _glucoseRange(p) != _filterRange) return false;
+      if (_filterRange != null && _glucoseRange(p) != _filterRange)
+        return false;
       return true;
     }).toList();
   }
-
-  int get _highRiskCount =>
-      _allPatients.where((p) => p.status == 'High Risk').length;
-  int get _stableCount =>
-      _allPatients.where((p) => p.status == 'Stable').length;
-  int get _normalCount =>
-      _allPatients.where((p) => p.status == 'Normal').length;
 
   @override
   void dispose() {
@@ -119,14 +188,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Hi, Dr. Nouran 👋',
-                                        style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: colors.textPrimary)),
-                                    Text('Here is your patients overview',
-                                        style: TextStyle(
-                                            fontSize: 13, color: colors.textSecondary)),
+                                    Text(
+                                      'Hi, Doctor $_doctorName 👋',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Here is your patients overview',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -140,15 +216,22 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Hi, Dr. Nouran 👋',
-                                  style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary)),
+                              Text(
+                                'Hi, Dr. $_doctorName 👋',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text('Here is your patients overview',
-                                  style: TextStyle(
-                                      fontSize: 14, color: colors.textSecondary)),
+                              Text(
+                                'Here is your patients overview',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
                             ],
                           ),
                   ),
@@ -157,7 +240,11 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                        16, isLandscape ? 0 : 0, 16, 16),
+                      16,
+                      isLandscape ? 0 : 0,
+                      16,
+                      16,
+                    ),
                     child: _buildSummaryRow(context),
                   ),
                 ),
@@ -176,14 +263,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Your Patients',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textPrimary)),
-                        Text('${filtered.length} shown',
-                            style: TextStyle(
-                                fontSize: 13, color: colors.textSecondary)),
+                        Text(
+                          'Your Patients',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${filtered.length} shown',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -192,8 +286,10 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
-                      child: Text('No patients found.',
-                          style: TextStyle(color: colors.textSecondary)),
+                      child: Text(
+                        'No patients found.',
+                        style: TextStyle(color: colors.textSecondary),
+                      ),
                     ),
                   ),
 
@@ -204,14 +300,27 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           sliver: SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 0,
-                              childAspectRatio: 3.4,
-                            ),
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 0,
+                                  childAspectRatio: 3.4,
+                                ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _PatientCard(patient: filtered[index]),
+                              (context, index) => _PatientCard(
+                                patient: filtered[index],
+                                onTap: () async {
+                                  final removed = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailsScreen(
+                                        patientId: filtered[index].id,
+                                        patientName: filtered[index].name,
+                                      ),
+                                    ),
+                                  );
+                                  if (removed == true) _fetchPatients();
+                                },
+                              ),
                               childCount: filtered.length,
                             ),
                           ),
@@ -220,8 +329,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _PatientCard(patient: filtered[index]),
+                              (context, index) => _PatientCard(
+                                patient: filtered[index],
+                                onTap: () async {
+                                  final removed = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailsScreen(
+                                        patientId: filtered[index].id,
+                                        patientName: filtered[index].name,
+                                      ),
+                                    ),
+                                  );
+                                  if (removed == true) _fetchPatients();
+                                },
+                              ),
                               childCount: filtered.length,
                             ),
                           ),
@@ -236,23 +358,34 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
 
   Widget _buildSummaryRow(BuildContext context) {
     final colors = context.colors;
+
+    final total = _allPatients.length;
+    final critical = _allPatients.where((p) => p.status == 'Critical').length;
+    final highRisk = _allPatients.where((p) => p.status == 'High Risk').length;
+    final normal = _allPatients.where((p) => p.status == 'Normal').length;
+    final low = _allPatients.where((p) => p.status == 'Low').length;
+
     return Row(
       children: [
-        _summaryChip(context, 'Total', '${_allPatients.length}', colors.accent),
-        const SizedBox(width: 10),
-        _summaryChip(context, 'High Risk', '$_highRiskCount', colors.error),
-        const SizedBox(width: 10),
-        _summaryChip(context, 'Stable', '$_stableCount', Colors.blueGrey),
-        const SizedBox(width: 10),
-        _summaryChip(context, 'Normal', '$_normalCount', Colors.green),
+        _summaryChip(context, 'Total', '$total', colors.accent),
+        _summaryChip(context, 'Critical', '$critical', Colors.red),
+        _summaryChip(context, 'High Risk', '$highRisk', Colors.orange),
+        _summaryChip(context, 'Normal', '$normal', Colors.green),
+        _summaryChip(context, 'Low', '$low', Colors.blue),
       ],
     );
   }
 
-  Widget _summaryChip(BuildContext context, String label, String count, Color color) {
+  Widget _summaryChip(
+    BuildContext context,
+    String label,
+    String count,
+    Color color,
+  ) {
     final colors = context.colors;
     return Expanded(
       child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: colors.surface,
@@ -353,9 +486,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: _hasActiveFilters
-                      ? colors.primaryDark
-                      : colors.accent,
+                  color: _hasActiveFilters ? colors.primaryDark : colors.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.tune, color: Colors.white, size: 20),
@@ -455,7 +586,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             children: [
               Text(
                 'Filter Patients',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
               ),
               const Spacer(),
               if (_hasAny)
@@ -484,10 +619,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             context,
             title: 'Status',
             icon: Icons.circle_outlined,
-            options: const ['Normal', 'Stable', 'High Risk'],
-            optionColors: const [Colors.green, Colors.blueGrey, Colors.red],
+            options: const ['Low', 'Normal', 'High Risk', 'Critical'],
+            optionColors: const [
+              Colors.blue,
+              Colors.green,
+              Colors.orange,
+              Colors.red,
+            ],
             selected: _status,
-            onSelect: (val) => setState(() => _status = _status == val ? null : val),
+            onSelect: (val) =>
+                setState(() => _status = _status == val ? null : val),
           ),
           const SizedBox(height: 20),
 
@@ -496,9 +637,14 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             title: 'Last Reading',
             icon: Icons.monitor_heart_outlined,
             options: const ['Low', 'In Range', 'High'],
-            optionColors: const [Color(0xFFFF6B6B), Color(0xFF2BB6A3), Color(0xFFFF9F40)],
+            optionColors: const [
+              Color(0xFFFF6B6B),
+              Color(0xFF2BB6A3),
+              Color(0xFFFF9F40),
+            ],
             selected: _range,
-            onSelect: (val) => setState(() => _range = _range == val ? null : val),
+            onSelect: (val) =>
+                setState(() => _range = _range == val ? null : val),
           ),
           const SizedBox(height: 20),
 
@@ -511,13 +657,17 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             selected: _trend == 'up'
                 ? 'Rising'
                 : _trend == 'down'
-                    ? 'Falling'
-                    : _trend == 'stable'
-                        ? 'Stable'
-                        : null,
+                ? 'Falling'
+                : _trend == 'stable'
+                ? 'Stable'
+                : null,
             onSelect: (val) {
               setState(() {
-                final map = {'Rising': 'up', 'Falling': 'down', 'Stable': 'stable'};
+                final map = {
+                  'Rising': 'up',
+                  'Falling': 'down',
+                  'Stable': 'stable',
+                };
                 final internal = map[val];
                 _trend = _trend == internal ? null : internal;
               });
@@ -603,7 +753,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           : colors.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? color : colors.textSecondary.withValues(alpha: 0.2),
+                        color: isSelected
+                            ? color
+                            : colors.textSecondary.withValues(alpha: 0.2),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -612,8 +764,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         if (isSelected)
                           Icon(Icons.check_circle, color: color, size: 16)
                         else
-                          Icon(Icons.circle_outlined,
-                              color: colors.textSecondary, size: 16),
+                          Icon(
+                            Icons.circle_outlined,
+                            color: colors.textSecondary,
+                            size: 16,
+                          ),
                         const SizedBox(height: 4),
                         Text(
                           opt,
@@ -643,17 +798,19 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
 class _PatientCard extends StatelessWidget {
   final _Patient patient;
-
-  const _PatientCard({required this.patient});
+  final VoidCallback? onTap;
+  const _PatientCard({required this.patient, this.onTap});
 
   Color _statusColor() {
     switch (patient.status) {
-      case 'High Risk':
+      case 'Critical':
         return Colors.red;
-      case 'Stable':
-        return Colors.blueGrey;
+      case 'High Risk':
+        return Colors.orange;
       case 'Normal':
         return Colors.green;
+      case 'Low':
+        return Colors.blue;
       default:
         return Colors.grey;
     }
@@ -674,14 +831,7 @@ class _PatientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PatientDetailsScreen(patientName: patient.name),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
