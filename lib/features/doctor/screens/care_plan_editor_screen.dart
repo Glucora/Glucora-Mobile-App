@@ -838,7 +838,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 _manual_inslun_enabled = val;
               });
             },
-            activeColor: colors.accent,
+            activeThumbColor: colors.accent,
           ),
         ],
       ),

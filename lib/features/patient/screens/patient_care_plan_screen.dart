@@ -119,17 +119,19 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    if (_isLoading)
+    if (_isLoading) {
       return Scaffold(
         backgroundColor: colors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
 
-    if (_error != null || _plan == null)
+    if (_error != null || _plan == null) {
       return Scaffold(
         backgroundColor: colors.background,
         body: Center(child: Text(_error ?? 'No care plan found.')),
       );
+    }
 
     final plan = _plan!;
     return Scaffold(

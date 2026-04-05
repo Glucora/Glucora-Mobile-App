@@ -802,14 +802,14 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('created_at', ascending: false)
           .limit(3);
 
-      if (response == null || response.isEmpty) {
+      if (response.isEmpty) {
         return ["No recommendations available"];
       }
 
       // 3️⃣ Convert to List<String>
       final List<String> recs = [];
       for (final item in response) {
-        if (item is Map && item.containsKey('message')) {
+        if (item.containsKey('message')) {
           recs.add(item['message']?.toString() ?? '');
         }
       }

@@ -149,8 +149,9 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       }
       if (_filterStatus != null && p.status != _filterStatus) return false;
       if (_filterTrend != null && p.trend != _filterTrend) return false;
-      if (_filterRange != null && _glucoseRange(p) != _filterRange)
+      if (_filterRange != null && _glucoseRange(p) != _filterRange) {
         return false;
+      }
       return true;
     }).toList();
   }
