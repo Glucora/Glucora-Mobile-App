@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:glucora_ai_companion/features/user/screens/iob_card.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,25 +19,41 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Care plan
   String _doctorName = '';
   String _targetRange = '– mg/dL';
   String _nextAppointment = '–';
+
+  // Glucose
+  double? _glucoseValue;
+  String _glucoseTrend = 'stable';
+  DateTime? _glucoseUpdatedAt;
+  bool _glucoseLoading = true;
+
+  // IOB
+  double? _iobValue;
+  bool _iobLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchCarePlanSummary();
+    _fetchLatestGlucose();
+    _fetchLatestIOB();
   }
 
+  // ════════════════════════════════════════════════════
+  // FETCH: CARE PLAN
+  // ════════════════════════════════════════════════════
   Future<void> _fetchCarePlanSummary() async {
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
-      print('USER ID: $userId');
       if (userId == null) return;
+
       final patientProfileId = await getPatientProfileId(userId);
-      print('PATIENT PROFILE ID: $patientProfileId');
       if (patientProfileId == null) return;
+
       final response = await supabase
           .from('care_plans')
           .select(
@@ -45,20 +63,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('updated_at', ascending: false)
           .limit(1)
           .maybeSingle();
-      print('CARE PLAN RESPONSE: $response');
+
       if (response == null) return;
+
       final doctorProfile = response['doctor_profile'];
-      print('DOCTOR PROFILE: $doctorProfile');
       final doctorName = doctorProfile?['full_name'] ?? 'Your Doctor';
-      print('DOCTOR NAME: $doctorName');
       final min = response['target_glucose_min'];
       final max = response['target_glucose_max'];
       final appt = response['next_appointment'];
+
       setState(() {
         _doctorName = doctorName;
-        _targetRange = (min != null && max != null)
-            ? '$min–$max mg/dL'
-            : '– mg/dL';
+        _targetRange = (min != null && max != null) ? '$min–$max mg/dL' : '– mg/dL';
         _nextAppointment = appt ?? '–';
       });
     } catch (e) {
@@ -66,6 +82,99 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ════════════════════════════════════════════════════
+  // FETCH: LATEST GLUCOSE
+  // ════════════════════════════════════════════════════
+  Future<void> _fetchLatestGlucose() async {
+  try {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _glucoseLoading = false); // ✅ reset even if no user
+      return;
+    }
+
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) {
+      setState(() => _glucoseLoading = false); // ✅ reset even if no profile
+      return;
+    }
+
+    final response = await supabase
+        .from('glucose_readings')
+        .select('value_mg_dl, trend, recorded_at')
+        .eq('patient_id', patientId)
+        .order('recorded_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    setState(() {
+      if (response != null) {
+        _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
+        _glucoseTrend = response['trend'] ?? 'stable';
+        _glucoseUpdatedAt = DateTime.tryParse(response['recorded_at']);
+      }
+      _glucoseLoading = false; // ✅ always set false, even if response is null
+    });
+  } catch (e) {
+    if (kDebugMode) print('Failed to fetch glucose: $e');
+    setState(() => _glucoseLoading = false);
+  }
+}
+  // ════════════════════════════════════════════════════
+  // FETCH: LATEST IOB
+  // ════════════════════════════════════════════════════
+  Future<void> _fetchLatestIOB() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) return;
+
+      final response = await supabase
+          .from('insulin_on_board')
+          .select('total_iob_units')
+          .eq('patient_id', patientId)
+          .order('calculated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      setState(() {
+        _iobValue = response != null
+            ? double.tryParse(response['total_iob_units'].toString())
+            : null;
+        _iobLoading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) print('Failed to fetch IOB: $e');
+      setState(() => _iobLoading = false);
+    }
+  }
+
+  // ════════════════════════════════════════════════════
+  // HELPERS
+  // ════════════════════════════════════════════════════
+  String _timeAgo(DateTime? dt) {
+    if (dt == null) return '–';
+    final diff = DateTime.now().difference(dt.toLocal());
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  Color _glucoseColor(GlucoraColors colors) {
+    if (_glucoseValue == null) return colors.primary;
+    if (_glucoseValue! < 70) return const Color(0xFFEFDD16);
+    if (_glucoseValue! > 180) return colors.error;
+    return colors.primary;
+  }
+
+  // ════════════════════════════════════════════════════
+  // BUILD
+  // ════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final supabase = Supabase.instance.client;
@@ -127,12 +236,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // ── Landscape vs Portrait layouts ──
             isLandscape
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left: glucose + IOB/battery
                       Expanded(
                         child: Column(
                           children: [
@@ -143,37 +250,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Right: prediction + recommendations + care plan
                       Expanded(
                         child: Column(
                           children: [
                             GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AIPredictionScreen(),
-                                ),
-                              ),
+                              onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
                               child: _predictionCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const RecommendationsScreen(),
-                                ),
-                              ),
+                              onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
                               child: _recommendationsCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PatientCarePlanScreen(),
-                                ),
-                              ),
+                              onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
                               child: _carePlanCard(context),
                             ),
                           ],
@@ -188,32 +282,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       _statusIndicatorsRow(context),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AIPredictionScreen(),
-                          ),
-                        ),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
                         child: _predictionCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RecommendationsScreen(),
-                          ),
-                        ),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
                         child: _recommendationsCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientCarePlanScreen(),
-                          ),
-                        ),
+                        onTap: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
                         child: _carePlanCard(context),
                       ),
                     ],
@@ -227,30 +309,163 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ════════════════════════════════════════════════════
-  // IOB + BATTERY ROW
+  // GLUCOSE CARD — live data
+  // ════════════════════════════════════════════════════
+  Widget _glucoseCard(BuildContext context) {
+    final colors = context.colors;
+    final dotColor = _glucoseColor(colors);
+
+    IconData trendIcon;
+    switch (_glucoseTrend.toLowerCase()) {
+      case 'up':
+      case 'rising':
+        trendIcon = Icons.arrow_upward_rounded;
+        break;
+      case 'down':
+      case 'falling':
+        trendIcon = Icons.arrow_downward_rounded;
+        break;
+      default:
+        trendIcon = Icons.remove_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+                child: _glucoseLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : Icon(trendIcon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Current Glucose Level:",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          _glucoseLoading
+                              ? '– mg/dL'
+                              : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: dotColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Last updated: ${_timeAgo(_glucoseUpdatedAt)}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _dot(colors.primary, "Normal", colors),
+              _dot(const Color(0xFFEFDD16), "Low", colors),
+              _dot(colors.error, "High", colors),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot(Color c, String label, GlucoraColors colors) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+        ],
+      );
+
+  // ════════════════════════════════════════════════════
+  // IOB + BATTERY ROW — IOB is live
   // ════════════════════════════════════════════════════
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
 
-    // IOB values
-    const double iobValue = 2.4;
-    // ignore: unnecessary_string_escapes
-    const String iobUnit = "U";
+    final String iobDisplay =
+        _iobLoading ? '–' : (_iobValue?.toStringAsFixed(1) ?? '–');
 
-    // Battery values
+    // Battery — still static until you have a devices table query
     const double batteryPercent = 0.80;
     const int batteryDisplay = 80;
 
-    // Battery color: green > 50%, amber 20–50%, red < 20%
     final Color batteryColor = batteryPercent > 0.5
         ? const Color(0xFF4CAF50)
         : batteryPercent > 0.2
-        ? const Color(0xFFFFB300)
-        : const Color(0xFFEF1616);
+            ? const Color(0xFFFFB300)
+            : const Color(0xFFEF1616);
 
     return Row(
       children: [
-        // ── IOB card ──────────────────────────────────
+        // ── IOB card ──
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -258,8 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: colors.textSecondary.withValues(alpha: 0.2),
-              ),
+                  color: colors.textSecondary.withValues(alpha: 0.2)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -270,7 +484,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                // Icon bubble
                 Container(
                   width: 38,
                   height: 38,
@@ -278,14 +491,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: colors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Icons.water_drop_rounded,
-                    size: 19,
-                    color: colors.primary,
-                  ),
+                  child: _iobLoading
+                      ? Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: colors.primary),
+                        )
+                      : Icon(Icons.water_drop_rounded,
+                          size: 19, color: colors.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
+                child: GestureDetector(
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const IobDetailSheet(),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -303,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            "$iobValue",
+                            iobDisplay,
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -312,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            " $iobUnit",
+                            " U",
                             style: TextStyle(
                               fontSize: 13,
                               color: colors.textSecondary,
@@ -332,6 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+                ),
               ],
             ),
           ),
@@ -339,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(width: 12),
 
-        // ── Battery card ───────────────────────────────
+        // ── Battery card ──
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -347,8 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: colors.textSecondary.withValues(alpha: 0.2),
-              ),
+                  color: colors.textSecondary.withValues(alpha: 0.2)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -359,7 +582,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                // Icon bubble — color matches battery level
                 Container(
                   width: 38,
                   height: 38,
@@ -411,15 +633,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 5),
-                      // Progress bar
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
                           value: batteryPercent,
                           minHeight: 5,
-                          backgroundColor: colors.textSecondary.withValues(
-                            alpha: 0.15,
-                          ),
+                          backgroundColor:
+                              colors.textSecondary.withValues(alpha: 0.15),
                           valueColor: AlwaysStoppedAnimation(batteryColor),
                         ),
                       ),
@@ -433,116 +653,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
-  // ════════════════════════════════════════════════════
-  // GLUCOSE CARD
-  // ════════════════════════════════════════════════════
-  Widget _glucoseCard(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Current Glucose Level:",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          "110 mg/dL",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            "Last updated: 5 minutes ago",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: colors.textSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: colors.textSecondary.withValues(alpha: 0.2),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _dot(colors.primary, "Normal", colors),
-              _dot(const Color(0xFFEFDD16), "Low", colors),
-              _dot(colors.error, "High", colors),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _dot(Color c, String label, GlucoraColors colors) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 5),
-      Text(label, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
-    ],
-  );
 
   // ════════════════════════════════════════════════════
   // AI PREDICTION CARD
@@ -569,22 +679,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "AI Prediction",
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              Text(
-                "View details",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text("AI Prediction",
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary)),
+              Text("View details",
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: colors.primary,
+                      fontWeight: FontWeight.w500)),
             ],
           ),
           const SizedBox(height: 8),
@@ -592,21 +696,17 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                "135",
-                style: TextStyle(
-                  fontSize: 46,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
+              Text("135",
+                  style: TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary)),
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  " mg/dL",
-                  style: TextStyle(fontSize: 18, color: colors.textSecondary),
-                ),
+                child: Text(" mg/dL",
+                    style: TextStyle(
+                        fontSize: 18, color: colors.textSecondary)),
               ),
             ],
           ),
@@ -616,26 +716,20 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
-              Text(
-                "22.73%",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text("22.73%",
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: colors.error,
+                      fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              Text(
-                "Expected glucose in 30 minutes",
-                style: TextStyle(fontSize: 12, color: colors.textSecondary),
-              ),
+              Text("Expected glucose in 30 minutes",
+                  style:
+                      TextStyle(fontSize: 12, color: colors.textSecondary)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            "Glucose from 10:21pm 15 Jan, 2026",
-            style: TextStyle(fontSize: 11, color: colors.textSecondary),
-          ),
+          Text("Glucose from 10:21pm 15 Jan, 2026",
+              style: TextStyle(fontSize: 11, color: colors.textSecondary)),
           const SizedBox(height: 14),
           SizedBox(
             height: 130,
@@ -649,17 +743,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              Text(
-                "Next 60 minutes",
-                style: TextStyle(fontSize: 11, color: colors.textSecondary),
-              ),
+              Text("Next 60 minutes",
+                  style:
+                      TextStyle(fontSize: 11, color: colors.textSecondary)),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              Text(
-                "Last Hour",
-                style: TextStyle(fontSize: 11, color: colors.textSecondary),
-              ),
+              Text("Last Hour",
+                  style:
+                      TextStyle(fontSize: 11, color: colors.textSecondary)),
             ],
           ),
         ],
@@ -670,7 +762,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // ════════════════════════════════════════════════════
   // RECOMMENDATIONS CARD
   // ════════════════════════════════════════════════════
-  // ── UPDATED RECOMMENDATIONS CARD ──
   Widget _recommendationsCard(BuildContext context) {
     final colors = context.colors;
     final supabase = Supabase.instance.client;
@@ -685,8 +776,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: colors.textSecondary.withValues(alpha: 0.2),
-              ),
+                  color: colors.textSecondary.withValues(alpha: 0.2)),
             ),
             child: const Center(child: CircularProgressIndicator()),
           );
@@ -700,8 +790,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: colors.textSecondary.withValues(alpha: 0.2),
-            ),
+                color: colors.textSecondary.withValues(alpha: 0.2)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -713,66 +802,47 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Recommendations",
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
+                  Text("Recommendations",
+                      style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary)),
                   GestureDetector(
                     onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RecommendationsScreen(),
-                      ),
-                    ),
-                    child: Text(
-                      "View details",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const RecommendationsScreen())),
+                    child: Text("View details",
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: colors.primary,
+                            fontWeight: FontWeight.w500)),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Recommendations previews
-              ...recs.map(
-                (rec) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _rec(colors, rec),
-                ),
-              ),
-
+              ...recs.map((rec) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _rec(colors, rec),
+                  )),
               const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 1),
-                    child: Icon(
-                      Icons.warning_amber_rounded,
-                      size: 12,
-                      color: colors.textSecondary,
-                    ),
+                    child: Icon(Icons.warning_amber_rounded,
+                        size: 12, color: colors.textSecondary),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       "Recommendations are supportive and not a medical diagnosis.",
                       style: TextStyle(
-                        fontSize: 10,
-                        color: colors.textSecondary,
-                      ),
+                          fontSize: 10, color: colors.textSecondary),
                     ),
                   ),
                 ],
@@ -784,17 +854,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── FETCH RECOMMENDATIONS FROM SUPABASE (OR ANY API) ──
   Future<List<String>> _fetchRecommendations(SupabaseClient supabase) async {
     try {
-      // 1️⃣ Get the current user's patient profile ID first
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) return ["User not logged in"];
 
       final patientProfileId = await getPatientProfileId(userId);
       if (patientProfileId == null) return ["No patient profile found"];
 
-      // 2️⃣ Fetch latest 3 recommendations from ai_recommendations
       final response = await supabase
           .from('ai_recommendations')
           .select('message')
@@ -802,11 +869,8 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('created_at', ascending: false)
           .limit(3);
 
-      if (response.isEmpty) {
-        return ["No recommendations available"];
-      }
+      if (response.isEmpty) return ["No recommendations available"];
 
-      // 3️⃣ Convert to List<String>
       final List<String> recs = [];
       for (final item in response) {
         if (item.containsKey('message')) {
@@ -816,34 +880,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
       return recs.isEmpty ? ["No recommendations available"] : recs;
     } catch (e) {
-      // Print error in debug mode
       if (kDebugMode) print('Failed to fetch recommendations: $e');
       return ["Failed to fetch recommendations"];
     }
   }
 
-  // ── TRUNCATED RECOMMENDATION ROW ──
   Widget _rec(GlucoraColors colors, String recText) => Row(
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: colors.primary,
-          shape: BoxShape.circle,
-        ),
-      ),
-      const SizedBox(width: 10),
-      Flexible(
-        child: Text(
-          recText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 14, color: colors.textPrimary),
-        ),
-      ),
-    ],
-  );
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration:
+                BoxDecoration(color: colors.primary, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              recText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
+            ),
+          ),
+        ],
+      );
+
   // ════════════════════════════════════════════════════
   // CARE PLAN CARD
   // ════════════════════════════════════════════════════
@@ -884,53 +945,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.assignment_outlined,
-                          size: 18,
-                          color: colors.primary,
-                        ),
+                        Icon(Icons.assignment_outlined,
+                            size: 18, color: colors.primary),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'My Care Plan',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary,
-                            ),
-                          ),
+                          child: Text('My Care Plan',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.textPrimary)),
                         ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: colors.textSecondary,
-                        ),
+                        Icon(Icons.chevron_right_rounded,
+                            size: 20, color: colors.textSecondary),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      '$_doctorName  ·  Target: $_targetRange',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                      ),
-                    ),
+                    Text('$_doctorName  ·  Target: $_targetRange',
+                        style: TextStyle(
+                            fontSize: 12, color: colors.textSecondary)),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 12,
-                          color: colors.textSecondary,
-                        ),
+                        Icon(Icons.calendar_today_outlined,
+                            size: 12, color: colors.textSecondary),
                         const SizedBox(width: 4),
-                        Text(
-                          'Next appointment: $_nextAppointment',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colors.textSecondary,
-                          ),
-                        ),
+                        Text('Next appointment: $_nextAppointment',
+                            style: TextStyle(
+                                fontSize: 11, color: colors.textSecondary)),
                       ],
                     ),
                   ],
@@ -1030,7 +1071,8 @@ class _ChartPainter extends CustomPainter {
     final p = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (int i = 1; i < pts.length; i++) {
       final a = pts[i - 1], b = pts[i];
-      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+      p.cubicTo(
+          (a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
     }
     return p;
   }
