@@ -1,5 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class ApiService {
+  static final supabase = Supabase.instance.client;
+
+  // Fetch the current patient's profile id (bigint) from patient_profile
+  static Future<int> _getPatientId() async {
+    final userId = supabase.auth.currentUser!.id;
+    final response = await supabase
+        .from('patient_profile')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+    return response['id'] as int;
+  }
+
+  static Future<List<GlucoseLog>> fetchLogs() async {
+    final patientId = await _getPatientId();
+    final response = await supabase
+        .from('glucose_readings')           // ✅ correct table name
+        .select()
+        .eq('patient_id', patientId)
+        .order('recorded_at', ascending: false);
+
+    return (response as List)
+        .map((e) => GlucoseLog.fromJson(e))
+        .toList();
+  }
+
+static Future<void> insertLog(double value, String? notes, String mealTime) async {
+  final patientId = await _getPatientId();
+  await supabase.from('glucose_readings').insert({
+    'value_mg_dl': value,
+    'source': 'manual',
+    'trend': 'stable',
+    'patient_id': patientId,
+    'is_predicted': false,
+    'meal_time': mealTime,
+    if (notes != null && notes.isNotEmpty) 'notes': notes,
+    'recorded_at': DateTime.now().toIso8601String(),
+  });
+}
+}
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -22,30 +65,57 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     "Other",
   ];
 
-  final List<_GlucoseLog> _logs = [
-    _GlucoseLog("108 mg/dL", "Before Meal", "8:00 AM", "Fasting morning"),
-    _GlucoseLog("142 mg/dL", "After Meal", "2:30 PM", "Post-lunch"),
-  ];
+  List<GlucoseLog> _logs = [];
+  bool _loading = true;
+  String? _error;
 
-  void _save() {
-    final val = _glucoseCtrl.text.trim();
-    if (val.isEmpty) return;
-    setState(() {
-      _logs.insert(
-          0,
-          _GlucoseLog(
-            "$val $_unit",
-            _mealTime,
-            TimeOfDay.now().format(context),
-            _notesCtrl.text.trim().isEmpty
-                ? "—"
-                : _notesCtrl.text.trim(),
-          ));
-      _glucoseCtrl.clear();
-      _notesCtrl.clear();
-    });
-    FocusScope.of(context).unfocus();
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
   }
+
+  Future<void> _loadLogs() async {
+    try {
+      final data = await ApiService.fetchLogs();
+      setState(() {
+        _logs = data;
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = "Failed to load data: $e";
+      });
+    }
+  }
+  
+Future<void> _save() async {
+  final val = _glucoseCtrl.text.trim();
+  if (val.isEmpty) return;
+
+  final parsed = double.tryParse(val);
+  if (parsed == null) return;
+
+  final notes = _notesCtrl.text.trim().isEmpty  // ✅ define notes BEFORE using it
+      ? null
+      : _notesCtrl.text.trim();
+
+  setState(() => _loading = true);
+
+  try {
+    await ApiService.insertLog(parsed, notes, _mealTime);  // ✅ now notes is defined
+    _glucoseCtrl.clear();
+    _notesCtrl.clear();
+    await _loadLogs();
+  } catch (e) {
+    setState(() {
+      _loading = false;
+      _error = "Failed to save: $e";
+    });
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +142,9 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2), width: 1),
+                border: Border.all(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                    width: 1),
                 boxShadow: [
                   BoxShadow(
                       color: Colors.black.withValues(alpha: 0.05),
@@ -102,7 +174,9 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                       decoration: BoxDecoration(
                           color: colors.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.textSecondary.withValues(alpha:0.2))),
+                          border: Border.all(
+                              color: colors.textSecondary
+                                  .withValues(alpha: 0.2))),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _unit,
@@ -111,11 +185,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                               color: colors.textPrimary,
                               fontWeight: FontWeight.w500),
                           items: ["mg/dL", "mmol/L"]
-                              .map((u) => DropdownMenuItem(
-                                  value: u, child: Text(u)))
+                              .map((u) =>
+                                  DropdownMenuItem(value: u, child: Text(u)))
                               .toList(),
-                          onChanged: (v) =>
-                              setState(() => _unit = v!),
+                          onChanged: (v) => setState(() => _unit = v!),
                         ),
                       ),
                     ),
@@ -123,8 +196,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
                   const SizedBox(height: 12),
                   Text("Meal time",
-                      style: TextStyle(
-                          fontSize: 12, color: colors.textSecondary)),
+                      style:
+                          TextStyle(fontSize: 12, color: colors.textSecondary)),
                   const SizedBox(height: 8),
 
                   Wrap(
@@ -132,8 +205,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                     runSpacing: 8,
                     children: _mealOptions
                         .map((mt) => GestureDetector(
-                              onTap: () =>
-                                  setState(() => _mealTime = mt),
+                              onTap: () => setState(() => _mealTime = mt),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 8),
@@ -141,8 +213,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                   color: _mealTime == mt
                                       ? colors.primary
                                       : colors.background,
-                                  borderRadius:
-                                      BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(mt,
                                     style: TextStyle(
@@ -161,21 +232,33 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                       Icons.notes_rounded),
                   const SizedBox(height: 16),
 
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(_error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _save,
+                      onPressed: _loading ? null : _save,    // ✅ disable while loading
                       style: ElevatedButton.styleFrom(
                           backgroundColor: colors.primary,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14))),
-                      child: const Text("Save Reading",
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600)),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text("Save Reading",
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -193,24 +276,21 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary)),
                 Text("${_logs.length} entries",
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                    style: TextStyle(
+                        fontSize: 12, color: colors.textSecondary)),
               ],
             ),
             const SizedBox(height: 12),
-
-            if (_logs.isEmpty)
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_error != null)
               Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  child: Text(
-                      "No logs yet. Add your first reading above.",
-                      style: TextStyle(fontSize: 13, color: colors.textSecondary)),
-                ),
-              )
+                  child: Text(_error!,
+                      style: const TextStyle(color: Colors.red)))
+            else if (_logs.isEmpty)
+              const Text("No logs yet")
             else
-              ...List.generate(
-                  _logs.length, (i) => _logTile(context, _logs[i], i)),
-
+              ..._logs.map((log) => _logTile(context, log)).toList(),
             const SizedBox(height: 30),
           ],
         ),
@@ -218,7 +298,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     );
   }
 
-  Widget _field(BuildContext context, TextEditingController ctrl, String label, IconData icon,
+  Widget _field(BuildContext context, TextEditingController ctrl, String label,
+      IconData icon,
       {TextInputType type = TextInputType.text}) {
     final colors = context.colors;
     return TextField(
@@ -231,7 +312,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         filled: true,
         fillColor: colors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none),
@@ -241,63 +323,162 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       ),
     );
   }
+Widget _logTile(BuildContext context, GlucoseLog log) {
+  final colors = context.colors;
 
-  Widget _logTile(BuildContext context, _GlucoseLog log, int i) {
-    final colors = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withValues(alpha:0.2)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.water_drop_rounded,
-              color: Color(0xFF199A8E), size: 20),
-        ),
+  IconData trendIcon;
+  Color trendColor;
+  switch (log.trend.toLowerCase()) {
+    case 'up':
+    case 'rising':
+      trendIcon = Icons.arrow_upward_rounded;
+      trendColor = Colors.red;
+      break;
+    case 'down':
+    case 'falling':
+      trendIcon = Icons.arrow_downward_rounded;
+      trendColor = Colors.blue;
+      break;
+    default:
+      trendIcon = Icons.remove_rounded;
+      trendColor = Colors.green;
+  }
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(
+          color: colors.textSecondary.withValues(alpha: 0.15), width: 1),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.water_drop_rounded, color: colors.primary, size: 22),
         const SizedBox(width: 12),
         Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-              Text(log.value,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary)),
-              const SizedBox(height: 2),
-              Text("${log.mealTime} · ${log.time}",
-                  style: TextStyle(fontSize: 11, color: colors.textSecondary)),
-              if (log.notes != "—")
-                Text(log.notes,
-                    style: TextStyle(fontSize: 11, color: colors.textSecondary)),
-            ])),
-        GestureDetector(
-            onTap: () => setState(() => _logs.removeAt(i)),
-            child: Icon(Icons.close_rounded,
-                size: 18, color: colors.textSecondary)),
-      ]),
-    );
+                  Text(
+                    "${log.value} mg/dL",
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary),
+                  ),
+                  Icon(trendIcon, color: trendColor, size: 20),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  // Meal time badge
+                  if (log.mealTime != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        log.mealTime!,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: colors.primary),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    log.source,
+                    style: TextStyle(
+                        fontSize: 12, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatDate(log.recordedAt),
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
+              // Notes
+              if (log.notes != null && log.notes!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.notes_rounded,
+                        size: 13, color: colors.textSecondary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        log.notes!,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    return "${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} "
+        "${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}";
   }
 }
 
-class _GlucoseLog {
-  final String value;
-  final String mealTime;
-  final String time;
-  final String notes;
-  const _GlucoseLog(this.value, this.mealTime, this.time, this.notes);
+// ✅ Model matches the actual glucose_readings schema
+class GlucoseLog {
+  final String id;
+  final int patientId;
+  final double value;
+  final String source;
+  final String trend;
+  final bool isPredicted;
+  final DateTime recordedAt;
+  final String? notes;
+  final String? mealTime; // ✅ NEW
+
+  GlucoseLog({
+    required this.id,
+    required this.patientId,
+    required this.value,
+    required this.source,
+    required this.trend,
+    required this.isPredicted,
+    required this.recordedAt,
+    this.notes,
+    this.mealTime, // ✅ NEW
+  });
+
+  factory GlucoseLog.fromJson(Map<String, dynamic> json) {
+    return GlucoseLog(
+      id: json['id'].toString(),
+      patientId: json['patient_id'] as int,
+      value: double.parse(json['value_mg_dl'].toString()),
+      source: json['source'] ?? 'unknown',
+      trend: json['trend'] ?? 'stable',
+      isPredicted: json['is_predicted'] ?? false,
+      recordedAt: DateTime.parse(json['recorded_at']),
+      notes: json['notes'],
+      mealTime: json['meal_time'], // ✅ NEW
+    );
+  }
 }
