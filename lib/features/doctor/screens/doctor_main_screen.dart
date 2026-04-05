@@ -221,7 +221,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
       'speciality': _specialityController.text.trim(),
       'license_number': _licenseController.text.trim(),
       'phone_no': _phoneController.text.trim(),
-      'clinic_address': _addressController.text.trim(),
+      'address': _addressController.text.trim(),
     });
   }
 }
@@ -260,7 +260,7 @@ Future<void> _loadProfileData() async {
   try {
     final response = await supabase
         .from('users')
-        .select('full_name, phone_no, email, doctor_profile(age, clinic_address, liscense_number, speciality)') // Added speciality
+        .select('full_name, phone_no, email, age, address, doctor_profile(liscense_number, speciality)')
         .eq('id', user.id)
         .single();
 
@@ -268,12 +268,12 @@ Future<void> _loadProfileData() async {
       _name = response['full_name'] ?? "Unknown Doctor";
       _phone = response['phone_no'] ?? "No Phone";
       _email = response['email'] ?? "";
+      _age = (response['age'] as num?)?.toInt() ?? 0;
+      _address = response['address'] ?? "No Address Set";
 
       final dynamic profileData = response['doctor_profile'];
       if (profileData != null) {
         final profile = (profileData is List) ? profileData.first : profileData;
-        _age = (profile['age'] as num?)?.toInt() ?? 0;
-        _address = profile['clinic_address'] ?? "No Address Set";
         _license = profile['liscense_number'] ?? "Not Set";
         // Ensure this key matches your DB column exactly (speciality vs specialty)
         _specialty = profile['speciality'] ?? "General Practitioner"; 
@@ -575,12 +575,12 @@ Future<void> _loadProfileData() async {
       await supabase.from('users').update({
         'full_name': result['full_name'],
         'phone_no': result['phone_no'],
+        'age': result['age'],
+        'address': result['address'],
       }).eq('id', userId!);
 
       // 2. Update 'doctor_profile' table
       await supabase.from('doctor_profile').update({
-        'age': result['age'],
-        'clinic_address': result['clinic_address'],
         'speciality': result['speciality'],
         'liscense_number': result['license_number'], // Matches your schema typo
       }).eq('user_id', userId);

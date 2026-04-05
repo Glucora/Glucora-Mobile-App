@@ -367,7 +367,7 @@ Future<void> _loadProfileData() async {
       // 1. Fetch joined data: Users + Guardian Profile (Age)
       final data = await supabase
           .from('users')
-          .select('full_name, email, phone_no, guardian_profile(age)')
+          .select('full_name, email, phone_no, age')
           .eq('id', user.id)
           .single();
 
@@ -375,13 +375,7 @@ Future<void> _loadProfileData() async {
         _name = data['full_name'] ?? "Guardian";
         _email = data['email'] ?? "";
         _phone = data['phone_no'] ?? "";
-        
-        final profile = data['guardian_profile'];
-        if (profile != null) {
-          // If joined data is a list, take first; if map, take directly
-          final p = (profile is List) ? profile.first : profile;
-          _age = (p['age'] as num?)?.toInt() ?? 0;
-        }
+        _age = (data['age'] as num?)?.toInt() ?? 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -428,14 +422,9 @@ Future<void> _loadProfileData() async {
         'full_name': result['name'],
         'email': result['email'],
         'phone_no': result['phone'],
-      }).eq('id', userId);
-
-      // 3. Update 'guardian_profile' table (This saves the AGE)
-      // We use .eq('user_id', userId) to match your schema connection
-      await supabase.from('guardian_profile').update({
         'age': result['age'],
-      }).eq('user_id', userId);
-
+      }).eq('id', userId);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),

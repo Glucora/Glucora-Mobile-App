@@ -305,7 +305,11 @@ Future<void> _save() async {
         },
       ),
     );
-
+    // 4. Parse and Update Patient Profile
+    // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
+    final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final ageValue = int.tryParse(_ageController.text) ?? 0;
     // 3. Update the Users table
     await supabase
         .from('users')
@@ -313,21 +317,15 @@ Future<void> _save() async {
           'full_name': newName,
           'email': newEmail,
           'phone_no': newPhone,
+          'age': ageValue,
         })
         .eq('id', user.id);
-
-    // 4. Parse and Update Patient Profile
-    // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
-    final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-    final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-    final ageValue = int.tryParse(_ageController.text) ?? 0;
 
     await supabase
         .from('patient_profile')
         .update({
           'weight_kg': weightValue,
           'height_cm': heightValue,
-          'age': ageValue,
         })
         .eq('user_id', user.id);
 
@@ -936,11 +934,11 @@ Future<void> _loadProfile() async {
       _name = userData?['full_name'] ?? "No Name";
       _phone = userData?['phone_no'] ?? ""; // Add this
       _email = userData?['email'] ?? ""; // Add this
-      
+      _age = (userData?['age'] ?? 0).toInt();
       // Keep only the numbers in the variables for internal logic
       _height = "${patientData?['height_cm'] ?? 0} cm";
       _weight = "${patientData?['weight_kg'] ?? 0} kg";
-      _age = (patientData?['age'] ?? 0).toInt();
+      
       _isLoading = false;
     });
   } catch (e) {

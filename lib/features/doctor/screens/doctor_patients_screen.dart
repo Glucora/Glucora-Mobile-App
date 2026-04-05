@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final supabase = Supabase.instance.client;
