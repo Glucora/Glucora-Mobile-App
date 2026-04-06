@@ -165,14 +165,16 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   }
 
   final userId = supabase.auth.currentUser!.id;
+
+  // TO:
   Future<void> _sendRequest({
-    required int patientProfileId,
+    required String patientUserId,
     required String patientName,
   }) async {
     final data = widget.role == 'doctor'
         ? {
             'doctor_id': userId,
-            'patient_id': patientProfileId,
+            'patient_id': patientUserId,
             'status': 'pending',
             'requested_by': widget.role,
             'requested_at': DateTime.now().toIso8601String(),
@@ -180,14 +182,14 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         : widget.role == 'guardian'
         ? {
             'guardian_id': userId,
-            'patient_id': patientProfileId,
+            'patient_id': patientUserId,
             'status': 'pending',
             'requested_by': widget.role,
             'requested_at': DateTime.now().toIso8601String(),
           }
         : {
-            'doctor_id': patientProfileId.toString(),
-            'patient_id': int.parse(userId),
+            'doctor_id': patientUserId,
+            'patient_id': userId,
             'status': 'pending',
             'requested_by': widget.role,
             'requested_at': DateTime.now().toIso8601String(),
@@ -712,7 +714,7 @@ class _SearchSheet extends StatefulWidget {
   final _RoleConfig config;
   final String profileId;
   final Future<void> Function({
-    required int patientProfileId,
+    required String patientUserId,
     required String patientName,
   })
   onSendRequest;
@@ -765,10 +767,12 @@ class _SearchSheetState extends State<_SearchSheet> {
       final List<Map<String, dynamic>> found = [];
 
       for (final user in userRows) {
+        final patientUserUuid = user['id'] as String;
+
         final profileRows = await supabase
             .from('patient_profile')
             .select('id')
-            .eq('user_id', user['id'] as String);
+            .eq('user_id', patientUserUuid);
 
         if ((profileRows as List).isEmpty) continue;
 
@@ -778,7 +782,7 @@ class _SearchSheetState extends State<_SearchSheet> {
             .from(widget.config.connectionsTable)
             .select('id, status')
             .eq(widget.config.profileIdField, widget.profileId)
-            .eq('patient_id', patientProfileId);
+            .eq('patient_id', patientUserUuid);
 
         String connectionStatus = 'none';
         if ((myConnection as List).isNotEmpty) {
@@ -786,6 +790,7 @@ class _SearchSheetState extends State<_SearchSheet> {
         }
 
         found.add({
+          'patientUserUuid': patientUserUuid,
           'patientProfileId': patientProfileId,
           'connectionId': (myConnection as List).isNotEmpty
               ? myConnection[0]['id'].toString()
@@ -813,7 +818,7 @@ class _SearchSheetState extends State<_SearchSheet> {
     setState(() => _isSending = true);
     try {
       await widget.onSendRequest(
-        patientProfileId: patient['patientProfileId'] as int,
+        patientUserId: patient['patientUserUuid'] as String,
         patientName: patient['full_name'] as String,
       );
       widget.onRequestChanged();
