@@ -1,7 +1,5 @@
-// guardian_patient_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'guardian_patient_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
@@ -25,234 +23,35 @@ class _GuardianPatientDetailScreenState
     extends State<GuardianPatientDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
-  
-  // Real-time data streams
-  late final Stream<List<Map<String, dynamic>>> _glucoseStream;
-  late final Stream<Map<String, dynamic>> _devicesStream;
-  late final Stream<Map<String, dynamic>> _todayStatsStream;
-  late final Stream<Map<String, dynamic>> _carePlanStream;
-  late final Stream<Map<String, dynamic>> _locationStream;
-  
-  // Cached data
-  Map<String, dynamic>? _latestGlucose;
-  Map<String, dynamic>? _devicesData;
-  Map<String, dynamic>? _todayStats;
-  Map<String, dynamic>? _carePlan;
-  Map<String, dynamic>? _locationData;
-  Map<String, dynamic>? _doctorInfo;
+
+  static Color statusColor(String s, GlucoraColors colors) {
+    switch (s) {
+      case 'emergency': return colors.error;
+      case 'attention': return colors.warning;
+      default:          return colors.accent;
+    }
+  }
+
+  static Color glucoseColor(GuardianPatient p, GlucoraColors colors) {
+    switch (p.glucoseLabel) {
+      case 'Too high': case 'Very high': case 'Too low': case 'Very low':
+        return colors.error;
+      case 'A bit high': return colors.warning;
+      default:           return colors.accent;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
-    _initializeRealtimeSubscriptions();
   }
 
-  void _initializeRealtimeSubscriptions() {
-    final supabase = Supabase.instance.client;
-    final patientId = widget.patient.id;
-    
-    // Subscribe to glucose readings (realtime)
-    supabase
-        .channel('glucose_changes_${widget.patient.id}')
-        .on(
-            PostgresChangesEvent(
-              event: PostgresChangeEvent.insert,
-              schema: 'public',
-              table: 'glucose_readings',
-              filter: PostgresChangeFilter(
-                type: PostgresChangeFilterType.eq,
-                column: 'patient_id',
-                value: patientId.toString(),
-              ),
-            ),
-            (payload) => _fetchLatestGlucose())
-        .subscribe();
-    
-    // Fetch initial data
-    _fetchLatestGlucose();
-    _fetchDevices();
-    _fetchTodayStats();
-    _fetchCarePlan();
-    _fetchLocation();
-    _fetchDoctorInfo();
-  }
-
-  Future<void> _fetchLatestGlucose() async {
-    final supabase = Supabase.instance.client;
-    final response = await supabase
-        .from('glucose_readings')
-        .select()
-        .eq('patient_id', widget.patient.id)
-        .order('recorded_at', ascending: false)
-        .limit(1);
-    
-    if (response.isNotEmpty && mounted) {
-      setState(() {
-        _latestGlucose = response.first;
-      });
-    }
-  }
-
-  Future<void> _fetchDevices() async {
-    final supabase = Supabase.instance.client;
-    final response = await supabase
-        .from('devices')
-        .select()
-        .eq('patient_id', widget.patient.userId) // Assuming patient.userId is the UUID
-        .eq('is_active', true);
-    
-    if (mounted) {
-      setState(() {
-        _devicesData = {
-          'sensor_connected': response.any((d) => d['device_type'] == 'cgm' && d['is_active'] == true),
-          'pump_active': response.any((d) => d['device_type'] == 'pump' && d['is_active'] == true),
-        };
-      });
-    }
-  }
-
-  Future<void> _fetchTodayStats() async {
-    final supabase = Supabase.instance.client;
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    
-    // Fetch today's insulin doses
-    final doses = await supabase
-        .from('insulin_doses')
-        .select()
-        .eq('patient_id', widget.patient.id)
-        .gte('delivered_at', startOfDay.toIso8601String());
-    
-    // Fetch latest IOB
-    final iob = await supabase
-        .from('insulin_on_board')
-        .select()
-        .eq('patient_id', widget.patient.id)
-        .order('calculated_at', ascending: false)
-        .limit(1);
-    
-    final totalUnits = doses.fold(0.0, (sum, dose) => sum + (dose['units'] as num).toDouble());
-    final autoDoses = doses.where((d) => d['delivery_method'] == 'Pump').length;
-    final manualDoses = doses.where((d) => d['delivery_method'] != 'Pump').length;
-    
-    if (mounted) {
-      setState(() {
-        _todayStats = {
-          'doses_today': doses.length,
-          'total_units': totalUnits,
-          'all_automatic': manualDoses == 0,
-          'iob_units': iob.isNotEmpty ? iob.first['total_iob_units'] : 0.0,
-        };
-      });
-    }
-  }
-
-  Future<void> _fetchCarePlan() async {
-    final supabase = Supabase.instance.client;
-    final response = await supabase
-        .from('care_plans')
-        .select()
-        .eq('patient_id', widget.patient.id)
-        .order('created_at', ascending: false)
-        .limit(1);
-    
-    if (response.isNotEmpty && mounted) {
-      setState(() {
-        _carePlan = response.first;
-      });
-    }
-  }
-
-  Future<void> _fetchLocation() async {
-    final supabase = Supabase.instance.client;
-    final response = await supabase
-        .from('patient_locations')
-        .select()
-        .eq('patient_id', widget.patient.id)
-        .eq('sharing_enabled', true)
-        .order('recorded_at', ascending: false)
-        .limit(1);
-    
-    if (response.isNotEmpty && mounted) {
-      setState(() {
-        _locationData = response.first;
-      });
-    }
-  }
-
-  Future<void> _fetchDoctorInfo() async {
-    final supabase = Supabase.instance.client;
-    if (_carePlan != null && _carePlan!['doctor_id'] != null) {
-      final response = await supabase
-          .from('users')
-          .select()
-          .eq('id', _carePlan!['doctor_id'])
-          .limit(1);
-      
-      if (response.isNotEmpty && mounted) {
-        setState(() {
-          _doctorInfo = response.first;
-        });
-      }
-    }
-  }
-
-  // Helper to get dynamic patient data
-  GuardianPatient _getUpdatedPatient() {
-    return widget.patient.copyWith(
-      glucoseValue: _latestGlucose != null 
-          ? (_latestGlucose!['value_mg_dl'] as num).toDouble()
-          : widget.patient.glucoseValue,
-      glucoseLabel: _getGlucoseLabel(_latestGlucose?['value_mg_dl']),
-      glucoseTrend: _getGlucoseTrend(_latestGlucose?['trend']),
-      sensorConnected: _devicesData?['sensor_connected'] ?? widget.patient.sensorConnected,
-      pumpActive: _devicesData?['pump_active'] ?? widget.patient.pumpActive,
-      dosesToday: _todayStats?['doses_today'] ?? widget.patient.dosesToday,
-      allDosesAutomatic: _todayStats?['all_automatic'] ?? widget.patient.allDosesAutomatic,
-      lastSeenTime: _formatLastSeen(_locationData?['recorded_at']),
-    );
-  }
-
-  String _getGlucoseLabel(dynamic value) {
-    if (value == null) return 'Unknown';
-    final numValue = (value as num).toDouble();
-    if (numValue < 70) return 'Too low';
-    if (numValue < 80) return 'A bit low';
-    if (numValue <= 180) return 'In Range';
-    if (numValue <= 250) return 'A bit high';
-    if (numValue <= 300) return 'Too high';
-    return 'Very high';
-  }
-
-  String _getGlucoseTrend(String? trend) {
-    switch (trend) {
-      case 'DoubleUp': return 'up';
-      case 'SingleUp': return 'up';
-      case 'FortyFiveUp': return 'up';
-      case 'Flat': return 'flat';
-      case 'FortyFiveDown': return 'down';
-      case 'SingleDown': return 'down';
-      case 'DoubleDown': return 'down';
-      default: return 'flat';
-    }
-  }
-
-  String _formatLastSeen(String? timestamp) {
-    if (timestamp == null) return 'Unknown';
-    final time = DateTime.parse(timestamp);
-    final now = DateTime.now();
-    final diff = now.difference(time);
-    
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hours ago';
-    return '${diff.inDays} days ago';
-  }
+  @override
+  void dispose() { _tab.dispose(); super.dispose(); }
 
   void _call() {
     HapticFeedback.mediumImpact();
-    // TODO: Implement actual calling functionality
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Calling ${widget.patient.name}...',
           style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -264,7 +63,6 @@ class _GuardianPatientDetailScreenState
   }
 
   void _sms() {
-    // TODO: Implement actual SMS functionality
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Opening SMS for ${widget.patient.name}...',
           style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -276,18 +74,10 @@ class _GuardianPatientDetailScreenState
   }
 
   @override
-  void dispose() { 
-    _tab.dispose();
-    // Remove Supabase channel subscription
-    Supabase.instance.client.removeChannel('glucose_changes_${widget.patient.id}');
-    super.dispose(); 
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final patient = _getUpdatedPatient();
-    final sColor = statusColor(patient.overallStatus, colors);
+    final p = widget.patient;
+    final sColor = statusColor(p.overallStatus, colors);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -308,16 +98,16 @@ class _GuardianPatientDetailScreenState
                 CircleAvatar(
                   radius: isLandscape ? 18 : 22,
                   backgroundColor: sColor.withValues(alpha: 0.12),
-                  child: Text(patient.name.substring(0, 1),
+                  child: Text(p.name.substring(0, 1),
                       style: TextStyle(color: sColor, fontWeight: FontWeight.w800,
                           fontSize: isLandscape ? 14 : 16)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(patient.name, style: TextStyle(
+                  Text(p.name, style: TextStyle(
                       fontSize: isLandscape ? 15 : 18,
                       fontWeight: FontWeight.w800, color: colors.textPrimary)),
-                  Text('${patient.relationship}  ·  Age ${patient.age}  ·  Type 1',
+                  Text('${p.relationship}  ·  Age ${p.age}  ·  Type 1',
                       style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                 ])),
                 Container(
@@ -327,8 +117,8 @@ class _GuardianPatientDetailScreenState
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    patient.overallStatus == 'emergency' ? 'Needs help now'
-                        : patient.overallStatus == 'attention' ? 'Needs attention' : 'Doing well',
+                    p.overallStatus == 'emergency' ? 'Needs help now'
+                        : p.overallStatus == 'attention' ? 'Needs attention' : 'Doing well',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sColor),
                   ),
                 ),
@@ -379,23 +169,9 @@ class _GuardianPatientDetailScreenState
                 controller: _tab,
                 physics: const ClampingScrollPhysics(),
                 children: [
-                  _OverviewTab(
-                    patient: patient, 
-                    isLandscape: isLandscape,
-                    carePlan: _carePlan,
-                    iobUnits: _todayStats?['iob_units'],
-                  ),
-                  _LocationTab(
-                    patient: patient, 
-                    isLandscape: isLandscape,
-                    locationData: _locationData,
-                  ),
-                  _DoctorPlanTab(
-                    patient: patient, 
-                    isLandscape: isLandscape,
-                    carePlan: _carePlan,
-                    doctorInfo: _doctorInfo,
-                  ),
+                  _OverviewTab(patient: p, isLandscape: isLandscape),
+                  _LocationTab(patient: p, isLandscape: isLandscape),
+                  _DoctorPlanTab(patient: p, isLandscape: isLandscape),
                 ],
               ),
             ),
@@ -404,38 +180,14 @@ class _GuardianPatientDetailScreenState
       ),
     );
   }
-
-  static Color statusColor(String s, GlucoraColors colors) {
-    switch (s) {
-      case 'emergency': return colors.error;
-      case 'attention': return colors.warning;
-      default:          return colors.accent;
-    }
-  }
-
-  static Color glucoseColor(GuardianPatient p, GlucoraColors colors) {
-    switch (p.glucoseLabel) {
-      case 'Too high': case 'Very high': case 'Too low': case 'Very low':
-        return colors.error;
-      case 'A bit high': return colors.warning;
-      default:           return colors.accent;
-    }
-  }
 }
 
-// Update Overview Tab to accept carePlan and iobUnits
+// ─── OVERVIEW TAB ────────────────────────────────────────────────────────────
+
 class _OverviewTab extends StatelessWidget {
   final GuardianPatient patient;
   final bool isLandscape;
-  final Map<String, dynamic>? carePlan;
-  final double? iobUnits;
-  
-  const _OverviewTab({
-    required this.patient, 
-    required this.isLandscape,
-    this.carePlan,
-    this.iobUnits,
-  });
+  const _OverviewTab({required this.patient, required this.isLandscape});
 
   Color gColor(BuildContext context) {
     final colors = context.colors;
@@ -454,8 +206,6 @@ class _OverviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final glucoseColorVal = gColor(context);
-    final targetMin = carePlan?['target_glucose_min'] ?? 70;
-    final targetMax = carePlan?['target_glucose_max'] ?? 180;
     
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
@@ -467,7 +217,7 @@ class _OverviewTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: Column(children: [
-                      _glucoseCard(context, targetMin, targetMax),
+                      _glucoseCard(context),
                       const SizedBox(height: 14),
                       _devicesCard(context),
                     ])),
@@ -480,7 +230,7 @@ class _OverviewTab extends StatelessWidget {
                   ],
                 ))
               : SliverList(delegate: SliverChildListDelegate([
-                  _glucoseCard(context, targetMin, targetMax),
+                  _glucoseCard(context),
                   const SizedBox(height: 14),
                   _devicesCard(context),
                   const SizedBox(height: 14),
@@ -493,7 +243,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _glucoseCard(BuildContext context, double targetMin, double targetMax) {
+  Widget _glucoseCard(BuildContext context) {
     final colors = context.colors;
     final glucoseColorVal = gColor(context);
     return _card(context, child: Column(
@@ -501,7 +251,7 @@ class _OverviewTab extends StatelessWidget {
       _secLabel(context, 'Blood Sugar Right Now'),
       const SizedBox(height: 12),
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('${patient.glucoseValue.toInt()}',
+        Text('${patient.glucoseValue}',
             style: TextStyle(fontSize: 52, fontWeight: FontWeight.w900,
                 color: glucoseColorVal, letterSpacing: -2, height: 1)),
         const SizedBox(width: 6),
@@ -522,11 +272,11 @@ class _OverviewTab extends StatelessWidget {
         ),
       ]),
       const SizedBox(height: 12),
-      _rangeBar(context, targetMin, targetMax),
+      _rangeBar(context),
     ]));
   }
 
-  Widget _rangeBar(BuildContext context, double targetMin, double targetMax) {
+  Widget _rangeBar(BuildContext context) {
     final colors = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -538,9 +288,9 @@ class _OverviewTab extends StatelessWidget {
       ClipRRect(
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(height: 10, child: Row(children: [
-          Expanded(flex: (targetMin - 40).toInt(), child: Container(color: colors.error.withValues(alpha: 0.3))),
-          Expanded(flex: (targetMax - targetMin).toInt(), child: Container(color: colors.accent.withValues(alpha: 0.25))),
-          Expanded(flex: (300 - targetMax).toInt(), child: Container(color: colors.warning.withValues(alpha: 0.3))),
+          Expanded(flex: 2, child: Container(color: colors.error.withValues(alpha: 0.3))),
+          Expanded(flex: 5, child: Container(color: colors.accent.withValues(alpha: 0.25))),
+          Expanded(flex: 3, child: Container(color: colors.warning.withValues(alpha: 0.3))),
         ])),
       ),
       const SizedBox(height: 4),
@@ -595,7 +345,6 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _insulinCard(BuildContext context) {
     final colors = context.colors;
-    final totalUnits = (patient.dosesToday * 2.5).toStringAsFixed(1); // Example calculation
     return _card(context, child: Column(
       crossAxisAlignment: CrossAxisAlignment.start, children: [
       _secLabel(context, 'Insulin Today'),
@@ -605,7 +354,7 @@ class _OverviewTab extends StatelessWidget {
         _divider(context),
         _stat(colors, patient.allDosesAutomatic ? 'Auto' : 'Manual', 'How given'),
         _divider(context),
-        _stat(colors, '${iobUnits?.toStringAsFixed(1) ?? '0.0'} U', 'Active insulin'),
+        _stat(colors, '18.3 U', 'Total amount'),
       ]),
       const SizedBox(height: 12),
       Container(
@@ -701,25 +450,16 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-// Update Location Tab to accept location data
+// ─── LOCATION TAB ────────────────────────────────────────────────────────────
+
 class _LocationTab extends StatelessWidget {
   final GuardianPatient patient;
   final bool isLandscape;
-  final Map<String, dynamic>? locationData;
-  
-  const _LocationTab({
-    required this.patient, 
-    required this.isLandscape,
-    this.locationData,
-  });
+  const _LocationTab({required this.patient, required this.isLandscape});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final address = locationData?['address_label'] ?? 'Misr International University';
-    final latitude = locationData?['latitude'];
-    final longitude = locationData?['longitude'];
-    
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
@@ -728,18 +468,18 @@ class _LocationTab extends StatelessWidget {
           sliver: SliverToBoxAdapter(
             child: isLandscape
                 ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Expanded(flex: 3, child: _mapCard(context, latitude, longitude)),
+                    Expanded(flex: 3, child: _mapCard(context)),
                     const SizedBox(width: 14),
                     Expanded(flex: 2, child: Column(children: [
-                      _lastSeenCard(context, address),
+                      _lastSeenCard(context),
                       const SizedBox(height: 14),
                       _journeyCard(context),
                     ])),
                   ])
                 : Column(children: [
-                    _mapCard(context, latitude, longitude),
+                    _mapCard(context),
                     const SizedBox(height: 14),
-                    _lastSeenCard(context, address),
+                    _lastSeenCard(context),
                     const SizedBox(height: 14),
                     _journeyCard(context),
                   ]),
@@ -749,88 +489,70 @@ class _LocationTab extends StatelessWidget {
     );
   }
 
-  Widget _mapCard(BuildContext context, double? lat, double? lng) {
+  Widget _mapCard(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
-      onTap: () {
-        if (lat != null && lng != null) {
-          // TODO: Open in actual maps app
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('Opening in Maps...', style: TextStyle(fontWeight: FontWeight.w600)),
-            backgroundColor: colors.accent, behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            duration: const Duration(seconds: 2),
-          ));
-        }
-      },
-      child: Container(
-        height: isLandscape ? 260 : 280,
-        decoration: BoxDecoration(
-          color: colors.background, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
+    return Container(
+      height: isLandscape ? 260 : 280,
+      decoration: BoxDecoration(
+        color: colors.background, borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(children: [
+        CustomPaint(painter: _MapPainter(), size: Size.infinite),
+        const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.location_pin, color: Color(0xFFE76F51), size: 48),
+        ])),
+        Positioned(
+          top: 14, left: 14,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: colors.surface, borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 3))],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 8, height: 8,
+                  decoration: BoxDecoration(color: colors.accent, shape: BoxShape.circle)),
+              const SizedBox(width: 7),
+              Text('Active ${patient.lastSeenTime}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+            ]),
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(children: [
-          CustomPaint(painter: _MapPainter(), size: Size.infinite),
-          const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.location_pin, color: Color(0xFFE76F51), size: 48),
-          ])),
-          Positioned(
-            top: 14, left: 14,
+        Positioned(
+          bottom: 14, right: 14,
+          child: GestureDetector(
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: const Text('Opening in Maps...', style: TextStyle(fontWeight: FontWeight.w600)),
+              backgroundColor: colors.accent, behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 2),
+            )),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: colors.surface, borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 3))],
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 8, height: 8,
-                    decoration: BoxDecoration(color: colors.accent, shape: BoxShape.circle)),
-                const SizedBox(width: 7),
-                Text('Active ${patient.lastSeenTime}',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                color: colors.accent, borderRadius: BorderRadius.circular(20)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.open_in_new_rounded, color: Colors.white, size: 14),
+                SizedBox(width: 6),
+                Text('Open in Maps', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
               ]),
             ),
           ),
-          Positioned(
-            bottom: 14, right: 14,
-            child: GestureDetector(
-              onTap: () {
-                if (lat != null && lng != null) {
-                  // TODO: Launch maps app
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text('Opening in Maps...', style: TextStyle(fontWeight: FontWeight.w600)),
-                    backgroundColor: colors.accent, behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    duration: const Duration(seconds: 2),
-                  ));
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: colors.accent, borderRadius: BorderRadius.circular(20)),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.open_in_new_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 6),
-                  Text('Open in Maps', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-                ]),
-              ),
-            ),
-          ),
-        ]),
-      ),
+        ),
+      ]),
     );
   }
 
-  Widget _lastSeenCard(BuildContext context, String address) {
+  Widget _lastSeenCard(BuildContext context) {
     final colors = context.colors;
     return _card(context, child: Column(
       crossAxisAlignment: CrossAxisAlignment.start, children: [
       _secLabel(context, 'Last Known Location'),
       const SizedBox(height: 12),
-      Text(address,
+      const Text('Misr International University',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
       const SizedBox(height: 3),
       Text('Cairo, Egypt', style: TextStyle(fontSize: 13, color: colors.textSecondary)),
@@ -851,8 +573,7 @@ class _LocationTab extends StatelessWidget {
       ('On the move', '10:15 AM', Icons.directions_walk_rounded),
       ('University', '11:00 AM', Icons.school_rounded),
       ('On the move', '2:30 PM', Icons.directions_walk_rounded),
-      (locationData?['address_label']?.split(',').first ?? 'Current Location', 
-       patient.lastSeenTime, Icons.location_on_rounded),
+      ('Misr International University', '3:10 PM', Icons.location_on_rounded),
     ];
     return _card(context, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _secLabel(context, "Today's Journey"),
@@ -910,31 +631,16 @@ class _LocationTab extends StatelessWidget {
   }
 }
 
-// Update Doctor Plan Tab to accept carePlan and doctorInfo
+// ─── DOCTOR PLAN TAB ─────────────────────────────────────────────────────────
+
 class _DoctorPlanTab extends StatelessWidget {
   final GuardianPatient patient;
   final bool isLandscape;
-  final Map<String, dynamic>? carePlan;
-  final Map<String, dynamic>? doctorInfo;
-  
-  const _DoctorPlanTab({
-    required this.patient, 
-    required this.isLandscape,
-    this.carePlan,
-    this.doctorInfo,
-  });
+  const _DoctorPlanTab({required this.patient, required this.isLandscape});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final targetMin = carePlan?['target_glucose_min'] ?? 70;
-    final targetMax = carePlan?['target_glucose_max'] ?? 180;
-    final insulinType = carePlan?['insulin_type'] ?? 'NovoLog';
-    final aidMode = carePlan?['aid_mode_enabled'] ?? true;
-    final maxAutoDose = carePlan?['max_auto_dose_units'] ?? 4.0;
-    final nextAppointment = carePlan?['next_appointment'];
-    final doctorName = doctorInfo?['full_name'] ?? 'Dr. Nouran';
-    
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
@@ -975,15 +681,15 @@ class _DoctorPlanTab extends StatelessWidget {
             const SizedBox(height: 16),
 
             _planCard(context, title: 'Safe Sugar Range', child: Row(children: [
-              Expanded(child: _rangeBox(context, 'Lowest safe', '${targetMin.toInt()} mg/dL', 'Below this is too low', colors.accent)),
+              Expanded(child: _rangeBox(context, 'Lowest safe', '70 mg/dL', 'Below this is too low', colors.accent)),
               const SizedBox(width: 12),
-              Expanded(child: _rangeBox(context, 'Highest safe', '${targetMax.toInt()} mg/dL', 'Above this is too high', colors.warning)),
+              Expanded(child: _rangeBox(context, 'Highest safe', '180 mg/dL', 'Above this is too high', colors.warning)),
             ])),
 
             const SizedBox(height: 14),
 
             _planCard(context, title: 'Insulin Being Used', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$insulinType ${insulinType == 'NovoLog' ? '(fast-acting)' : ''}',
+              Text('NovoLog (fast-acting)',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary)),
               const SizedBox(height: 6),
               Text('This insulin works quickly. The device gives it automatically when needed.',
@@ -993,10 +699,10 @@ class _DoctorPlanTab extends StatelessWidget {
             const SizedBox(height: 14),
 
             _planCard(context, title: 'How the Device Works', child: Column(children: [
-              _planRow(context, 'Mode', aidMode ? 'Fully automatic — no manual doses needed' : 'Manual mode active'),
-              _planRow(context, 'Max dose', 'Up to ${maxAutoDose.toInt()} units at a time'),
-              _planRow(context, 'Low sugar', 'Pauses insulin if sugar drops below ${targetMin.toInt()}'),
-              _planRow(context, 'High sugar', 'Gives extra insulin if sugar goes above ${targetMax.toInt()}'),
+              _planRow(context, 'Mode', 'Fully automatic — no manual doses needed'),
+              _planRow(context, 'Max dose', 'Up to 4 units at a time'),
+              _planRow(context, 'Low sugar', 'Pauses insulin if sugar drops below 70'),
+              _planRow(context, 'High sugar', 'Gives extra insulin if sugar goes above 180'),
             ])),
 
             const SizedBox(height: 14),
@@ -1012,13 +718,10 @@ class _DoctorPlanTab extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(nextAppointment != null 
-                    ? _formatDate(nextAppointment.toString())
-                    : 'Not scheduled',
+                Text('April 2, 2025',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.textPrimary)),
-                if (nextAppointment != null)
-                  Text(_daysUntil(nextAppointment.toString()), 
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                const SizedBox(height: 2),
+                Text('18 days from now', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               ]),
             ])),
 
@@ -1035,23 +738,6 @@ class _DoctorPlanTab extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _formatDate(String dateStr) {
-    final date = DateTime.parse(dateStr);
-    return '${_monthAbbr(date.month)} ${date.day}, ${date.year}';
-  }
-
-  String _monthAbbr(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months[month - 1];
-  }
-
-  String _daysUntil(String dateStr) {
-    final appointmentDate = DateTime.parse(dateStr);
-    final now = DateTime.now();
-    final days = appointmentDate.difference(now).inDays;
-    return days == 0 ? 'Today!' : '$days days from now';
   }
 
   Widget _planCard(BuildContext context, {required String title, required Widget child}) {
