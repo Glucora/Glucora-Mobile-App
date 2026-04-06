@@ -1350,12 +1350,12 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
         .order('updated_at', ascending: false)
         .limit(1);
     
-    print("🔍 [DoctorPlan] Response type: ${response.runtimeType}");
-    print("🔍 [DoctorPlan] Response: $response");
+    print(" [DoctorPlan] Response type: ${response.runtimeType}");
+    print(" [DoctorPlan] Response: $response");
     
     final plans = response as List;
     if (plans.isEmpty) {
-      print("❌ [DoctorPlan] No care plan found");
+      print(" [DoctorPlan] No care plan found");
       if (mounted) {
         setState(() {
           _error = 'No care plan available for this patient';
@@ -1366,20 +1366,20 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
     }
     
     final planRow = plans.first;
-    print("✅ [DoctorPlan] Plan found: ${planRow['id']}");
+    print(" [DoctorPlan] Plan found: ${planRow['id']}");
     
     // Extract doctor name from nested structure
     String doctorName = 'Your Doctor';
     final doctorProfile = planRow['doctor_profile'];
-    print("🔍 [DoctorPlan] doctorProfile: $doctorProfile");
+    print(" [DoctorPlan] doctorProfile: $doctorProfile");
     
     if (doctorProfile != null) {
       final users = doctorProfile['users'];
-      print("🔍 [DoctorPlan] users: $users");
+      print(" [DoctorPlan] users: $users");
       if (users != null && users['full_name'] != null) {
         final rawName = users['full_name'] as String;
         doctorName = rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
-        print("✅ [DoctorPlan] Doctor name: $doctorName");
+        print(" [DoctorPlan] Doctor name: $doctorName");
       }
     }
     
@@ -1403,8 +1403,8 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
       _loading = false;
     });
   } catch (e, stackTrace) {
-    print("❌ [DoctorPlan] ERROR: $e");
-    print("❌ [DoctorPlan] StackTrace: $stackTrace");
+    print(" [DoctorPlan] ERROR: $e");
+    print(" [DoctorPlan] StackTrace: $stackTrace");
     if (!mounted) return;
     setState(() {
       _error = 'Could not load doctor plan: $e';
