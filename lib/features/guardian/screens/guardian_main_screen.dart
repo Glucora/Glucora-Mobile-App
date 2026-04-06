@@ -24,7 +24,8 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
 
   final List<Widget> _screens = [
     const GuardianHomeScreen(),
-    const GuardianAlertsScreen(),
+    /*     const GuardianAlertsScreen(),
+ */
     const ConnectionRequestsScreen(role: 'guardian'),
     const _GuardianProfileTab(),
   ];
@@ -65,16 +66,16 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                   'Home',
                   colors,
                 ),
-                _item(
+              /*   _item(
                   1,
                   Icons.notifications_rounded,
                   Icons.notifications_outlined,
                   'Alerts',
                   colors,
                   badge: _unreadAlerts,
-                ),
+                ), */
                 _item(
-                  2,
+                  1,
                   Icons.people_rounded,
                   Icons.people_outline_rounded,
                   'Requests',
@@ -82,7 +83,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                   badge: _pendingRequests,
                 ),
                 _item(
-                  3,
+                  2,
                   Icons.person_rounded,
                   Icons.person_outline_rounded,
                   'Profile',
