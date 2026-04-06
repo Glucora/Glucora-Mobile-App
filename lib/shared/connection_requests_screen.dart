@@ -1,17 +1,72 @@
-/*\lib\features\doctor\screens\doctor_requests_screen.dart */
+// lib\shared\connection_requests_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final supabase = Supabase.instance.client;
 
+// ─── CONFIG PER ROLE ─────────────────────────────────────────────────────────
+
+class _RoleConfig {
+  final String profileTable;
+  final String profileIdField;
+  final String connectionsTable;
+  final String viewName;
+  final String viewForeignKey;
+  final String requestedByValue;
+
+  const _RoleConfig({
+    required this.profileTable,
+    required this.profileIdField,
+    required this.connectionsTable,
+    required this.viewName,
+    required this.viewForeignKey,
+    required this.requestedByValue,
+  });
+}
+
+_RoleConfig _configForRole(String role) {
+  switch (role) {
+    case 'doctor':
+      return const _RoleConfig(
+        profileTable: 'doctor_profile',
+        profileIdField: 'doctor_id',
+        connectionsTable: 'doctor_patient_connections',
+        viewName: 'doctor_requests_view',
+        viewForeignKey: 'doctor_id',
+        requestedByValue: 'doctor',
+      );
+    case 'guardian':
+      return const _RoleConfig(
+        profileTable: 'guardian_profile',
+        profileIdField: 'guardian_id',
+        connectionsTable: 'guardian_patient_connections',
+        viewName: 'guardian_requests_view',
+        viewForeignKey: 'guardian_id',
+        requestedByValue: 'guardian',
+      );
+    case 'patient':
+      return const _RoleConfig(
+        profileTable: 'patient_profile',
+        profileIdField: 'patient_id',
+        connectionsTable: 'doctor_patient_connections',
+        viewName: 'patient_requests_view',
+        viewForeignKey: 'patient_id',
+        requestedByValue: 'patient',
+      );
+    default:
+      throw Exception('Unknown role: $role');
+  }
+}
+
+// ─── MODELS ──────────────────────────────────────────────────────────────────
+
 enum RequestStatus { pending, accepted, declined }
 
 class ConnectionRequest {
   final String id;
-  final String patientName;
-  final int age;
-  final String diabetesType;
+  final String personName;
   final String sentAgo;
   final String avatarInitials;
   final String requestedBy;
@@ -19,9 +74,7 @@ class ConnectionRequest {
 
   ConnectionRequest({
     required this.id,
-    required this.patientName,
-    required this.age,
-    required this.diabetesType,
+    required this.personName,
     required this.sentAgo,
     required this.avatarInitials,
     required this.requestedBy,
@@ -29,28 +82,34 @@ class ConnectionRequest {
   });
 }
 
-class DoctorRequestsScreen extends StatefulWidget {
-  const DoctorRequestsScreen({super.key});
+// ─── SCREEN ──────────────────────────────────────────────────────────────────
+
+class ConnectionRequestsScreen extends StatefulWidget {
+  final String role;
+  const ConnectionRequestsScreen({super.key, required this.role});
 
   @override
-  State<DoctorRequestsScreen> createState() => _DoctorRequestsScreenState();
+  State<ConnectionRequestsScreen> createState() =>
+      _ConnectionRequestsScreenState();
 }
 
-class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
+class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
+  late _RoleConfig _config;
   List<ConnectionRequest> _requests = [];
-
+  
   List<ConnectionRequest> get _incoming => _requests
       .where(
-        (r) => r.requestedBy == 'patient' && r.status == RequestStatus.pending,
+        (r) =>
+            r.requestedBy != widget.role && r.status == RequestStatus.pending,
       )
       .toList();
 
   List<ConnectionRequest> get _sent => _requests
       .where(
-        (r) => r.requestedBy == 'doctor' && r.status == RequestStatus.pending,
+        (r) =>
+            r.requestedBy == widget.role && r.status == RequestStatus.pending,
       )
       .toList();
 
@@ -60,9 +119,9 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
   @override
   void initState() {
     super.initState();
+    _config = _configForRole(widget.role);
     _tabController = TabController(length: 3, vsync: this);
-    _fetchRequests();
-    print(supabase.auth.currentUser);
+    _loadProfileAndFetch();
   }
 
   @override
@@ -71,41 +130,88 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     super.dispose();
   }
 
+  Future<void> _loadProfileAndFetch() async {
+    await _fetchRequests();
+  }
+
+  Future<void> _fetchRequests() async {
+    final userId = supabase.auth.currentUser!.id;
+
+    // get the other person's name by joining through patient_profile → users
+    final response = await supabase
+        .from(_config.connectionsTable)
+        .select(
+          'id, status, requested_by, requested_at, patient_id, patient_profile(user_id, users(full_name))',
+        )
+        .eq(_config.profileIdField, userId);
+
+    if (!mounted) return;
+    setState(() {
+      _requests = (response as List).map((row) {
+        final fullName =
+            row['patient_profile']?['users']?['full_name'] ?? 'Unknown';
+        return ConnectionRequest(
+          id: row['id'].toString(),
+          personName: fullName,
+          sentAgo: _timeAgo(row['requested_at']),
+          avatarInitials: _initials(fullName),
+          requestedBy: row['requested_by'] ?? widget.role,
+          status: row['status'] == 'accepted'
+              ? RequestStatus.accepted
+              : row['status'] == 'declined'
+              ? RequestStatus.declined
+              : RequestStatus.pending,
+        );
+      }).toList();
+    });
+  }
+
+  final userId = supabase.auth.currentUser!.id;
   Future<void> _sendRequest({
     required int patientProfileId,
     required String patientName,
   }) async {
-    final userId = supabase.auth.currentUser!.id;
-    final doctorRow = await supabase
-        .from('doctor_profile')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-    if (!mounted) return;
-    final doctorProfileId = doctorRow['id'] as String;
+    if (userId == null) return;
+
+    final data = widget.role == 'doctor'
+        ? {
+            'doctor_id': userId,
+            'patient_id': patientProfileId,
+            'status': 'pending',
+            'requested_by': widget.role,
+            'requested_at': DateTime.now().toIso8601String(),
+          }
+        : widget.role == 'guardian'
+        ? {
+            'guardian_id': userId,
+            'patient_id': patientProfileId,
+            'status': 'pending',
+            'requested_by': widget.role,
+            'requested_at': DateTime.now().toIso8601String(),
+          }
+        : {
+            'doctor_id': patientProfileId.toString(),
+            'patient_id': int.parse(userId!),
+            'status': 'pending',
+            'requested_by': widget.role,
+            'requested_at': DateTime.now().toIso8601String(),
+          };
 
     final inserted = await supabase
-        .from('doctor_patient_connections')
-        .insert({
-          'doctor_id': doctorProfileId,
-          'patient_id': patientProfileId,
-          'status': 'pending',
-          'requested_by': 'doctor',
-          'requested_at': DateTime.now().toIso8601String(),
-        })
+        .from(_config.connectionsTable)
+        .insert(data)
         .select()
         .single();
 
+    if (!mounted) return;
     setState(() {
       _requests.add(
         ConnectionRequest(
           id: inserted['id'].toString(),
-          patientName: patientName,
-          age: 0,
-          diabetesType: 'Type 1',
+          personName: patientName,
           sentAgo: 'just now',
           avatarInitials: _initials(patientName),
-          requestedBy: 'doctor',
+          requestedBy: widget.role,
           status: RequestStatus.pending,
         ),
       );
@@ -115,99 +221,66 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     _showSnackbar('Request sent to $patientName');
   }
 
-  void _openSearchSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SearchPatientSheet(
-        onSendRequest: _sendRequest,
-        existingConnections: _requests,
-        onRequestChanged: _fetchRequests,
-      ),
-    );
-  }
-
-  Future<void> _fetchRequests() async {
-    final userId = supabase.auth.currentUser!.id;
-    final doctorRow = await supabase
-        .from('doctor_profile')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-    final doctorProfileId = doctorRow['id'] as String;
-
-    final response = await supabase
-        .from('doctor_requests_view')
-        .select()
-        .eq('doctor_id', doctorProfileId);
-    setState(() {
-      _requests = (response as List)
-          .map(
-            (row) => ConnectionRequest(
-              id: row['id'].toString(),
-              patientName: row['full_name'],
-              age: 0,
-              diabetesType: 'Type 1',
-              sentAgo: _timeAgo(row['requested_at']),
-              avatarInitials: _initials(row['full_name']),
-              requestedBy: row['requested_by'],
-              status: row['status'] == 'accepted'
-                  ? RequestStatus.accepted
-                  : row['status'] == 'declined'
-                  ? RequestStatus.declined
-                  : RequestStatus.pending,
-            ),
-          )
-          .toList();
-    });
-  }
-
   void _accept(ConnectionRequest request) async {
-    print(
-      "Attempting accept for id: ${request.id}, parsed: ${int.parse(request.id)}",
-    );
     try {
-      final res = await supabase
-          .from('doctor_patient_connections')
+      await supabase
+          .from(_config.connectionsTable)
           .update({
             'status': 'accepted',
             'responded_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', int.parse(request.id))
-          .select();
-
-      print("ACCEPT UPDATE RESULT: $res");
+          .eq('id', int.parse(request.id));
 
       if (!mounted) return;
       setState(() => request.status = RequestStatus.accepted);
-      _showSnackbar('${request.patientName} accepted');
+      _showSnackbar('${request.personName} accepted');
     } catch (e) {
-      print('Exception updating request: $e');
       _showSnackbar('Failed to accept request');
     }
   }
 
   void _decline(ConnectionRequest request) async {
     try {
-      final res = await supabase
-          .from('doctor_patient_connections')
+      await supabase
+          .from(_config.connectionsTable)
           .update({
             'status': 'declined',
             'responded_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', int.parse(request.id))
-          .select();
-
-      print("DECLINE UPDATE RESULT: $res");
+          .eq('id', int.parse(request.id));
 
       if (!mounted) return;
       setState(() => request.status = RequestStatus.declined);
-      _showSnackbar('${request.patientName} declined');
+      _showSnackbar('${request.personName} declined');
     } catch (e) {
-      print('Exception updating request: $e');
       _showSnackbar('Failed to decline request');
     }
+  }
+
+  void _withdraw(ConnectionRequest request) async {
+    await supabase
+        .from(_config.connectionsTable)
+        .delete()
+        .eq('id', int.parse(request.id));
+    if (!mounted) return;
+    setState(() => _requests.remove(request));
+    _showSnackbar('Request withdrawn');
+  }
+
+  void _openSearchSheet() {
+    final userId = supabase.auth.currentUser!.id;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SearchSheet(
+        role: widget.role,
+        config: _config,
+        profileId: userId,
+        onSendRequest: _sendRequest,
+        onRequestChanged: _fetchRequests,
+      ),
+    );
   }
 
   String _timeAgo(String isoString) {
@@ -222,16 +295,6 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return parts[0][0].toUpperCase();
-  }
-
-  void _withdraw(ConnectionRequest request) async {
-    await supabase
-        .from('doctor_patient_connections')
-        .delete()
-        .eq('id', int.parse(request.id));
-    if (!mounted) return;
-    setState(() => _requests.remove(request));
-    _showSnackbar('Request withdrawn');
   }
 
   void _showSnackbar(String message) {
@@ -265,7 +328,6 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-
       backgroundColor: colors.background,
       body: SafeArea(
         child: OrientationBuilder(
@@ -280,19 +342,19 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
                     controller: _tabController,
                     physics: const ClampingScrollPhysics(),
                     children: [
-                      _buildRequestList(
+                      _buildList(
                         context,
                         _incoming,
                         tabType: 'incoming',
                         isLandscape: isLandscape,
                       ),
-                      _buildRequestList(
+                      _buildList(
                         context,
                         _sent,
                         tabType: 'sent',
                         isLandscape: isLandscape,
                       ),
-                      _buildRequestList(
+                      _buildList(
                         context,
                         _declined,
                         tabType: 'declined',
@@ -313,103 +375,39 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, isLandscape ? 10 : 20, 16, 0),
-      child: isLandscape
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Connection Requests',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        '${_incoming.length} pending request${_incoming.length == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Row(
-                  children: [
-                    _summaryChip(
-                      context,
-                      'Incoming',
-                      _incoming.length,
-                      colors.accent,
-                    ),
-                    const SizedBox(width: 8),
-                    _summaryChip(context, 'Sent', _sent.length, Colors.green),
-                    const SizedBox(width: 8),
-                    _summaryChip(
-                      context,
-                      'Declined',
-                      _declined.length,
-                      colors.error,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Connection Requests',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_incoming.length} pending request${_incoming.length == 1 ? '' : 's'}',
-                  style: TextStyle(fontSize: 14, color: colors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _summaryChip(
-                      context,
-                      'Incoming',
-                      _incoming.length,
-                      colors.accent,
-                    ),
-                    const SizedBox(width: 10),
-                    _summaryChip(context, 'Sent', _sent.length, Colors.green),
-                    const SizedBox(width: 10),
-                    _summaryChip(
-                      context,
-                      'Declined',
-                      _declined.length,
-                      colors.error,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Connection Requests',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_incoming.length} pending request${_incoming.length == 1 ? '' : 's'}',
+            style: TextStyle(fontSize: 14, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _chip(context, 'Incoming', _incoming.length, colors.accent),
+              const SizedBox(width: 10),
+              _chip(context, 'Sent', _sent.length, Colors.green),
+              const SizedBox(width: 10),
+              _chip(context, 'Declined', _declined.length, colors.error),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
-  Widget _summaryChip(
-    BuildContext context,
-    String label,
-    int count,
-    Color color,
-  ) {
+  Widget _chip(BuildContext context, String label, int count, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -462,7 +460,24 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
                 const Text('Incoming'),
                 if (_incoming.isNotEmpty) ...[
                   const SizedBox(width: 6),
-                  _tabBadge(_incoming.length, colors.accent),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.accent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_incoming.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -474,32 +489,13 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     );
   }
 
-  Widget _tabBadge(int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        '$count',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRequestList(
+  Widget _buildList(
     BuildContext context,
     List<ConnectionRequest> requests, {
     required String tabType,
     required bool isLandscape,
   }) {
     final colors = context.colors;
-
     if (requests.isEmpty) {
       return Center(
         child: Column(
@@ -520,11 +516,14 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
       );
     }
 
-    final hPad = isLandscape ? 60.0 : 16.0;
-
     return ListView.builder(
       physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 80),
+      padding: EdgeInsets.fromLTRB(
+        isLandscape ? 60 : 16,
+        12,
+        isLandscape ? 60 : 16,
+        80,
+      ),
       itemCount: requests.length,
       itemBuilder: (context, index) => _RequestCard(
         request: requests[index],
@@ -536,6 +535,8 @@ class _DoctorRequestsScreenState extends State<DoctorRequestsScreen>
     );
   }
 }
+
+// ─── REQUEST CARD ─────────────────────────────────────────────────────────────
 
 class _RequestCard extends StatelessWidget {
   final ConnectionRequest request;
@@ -555,7 +556,6 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -593,7 +593,7 @@ class _RequestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      request.patientName,
+                      request.personName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -613,7 +613,6 @@ class _RequestCard extends StatelessWidget {
               ),
             ],
           ),
-
           if (tabType == 'incoming') ...[
             const SizedBox(height: 14),
             const Divider(height: 1),
@@ -710,62 +709,41 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
-class _SearchPatientSheet extends StatefulWidget {
+// ─── SEARCH SHEET ─────────────────────────────────────────────────────────────
+
+class _SearchSheet extends StatefulWidget {
+  final String role;
+  final _RoleConfig config;
+  final String profileId;
   final Future<void> Function({
     required int patientProfileId,
     required String patientName,
   })
   onSendRequest;
-  final List<ConnectionRequest> existingConnections;
   final VoidCallback onRequestChanged;
 
-  const _SearchPatientSheet({
+  const _SearchSheet({
+    required this.role,
+    required this.config,
+    required this.profileId,
     required this.onSendRequest,
-    required this.existingConnections,
     required this.onRequestChanged,
   });
 
   @override
-  State<_SearchPatientSheet> createState() => _SearchPatientSheetState();
+  State<_SearchSheet> createState() => _SearchSheetState();
 }
 
-class _SearchPatientSheetState extends State<_SearchPatientSheet> {
+class _SearchSheetState extends State<_SearchSheet> {
   final _phoneController = TextEditingController();
   bool _isSearching = false;
   bool _isSending = false;
   List<Map<String, dynamic>> _results = [];
   String? _errorMessage;
-  String? _doctorProfileId;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDoctorProfileId();
-  }
-
-  Future<void> _loadDoctorProfileId() async {
-    final userId = supabase.auth.currentUser!.id;
-    print('Loading doctor profile for user: $userId');
-
-    final row = await supabase
-        .from('doctor_profile')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-    setState(() => _doctorProfileId = row['id'] as String);
-    print('Doctor profile id loaded: $_doctorProfileId');
-  }
 
   Future<void> _search() async {
     final phone = _phoneController.text.trim();
-    print('Search triggered with phone: "$phone"');
-
-    if (phone.isEmpty || _doctorProfileId == null) {
-      print(
-        'Blocked: phone empty = ${phone.isEmpty}, doctorId null = ${_doctorProfileId == null}',
-      );
-      return;
-    }
+    if (phone.isEmpty) return;
 
     setState(() {
       _isSearching = true;
@@ -779,10 +757,8 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
           .select('id, full_name, phone_no')
           .eq('phone_no', phone)
           .ilike('role', 'patient');
-      print('Users found: ${(userRows as List).length} — $userRows');
 
       if ((userRows as List).isEmpty) {
-        print('UI will show: No patient found with this phone number.');
         setState(() {
           _errorMessage = 'No patient found with this phone number.';
           _isSearching = false;
@@ -793,48 +769,24 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
       final List<Map<String, dynamic>> found = [];
 
       for (final user in userRows) {
-        print('Checking user: ${user['full_name']} id: ${user['id']}');
-
         final profileRows = await supabase
             .from('patient_profile')
             .select('id')
             .eq('user_id', user['id'] as String);
-        print(
-          'Patient profiles found: ${(profileRows as List).length} — $profileRows',
-        );
 
-        if ((profileRows as List).isEmpty) {
-          print('No patient_profile for user ${user['id']}, skipping');
-          continue;
-        }
+        if ((profileRows as List).isEmpty) continue;
 
         final patientProfileId = profileRows[0]['id'] as int;
 
-        // Check connection with THIS doctor
         final myConnection = await supabase
-            .from('doctor_patient_connections')
+            .from(widget.config.connectionsTable)
             .select('id, status')
-            .eq('doctor_id', _doctorProfileId!)
+            .eq(widget.config.profileIdField, widget.profileId)
             .eq('patient_id', patientProfileId);
 
-        print(
-          ' My connection with patient $patientProfileId: ${(myConnection as List)}',
-        );
-        // Check connection with ANY other doctor
-        final otherDoctorConnection = await supabase
-            .from('doctor_patient_connections')
-            .select('id, status')
-            .eq('patient_id', patientProfileId)
-            .neq('doctor_id', _doctorProfileId!)
-            .eq('status', 'accepted');
-        print('Other doctor connection: ${(otherDoctorConnection as List)}');
-
         String connectionStatus = 'none';
-
         if ((myConnection as List).isNotEmpty) {
           connectionStatus = myConnection[0]['status'] as String;
-        } else if ((otherDoctorConnection as List).isNotEmpty) {
-          connectionStatus = 'other_doctor';
         }
 
         found.add({
@@ -872,7 +824,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to send request. Please try again.';
+        _errorMessage = 'Failed to send request.';
         _isSending = false;
       });
     }
@@ -882,7 +834,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
     setState(() => _isSending = true);
     try {
       await supabase
-          .from('doctor_patient_connections')
+          .from(widget.config.connectionsTable)
           .delete()
           .eq('id', int.parse(patient['connectionId'] as String));
 
@@ -913,7 +865,6 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
   Widget _buildStatusWidget(Map<String, dynamic> patient) {
     final colors = context.colors;
     final status = patient['connectionStatus'] as String;
-
     switch (status) {
       case 'accepted':
         return Container(
@@ -923,7 +874,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
-            'Already your patient',
+            'Already connected',
             style: TextStyle(
               color: Colors.green,
               fontSize: 12,
@@ -942,7 +893,7 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                'Request pending',
+                'Pending',
                 style: TextStyle(
                   color: Colors.orange,
                   fontSize: 12,
@@ -989,22 +940,6 @@ class _SearchPatientSheetState extends State<_SearchPatientSheet> {
           child: const Text(
             'Send Again',
             style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-        );
-      case 'other_doctor':
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: colors.textSecondary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'Has another doctor',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         );
       default:

@@ -1,10 +1,11 @@
+// \lib\features\doctor\screens\doctor_main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'doctor_patients_screen.dart';
-import 'doctor_requests_screen.dart';
+import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 import 'doctor_alerts_screen.dart';
 
 class DoctorMainScreen extends StatefulWidget {
@@ -19,7 +20,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
 
   final List<Widget> _screens = [
     const DoctorPatientsScreen(),
-    const DoctorRequestsScreen(),
+    const ConnectionRequestsScreen(role: 'doctor'),
     const DoctorAlertsScreen(),
     const _DoctorProfileTab(),
   ];
@@ -72,7 +73,7 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   final String phone;
   final String address;
   final String specialty; // Add this
-  final String license;   // Add this
+  final String license; // Add this
 
   const _EditDoctorProfileScreen({
     required this.name,
@@ -81,16 +82,17 @@ class _EditDoctorProfileScreen extends StatefulWidget {
     required this.phone,
     required this.address,
     required this.specialty, // Add this
-    required this.license,   // Add this
+    required this.license, // Add this
   });
 
   @override
-  State<_EditDoctorProfileScreen> createState() => _EditDoctorProfileScreenState();
+  State<_EditDoctorProfileScreen> createState() =>
+      _EditDoctorProfileScreenState();
 }
 
 class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   late TextEditingController _nameController;
-  late TextEditingController _ageController;      // Added for age
+  late TextEditingController _ageController;
   late TextEditingController _specialityController;
   late TextEditingController _licenseController;
   late TextEditingController _phoneController;
@@ -103,12 +105,11 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     _ageController = TextEditingController(text: widget.age.toString());
     _phoneController = TextEditingController(text: widget.phone);
     _addressController = TextEditingController(text: widget.address);
-    
+
     // Use the actual data passed from the profile tab
     _specialityController = TextEditingController(text: widget.specialty);
     _licenseController = TextEditingController(text: widget.license);
   }
-
 
   @override
   void dispose() {
@@ -116,12 +117,12 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     _nameController.dispose();
     _ageController.dispose();
     _specialityController.dispose(); // Changed from _emailController
-    _licenseController.dispose();    // Added new controller
+    _licenseController.dispose(); // Added new controller
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -162,24 +163,50 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            _buildField(context, 'Full Name', _nameController, Icons.person_outline),
+            _buildField(
+              context,
+              'Full Name',
+              _nameController,
+              Icons.person_outline,
+            ),
             const SizedBox(height: 16),
             // NEW AGE FIELD
             _buildField(
-              context, 
-              'Age', 
-              _ageController, 
-              Icons.cake_outlined, 
-              keyboardType: TextInputType.number
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-            _buildField(context, 'Speciality', _specialityController, Icons.medical_services_outlined),
+            _buildField(
+              context,
+              'Speciality',
+              _specialityController,
+              Icons.medical_services_outlined,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'License Number', _licenseController, Icons.badge_outlined),
+            _buildField(
+              context,
+              'License Number',
+              _licenseController,
+              Icons.badge_outlined,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Clinic Phone', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            _buildField(
+              context,
+              'Clinic Phone',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 16),
-            _buildField(context, 'Clinic Address', _addressController, Icons.location_on_outlined),
+            _buildField(
+              context,
+              'Clinic Address',
+              _addressController,
+              Icons.location_on_outlined,
+            ),
           ],
         ),
       ),
@@ -217,7 +244,8 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   void _save() {
     Navigator.pop(context, {
       'full_name': _nameController.text.trim(),
-      'age': int.tryParse(_ageController.text.trim()) ?? 0, // Ensure it's an int
+      'age':
+          int.tryParse(_ageController.text.trim()) ?? 0, // Ensure it's an int
       'speciality': _specialityController.text.trim(),
       'license_number': _licenseController.text.trim(),
       'phone_no': _phoneController.text.trim(),
@@ -244,48 +272,53 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   String _address = "";
   String _license = "";
   String _specialty = "";
-  bool _isLoading  = true;
+  bool _isLoading = true;
 
-    @override
-    void initState() {
-      super.initState();
-      _loadProfileData();
-    }
-Future<void> _loadProfileData() async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
-
-  if (user == null) return;
-
-  try {
-    final response = await supabase
-        .from('users')
-        .select('full_name, phone_no, email, age, address, doctor_profile(liscense_number, speciality)')
-        .eq('id', user.id)
-        .single();
-
-    setState(() {
-      _name = response['full_name'] ?? "Unknown Doctor";
-      _phone = response['phone_no'] ?? "No Phone";
-      _email = response['email'] ?? "";
-      _age = (response['age'] as num?)?.toInt() ?? 0;
-      _address = response['address'] ?? "No Address Set";
-
-      final dynamic profileData = response['doctor_profile'];
-      if (profileData != null) {
-        final profile = (profileData is List) ? profileData.first : profileData;
-        _license = profile['liscense_number'] ?? "Not Set";
-        // Ensure this key matches your DB column exactly (speciality vs specialty)
-        _specialty = profile['speciality'] ?? "General Practitioner"; 
-      }
-      _isLoading = false;
-    });
-  } catch (e) {
-    debugPrint("Fetch error details: $e");
-    setState(() => _isLoading = false);
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
   }
-}
-  
+
+  Future<void> _loadProfileData() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user == null) return;
+
+    try {
+      final response = await supabase
+          .from('users')
+          .select(
+            'full_name, phone_no, email, age, address, doctor_profile(liscense_number, speciality)',
+          )
+          .eq('id', user.id)
+          .single();
+
+      setState(() {
+        _name = response['full_name'] ?? "Unknown Doctor";
+        _phone = response['phone_no'] ?? "No Phone";
+        _email = response['email'] ?? "";
+        _age = (response['age'] as num?)?.toInt() ?? 0;
+        _address = response['address'] ?? "No Address Set";
+
+        final dynamic profileData = response['doctor_profile'];
+        if (profileData != null) {
+          final profile = (profileData is List)
+              ? profileData.first
+              : profileData;
+          _license = profile['liscense_number'] ?? "Not Set";
+          // Ensure this key matches your DB column exactly (speciality vs specialty)
+          _specialty = profile['speciality'] ?? "General Practitioner";
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Fetch error details: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
     showDialog(
@@ -418,17 +451,27 @@ Future<void> _loadProfileData() async {
                 ],
               ),
               child: Column(
-                    children: [
-                      _infoRow(context, Icons.email_outlined, "Email", _email),
-                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                      _infoRow(context, Icons.phone_outlined, "Phone", _phone),
-                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                      _infoRow(context, Icons.badge_outlined, "License", _license),
-                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                      _infoRow(context, Icons.medical_services_outlined, "Specialty", _specialty),
-                      const Divider(height: 16, color: Color(0xFFEEEEEE)),
-                      _infoRow(context, Icons.location_on_outlined, "Address", _address),
-                    ],
+                children: [
+                  _infoRow(context, Icons.email_outlined, "Email", _email),
+                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  _infoRow(context, Icons.phone_outlined, "Phone", _phone),
+                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  _infoRow(context, Icons.badge_outlined, "License", _license),
+                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  _infoRow(
+                    context,
+                    Icons.medical_services_outlined,
+                    "Specialty",
+                    _specialty,
+                  ),
+                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  _infoRow(
+                    context,
+                    Icons.location_on_outlined,
+                    "Address",
+                    _address,
+                  ),
+                ],
               ),
             ),
 
@@ -548,67 +591,75 @@ Future<void> _loadProfileData() async {
     );
   }
 
- Future<void> _editProfile() async {
-  final result = await Navigator.push<Map<String, dynamic>>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => _EditDoctorProfileScreen(
-        name: _name,
-        age: _age,
-        email: _email,
-        phone: _phone,
-        address: _address,
-        specialty: _specialty, // Pass the local state variable
-        license: _license,     // Pass the local state variable
-      ),
-    ),
-  );
-
-  if (result != null) {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // 1. Update 'users' table
-      await supabase.from('users').update({
-        'full_name': result['full_name'],
-        'phone_no': result['phone_no'],
-        'age': result['age'],
-        'address': result['address'],
-      }).eq('id', userId!);
-
-      // 2. Update 'doctor_profile' table
-      await supabase.from('doctor_profile').update({
-        'speciality': result['speciality'],
-        'liscense_number': result['license_number'], // Matches your schema typo
-      }).eq('user_id', userId);
-
-      await supabase.auth.updateUser(
-        UserAttributes(
-          data: {
-            'full_name': result['full_name'],
-            'phone': result['phone_no'],
-          },
+  Future<void> _editProfile() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditDoctorProfileScreen(
+          name: _name,
+          age: _age,
+          email: _email,
+          phone: _phone,
+          address: _address,
+          specialty: _specialty, // Pass the local state variable
+          license: _license, // Pass the local state variable
         ),
-      );
-
-      // 3. Reload data to refresh UI
-      await _loadProfileData();
-    } catch (e) {
-      debugPrint("Update error: $e");
-    } finally {
-      setState(() => _isLoading = false);
-    }
-
-    if (mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile updated successfully!'),
-        backgroundColor: Colors.green, // Optional: makes it look better
       ),
     );
+
+    if (result != null) {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      setState(() => _isLoading = true);
+
+      try {
+        // 1. Update 'users' table
+        await supabase
+            .from('users')
+            .update({
+              'full_name': result['full_name'],
+              'phone_no': result['phone_no'],
+              'age': result['age'],
+              'address': result['address'],
+            })
+            .eq('id', userId!);
+
+        // 2. Update 'doctor_profile' table
+        await supabase
+            .from('doctor_profile')
+            .update({
+              'speciality': result['speciality'],
+              'liscense_number':
+                  result['license_number'], // Matches your schema typo
+            })
+            .eq('user_id', userId);
+
+        await supabase.auth.updateUser(
+          UserAttributes(
+            data: {
+              'full_name': result['full_name'],
+              'phone': result['phone_no'],
+            },
+          ),
+        );
+
+        // 3. Reload data to refresh UI
+        await _loadProfileData();
+      } catch (e) {
+        debugPrint("Update error: $e");
+      } finally {
+        setState(() => _isLoading = false);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green, // Optional: makes it look better
+          ),
+        );
+      }
+    }
   }
-  }
-}}
+}
