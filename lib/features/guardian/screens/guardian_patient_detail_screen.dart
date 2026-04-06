@@ -345,57 +345,64 @@ class _OverviewTabState extends State<_OverviewTab> {
   // "Now" is always derived from the live patient.glucoseValue from the model.
 
   Future<void> _fetchTodayGlucoseSlots() async {
-    try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
-      final endOfDay =
-          DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc();
+  try {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc();
 
-      final rows = await Supabase.instance.client
-          .from('glucose_readings')
-          .select('value_mg_dl, recorded_at')
-          .eq('patient_id', patient.patientId)
-          .gte('recorded_at', startOfDay.toIso8601String())
-          .lte('recorded_at', endOfDay.toIso8601String())
-          .order('recorded_at', ascending: true);
+    final rows = await Supabase.instance.client
+        .from('glucose_readings')
+        .select('value_mg_dl, recorded_at')
+        .eq('patient_id', patient.patientId)
+        .gte('recorded_at', startOfDay.toIso8601String())
+        .lte('recorded_at', endOfDay.toIso8601String())
+        .order('recorded_at', ascending: false); // Get most recent first
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      final slots = <String, Map<String, dynamic>>{};
-
-      for (final row in rows as List) {
+    final slots = <String, Map<String, dynamic>>{};
+    
+    // If we have readings, just take the most recent ones
+    // No time slot restrictions - just show what we have!
+    final readingsList = rows as List;
+    
+    if (readingsList.isNotEmpty) {
+      // Take up to 3 most recent readings
+      for (int i = 0; i < readingsList.length && i < 3; i++) {
+        final row = readingsList[i];
         final value = (row['value_mg_dl'] as num?)?.toDouble();
         if (value == null) continue;
-        final recorded =
-            DateTime.tryParse(row['recorded_at'] as String? ?? '')?.toLocal();
+        
+        final recorded = DateTime.tryParse(row['recorded_at'] as String? ?? '')?.toLocal();
         if (recorded == null) continue;
-
-        final hour = recorded.hour;
+        
         final inRange = value >= 70 && value <= 180;
-        final entry = {'value': value, 'inRange': inRange};
-
-        // Morning: 5am–10am (first reading wins)
-        if (hour >= 5 && hour < 10 && !slots.containsKey('morning')) {
-          slots['morning'] = entry;
-        }
-        // Breakfast: 7am–11am (first reading wins — overlaps morning intentionally)
-        if (hour >= 7 && hour < 11 && !slots.containsKey('breakfast')) {
-          slots['breakfast'] = entry;
-        }
-        // Midday: 11am–15pm (first reading wins)
-        if (hour >= 11 && hour < 15 && !slots.containsKey('midday')) {
-          slots['midday'] = entry;
-        }
+        
+        // Use time as the key instead of fixed slots
+        final timeKey = _formatTimeKey(recorded);
+        slots[timeKey] = {'value': value, 'inRange': inRange, 'time': recorded};
       }
-
-      setState(() {
-        _glucoseSlots = slots;
-        _glucoseSlotsLoaded = true;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _glucoseSlotsLoaded = true);
     }
+
+    setState(() {
+      _glucoseSlots = slots;
+      _glucoseSlotsLoaded = true;
+    });
+  } catch (_) {
+    if (mounted) setState(() => _glucoseSlotsLoaded = true);
   }
+}
+
+String _formatTimeKey(DateTime time) {
+  // Returns something like "2:30 PM"
+  final hour = time.hour;
+  final minute = time.minute;
+  final period = hour >= 12 ? 'PM' : 'AM';
+  final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+  final minuteStr = minute.toString().padLeft(2, '0');
+  return '$displayHour:$minuteStr $period';
+}
+
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -789,123 +796,170 @@ class _OverviewTabState extends State<_OverviewTab> {
     );
   }
 
-  Widget _todayCard(BuildContext context) {
-    final colors = context.colors;
+Widget _todayCard(BuildContext context) {
+  final colors = context.colors;
+  return _card(
+    context,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _secLabel(context, 'Latest Readings'),
+        const SizedBox(height: 12),
+        _latestReadingsList(context),
+      ],
+    ),
+  );
+}
 
-    // Helper: build a story entry from a glucose slot or fall back to a default
-    String _slotText(String slot, String fallback) {
-      final entry = _glucoseSlots[slot];
-      if (entry == null) return fallback;
-      final value = (entry['value'] as double).toStringAsFixed(0);
-      final inRange = entry['inRange'] as bool;
-      if (inRange) {
-        return 'Sugar was ${value} mg/dL — in the safe range';
-      } else if ((entry['value'] as double) < 70) {
-        return 'Sugar was low at ${value} mg/dL — device managed it';
-      } else {
-        return 'Sugar was high at ${value} mg/dL — device managed it';
-      }
-    }
-
-    bool _slotOk(String slot, bool fallback) {
-      final entry = _glucoseSlots[slot];
-      if (entry == null) return fallback;
-      return entry['inRange'] as bool;
-    }
-
-    final nowInRange = patient.glucoseLabel == 'In Range';
-
-    return _card(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _secLabel(context, 'Today at a Glance'),
-          const SizedBox(height: 12),
-          _story(
-            context,
-            'Morning',
-            _glucoseSlotsLoaded
-                ? _slotText('morning',
-                    'Sugar was in the safe zone when ${patient.name} woke up')
-                : 'Loading...',
-            _glucoseSlotsLoaded ? _slotOk('morning', true) : true,
-          ),
-          _story(
-            context,
-            'Breakfast',
-            _glucoseSlotsLoaded
-                ? _slotText('breakfast',
-                    'Ate breakfast, device gave insulin automatically')
-                : 'Loading...',
-            _glucoseSlotsLoaded ? _slotOk('breakfast', true) : true,
-          ),
-          _story(
-            context,
-            'Midday',
-            _glucoseSlotsLoaded
-                ? _slotText('midday', 'Sugar stayed in the normal range')
-                : 'Loading...',
-            _glucoseSlotsLoaded ? _slotOk('midday', true) : true,
-          ),
-          _story(
-            context,
-            'Now',
-            nowInRange
-                ? 'Doing well — sugar is in the normal range'
-                : 'Sugar is ${patient.glucoseLabel.toLowerCase()} — device is managing it',
-            nowInRange,
-          ),
-        ],
+Widget _latestReadingsList(BuildContext context) {
+  final colors = context.colors;
+  
+  if (!_glucoseSlotsLoaded) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
       ),
     );
   }
-
-  Widget _story(BuildContext context, String time, String text, bool ok) {
-    final colors = context.colors;
+  
+  // Convert slots to list and sort by time (morning -> breakfast -> midday)
+  final List<MapEntry<String, Map<String, dynamic>>> readings = 
+      _glucoseSlots.entries.toList();
+  
+  // Define order priority
+  final order = {'morning': 0, 'breakfast': 1, 'midday': 2};
+  readings.sort((a, b) => (order[a.key] ?? 999).compareTo(order[b.key] ?? 999));
+  
+  if (readings.isEmpty) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: ok ? colors.accent : colors.warning,
-              shape: BoxShape.circle,
-            ),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Text(
+          'No readings recorded today',
+          style: TextStyle(
+            fontSize: 13,
+            color: colors.textSecondary,
+            fontStyle: FontStyle.italic,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$time  ',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  TextSpan(
-                    text: text,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+  
+  return Column(
+    children: [
+      for (final entry in readings.take(3)) ...[
+        _readingRow(
+          context,
+          _getTimeLabel(entry.key),
+          (entry.value['value'] as double).toInt(),
+          entry.value['inRange'] as bool,
+        ),
+        if (entry != readings.last) const SizedBox(height: 10),
+      ],
+      // Always show current reading
+      const Divider(height: 20),
+      _readingRow(
+        context,
+        'Current',
+        patient.glucoseValue,
+        patient.glucoseLabel == 'In Range',
+        isCurrent: true,
+      ),
+    ],
+  );
+}
+
+Widget _readingRow(
+  BuildContext context,
+  String timeLabel,
+  int value,
+  bool inRange, {
+  bool isCurrent = false,
+}) {
+  final colors = context.colors;
+  final valueColor = inRange 
+      ? colors.accent 
+      : (value < 70 ? colors.error : colors.warning);
+  
+  return Row(
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: valueColor,
+          shape: BoxShape.circle,
+        ),
+      ),
+      const SizedBox(width: 12),
+      SizedBox(
+        width: 70,
+        child: Text(
+          timeLabel,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+            color: isCurrent ? colors.textPrimary : colors.textSecondary,
+          ),
+        ),
+      ),
+      Expanded(
+        child: Text(
+          _getReadingDescription(value, inRange),
+          style: TextStyle(
+            fontSize: 13,
+            color: colors.textSecondary,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: valueColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '$value mg/dL',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: valueColor,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+String _getTimeLabel(String slot) {
+  switch (slot) {
+    case 'morning':
+      return 'Morning';
+    case 'breakfast':
+      return 'Breakfast';
+    case 'midday':
+      return 'Midday';
+    default:
+      return slot;
+  }
+}
+
+String _getReadingDescription(int value, bool inRange) {
+  if (inRange) {
+    return 'In safe range';
+  } else if (value < 70) {
+    return 'Low - needs attention';
+  } else {
+    return 'High - needs attention';
+  }
+}
 
   Widget _card(BuildContext context, {required Widget child}) {
     final colors = context.colors;
