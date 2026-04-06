@@ -1,7 +1,8 @@
+// lib\features\guardian\screens\guardian_main_screen.dart
 import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
 import 'guardian_alerts_screen.dart';
-import 'guardian_requests_screen.dart';
+import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +25,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
   final List<Widget> _screens = [
     const GuardianHomeScreen(),
     const GuardianAlertsScreen(),
-    const GuardianRequestsScreen(),
+    const ConnectionRequestsScreen(role: 'guardian'),
     const _GuardianProfileTab(),
   ];
 
@@ -325,7 +326,6 @@ class _EditGuardianProfileScreenState
     });
   }
 
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -358,7 +358,8 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     super.initState();
     _loadProfileData();
   }
-Future<void> _loadProfileData() async {
+
+  Future<void> _loadProfileData() async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
     if (user == null) return;
@@ -385,66 +386,70 @@ Future<void> _loadProfileData() async {
   }
 
   void _editProfile() async {
-  final Map<String, dynamic>? result = await Navigator.push<Map<String, dynamic>>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => _EditGuardianProfileScreen(
-        name: _name,
-        age: _age,
-        email: _email,
-        phone: _phone,
-      ),
-    ),
-  );
-
-  if (result != null) {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-
-    if (userId == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // 1. Sync with Authentication Dashboard (raw_user_meta_data)
-       await supabase.auth.updateUser(
-        UserAttributes(
-           email: result['email'],
-          data: {
-            'full_name': result['name'],
-            'phone': result['phone'],
-          },
-        ),
-      );
-
-      // 2. Update Public 'users' table
-      await supabase.from('users').update({
-        'full_name': result['name'],
-        'email': result['email'],
-        'phone_no': result['phone'],
-        'age': result['age'],
-      }).eq('id', userId);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
+    final Map<String, dynamic>? result =
+        await Navigator.push<Map<String, dynamic>>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _EditGuardianProfileScreen(
+              name: _name,
+              age: _age,
+              email: _email,
+              phone: _phone,
+            ),
+          ),
         );
-      }
-      
-      // 4. Refresh local UI data
-      await _loadProfileData();
-      
-    } catch (e) {
-      debugPrint("Update error: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red),
+
+    if (result != null) {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) return;
+
+      setState(() => _isLoading = true);
+
+      try {
+        // 1. Sync with Authentication Dashboard (raw_user_meta_data)
+        await supabase.auth.updateUser(
+          UserAttributes(
+            email: result['email'],
+            data: {'full_name': result['name'], 'phone': result['phone']},
+          ),
         );
+
+        // 2. Update Public 'users' table
+        await supabase
+            .from('users')
+            .update({
+              'full_name': result['name'],
+              'email': result['email'],
+              'phone_no': result['phone'],
+              'age': result['age'],
+            })
+            .eq('id', userId);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!')),
+          );
+        }
+
+        // 4. Refresh local UI data
+        await _loadProfileData();
+      } catch (e) {
+        debugPrint("Update error: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Update failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
       }
-      setState(() => _isLoading = false);
     }
   }
-}  
+
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
     showDialog(
