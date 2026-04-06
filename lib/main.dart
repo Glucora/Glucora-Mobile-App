@@ -15,6 +15,8 @@ import 'features/onboarding/screens/ai_explain_screen.dart';
 import 'features/onboarding/screens/landing_screen.dart';
 import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:glucora_ai_companion/services/location_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
@@ -63,7 +65,7 @@ class GlucoraApp extends StatelessWidget {
     );
   }
 }
-
+/* 
 class _StartupGate extends StatelessWidget {
   const _StartupGate();
 
@@ -92,6 +94,74 @@ class _StartupGate extends StatelessWidget {
     if (normalizedRole == 'admin') {
       return const AdminMainScreen();
     }
+
+    return const RoleSelectionScreen();
+  }
+}
+ */
+
+class _StartupGate extends StatefulWidget {
+  const _StartupGate();
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      _checkAndStartLocation();
+    });
+  }
+
+  Future<void> _checkAndStartLocation() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final userMetaRole = user.userMetadata?['role']?.toString();
+    final appMetaRole = user.appMetadata['role']?.toString();
+    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
+        .trim()
+        .toLowerCase();
+
+    if (normalizedRole == 'patient') {
+      try {
+        final patientData = await Supabase.instance.client
+            .from('patient_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (patientData == null) {
+          print("No patient profile found");
+          return;
+        }
+        final patientId = patientData['id'] as int;
+        print("STARTING LOCATION FOR PATIENT ID: $patientId");
+        LocationService.startSharingLocation(patientId);
+      } catch (e) {
+        print('Could not start location: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return const WhoWeAreScreen();
+
+    final userMetaRole = user.userMetadata?['role']?.toString();
+    final appMetaRole = user.appMetadata['role']?.toString();
+    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
+        .trim()
+        .toLowerCase();
+
+    if (normalizedRole == 'patient') return const PatientNavigation();
+    if (normalizedRole == 'doctor') return const DoctorMainScreen();
+    if (normalizedRole == 'guardian') return const GuardianMainScreen();
+    if (normalizedRole == 'admin') return const AdminMainScreen();
 
     return const RoleSelectionScreen();
   }

@@ -121,6 +121,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
           return GuardianPatient(
             id: patientId.toString(),
+            patientId: patientId,
             name: name,
             age: age,
             relationship: rel,

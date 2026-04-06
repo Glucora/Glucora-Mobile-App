@@ -3,6 +3,7 @@
 
 class GuardianPatient {
   final String id;
+  final int patientId;
   final String name;
   final int age;
   final String relationship;
@@ -17,6 +18,7 @@ class GuardianPatient {
 
   const GuardianPatient({
     required this.id,
+    required this.patientId,
     required this.name,
     required this.age,
     required this.relationship,
