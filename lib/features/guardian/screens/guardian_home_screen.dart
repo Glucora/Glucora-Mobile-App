@@ -34,11 +34,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     try {
       final userId = _supabase.auth.currentUser!.id;
 
-      // Step 1: accepted connections + patient profile + user info
+      // Step 1: get connections with user info
       final connectionsResp = await _supabase
           .from('guardian_patient_connections')
           .select(
-            'patient_id, relationship, patient_profile(id, user_id, users(full_name, age, phone_no))',
+            'patient_id, relationship, users!patient_id(full_name, age, phone_no)',
           )
           .eq('guardian_id', userId)
           .eq('status', 'accepted');
@@ -54,15 +54,32 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         return;
       }
 
-      // Step 2: fetch glucose readings separately
-      final patientIds = connections.map((r) => r['patient_id']).toList();
+      // Step 2: get patient_profile bigint ids from user uuids
+      // needed because glucose_readings and insulin_doses still use patient_profile.id
+      final patientUserIds = connections
+          .map((r) => r['patient_id'] as String)
+          .toList();
 
+      final profilesResp = await _supabase
+          .from('patient_profile')
+          .select('id, user_id')
+          .inFilter('user_id', patientUserIds);
+
+      // Map uuid -> bigint patient_profile id
+      final Map<String, int> uuidToProfileId = {};
+      for (final p in (profilesResp as List)) {
+        uuidToProfileId[p['user_id'] as String] = p['id'] as int;
+      }
+
+      final patientProfileIds = uuidToProfileId.values.toList();
+
+      // Step 3: glucose readings using bigint ids
       final readingsResp = await _supabase
           .from('glucose_readings')
           .select('patient_id, value_mg_dl, trend, recorded_at')
-          .inFilter('patient_id', patientIds);
+          .inFilter('patient_id', patientProfileIds);
 
-      // Step 3: fetch insulin doses count for today
+      // Step 4: insulin doses using bigint ids
       final today = DateTime.now();
       final startOfDay = DateTime(
         today.year,
@@ -73,34 +90,33 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       final dosesResp = await _supabase
           .from('insulin_doses')
           .select('patient_id, delivery_method, delivered_at')
-          .inFilter('patient_id', patientIds)
+          .inFilter('patient_id', patientProfileIds)
           .gte('delivered_at', startOfDay);
 
-      // Group by patient_id
-      final Map<dynamic, List<dynamic>> readingsByPatient = {};
+      // Group by patient_profile bigint id
+      final Map<int, List<dynamic>> readingsByPatient = {};
       for (final r in readingsResp as List) {
-        readingsByPatient.putIfAbsent(r['patient_id'], () => []).add(r);
+        readingsByPatient.putIfAbsent(r['patient_id'] as int, () => []).add(r);
       }
 
-      final Map<dynamic, List<dynamic>> dosesByPatient = {};
+      final Map<int, List<dynamic>> dosesByPatient = {};
       for (final d in dosesResp as List) {
-        dosesByPatient.putIfAbsent(d['patient_id'], () => []).add(d);
+        dosesByPatient.putIfAbsent(d['patient_id'] as int, () => []).add(d);
       }
 
       if (!mounted) return;
       setState(() {
         _allPatients = connections.map((row) {
-          final profile = row['patient_profile'];
-          final user = profile?['users'];
-          final patientId = row['patient_id'];
+          final user = row['users'] as Map<String, dynamic>?;
+          final patientUuid = row['patient_id'] as String;
+          final profileId = uuidToProfileId[patientUuid];
 
           final name = user?['full_name'] ?? 'Unknown';
           final age = (user?['age'] as num?)?.toInt() ?? 0;
           final phone = user?['phone_no'] ?? '';
           final rel = row['relationship'] ?? 'Guardian';
 
-          // Latest glucose reading
-          final readings = List.from(readingsByPatient[patientId] ?? []);
+          final readings = List.from(readingsByPatient[profileId] ?? []);
           readings.sort(
             (a, b) => DateTime.parse(
               b['recorded_at'],
@@ -113,22 +129,21 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ? _timeAgo(latest['recorded_at'])
               : 'No readings';
 
-          // Doses today
-          final doses = dosesByPatient[patientId] ?? [];
+          final doses = dosesByPatient[profileId] ?? [];
           final allAutomatic =
               doses.isNotEmpty &&
               doses.every((d) => d['delivery_method'] == 'Pump');
 
           return GuardianPatient(
-            id: patientId.toString(),
-            patientId: patientId,
+            id: patientUuid,
+            patientId: profileId ?? 0,
             name: name,
             age: age,
             relationship: rel,
             glucoseValue: glucose,
             glucoseTrend: trend,
-            sensorConnected: true, // Hardcoded
-            pumpActive: true, // Hardcoded
+            sensorConnected: true,
+            pumpActive: true,
             dosesToday: doses.length,
             allDosesAutomatic: allAutomatic,
             lastSeenTime: lastSeen,
@@ -138,7 +153,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('GUARDIAN FETCH ERROR: $e');
+      debugPrint('GUARDIAN FETCH ERROR: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
