@@ -6,6 +6,7 @@ import 'guardian_patient_detail_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -125,9 +126,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             relationship: rel,
             glucoseValue: glucose,
             glucoseTrend: trend,
-            sensorConnected:
-                true,  // Hardcoded 
-            pumpActive: true, // Hardcoded 
+            sensorConnected: true, // Hardcoded
+            pumpActive: true, // Hardcoded
             dosesToday: doses.length,
             allDosesAutomatic: allAutomatic,
             lastSeenTime: lastSeen,
@@ -303,7 +303,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   ),
                 ),
 
-           /*      if (_emergencyCount > 0 || _attentionCount > 0)
+                /*      if (_emergencyCount > 0 || _attentionCount > 0)
                   SliverToBoxAdapter(child: _nudgeBar(context)),
  */
                 SliverToBoxAdapter(
@@ -826,19 +826,28 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
             child: Row(
               children: [
-                _actionBtn(Icons.call_rounded, 'Call', colors.accent, () {
+                _actionBtn(Icons.call_rounded, 'Call', colors.accent, () async {
                   HapticFeedback.mediumImpact();
-                  _snack('Calling ${p.name}...', colors.accent);
+                  final uri = Uri(scheme: 'tel', path: p.phoneNumber);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  } else {
+                    _snack('Could not open dialer', colors.error);
+                  }
                 }, colors),
                 const SizedBox(width: 8),
                 _actionBtn(
                   Icons.sms_rounded,
                   'SMS',
                   const Color(0xFF5B8CF5),
-                  () => _snack(
-                    'Opening SMS for ${p.name}...',
-                    const Color(0xFF5B8CF5),
-                  ),
+                  () async {
+                    final uri = Uri(scheme: 'sms', path: p.phoneNumber);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    } else {
+                      _snack('Could not open messages', colors.error);
+                    }
+                  },
                   colors,
                 ),
                 const Spacer(),
