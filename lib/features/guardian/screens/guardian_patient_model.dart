@@ -6,10 +6,8 @@ class GuardianPatient {
   final String name;
   final int age;
   final String relationship;
-  final String glucoseLabel;
   final int glucoseValue;
   final String glucoseTrend;
-  final String overallStatus; // 'good' | 'attention' | 'emergency'
   final bool sensorConnected;
   final bool pumpActive;
   final int dosesToday;
@@ -22,10 +20,8 @@ class GuardianPatient {
     required this.name,
     required this.age,
     required this.relationship,
-    required this.glucoseLabel,
     required this.glucoseValue,
     required this.glucoseTrend,
-    required this.overallStatus,
     required this.sensorConnected,
     required this.pumpActive,
     required this.dosesToday,
@@ -33,31 +29,19 @@ class GuardianPatient {
     required this.lastSeenTime,
     required this.phoneNumber,
   });
-}
 
-// Central mock data — replace with API calls when backend is ready
-class GuardianMockData {
-  static const List<GuardianPatient> patients = [
-    GuardianPatient(
-      id: 'p1', name: 'Ahmed', age: 24, relationship: 'Son',
-      glucoseLabel: 'In Range', glucoseValue: 118, glucoseTrend: 'stable',
-      overallStatus: 'good', sensorConnected: true, pumpActive: true,
-      dosesToday: 4, allDosesAutomatic: true, lastSeenTime: '5 min ago',
-      phoneNumber: '+201012345678',
-    ),
-    GuardianPatient(
-      id: 'p2', name: 'Sara', age: 17, relationship: 'Daughter',
-      glucoseLabel: 'A bit high', glucoseValue: 196, glucoseTrend: 'up',
-      overallStatus: 'attention', sensorConnected: true, pumpActive: true,
-      dosesToday: 5, allDosesAutomatic: false, lastSeenTime: '2 min ago',
-      phoneNumber: '+201098765432',
-    ),
-    GuardianPatient(
-      id: 'p3', name: 'Grandma Fatma', age: 67, relationship: 'Grandmother',
-      glucoseLabel: 'Too low', glucoseValue: 61, glucoseTrend: 'down',
-      overallStatus: 'emergency', sensorConnected: true, pumpActive: false,
-      dosesToday: 2, allDosesAutomatic: true, lastSeenTime: '1 min ago',
-      phoneNumber: '+201011112222',
-    ),
-  ];
+  String get glucoseLabel {
+    if (glucoseValue < 54)   return 'Very low';
+    if (glucoseValue < 70)   return 'Too low';
+    if (glucoseValue <= 180) return 'In range';
+    if (glucoseValue <= 250) return 'A bit high';
+    if (glucoseValue <= 300) return 'Too high';
+    return 'Very high';
+  }
+
+  String get overallStatus {
+    if (glucoseValue < 54 || glucoseValue > 300) return 'emergency';
+    if (glucoseValue < 70 || glucoseValue > 180) return 'attention';
+    return 'good';
+  }
 }
