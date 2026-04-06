@@ -8,6 +8,7 @@ import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_scr
 import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
 import 'signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/location_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -53,36 +54,45 @@ class _LoginScreenState extends State<LoginScreen> {
           .eq('id', user.id)
           .single();
 
-      final normalizedRole = (response['role'] as String? ?? '').trim().toLowerCase();
-      
-    if (normalizedRole == 'norole') {
-      _didNavigateAfterAuth = true;
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
-      return;
-    }
+      final normalizedRole = (response['role'] as String? ?? '')
+          .trim()
+          .toLowerCase();
 
-    Widget? targetScreen;
-    if (normalizedRole == 'patient') {
-      targetScreen = const PatientNavigation();
-    } else if (normalizedRole == 'doctor') {
-      targetScreen = const DoctorMainScreen();
-    } else if (normalizedRole == 'guardian') {
-      targetScreen = const GuardianMainScreen();
-    } else if (normalizedRole == 'admin') {
-      targetScreen = const AdminMainScreen();
-    }
+      if (normalizedRole == 'norole') {
+        _didNavigateAfterAuth = true;
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+        return;
+      }
 
-  
+      Widget? targetScreen;
+      if (normalizedRole == 'patient') {
+        try {
+          final patientData = await Supabase.instance.client
+              .from('patient_profile')
+              .select('id')
+              .eq('user_id', user.id)
+              .single();
+          final patientId = patientData['id'] as int;
+          LocationService.startSharingLocation(patientId);
+        } catch (e) {
+          print('Could not start location: $e');
+        }
+        targetScreen = const PatientNavigation();
+      } else if (normalizedRole == 'doctor') {
+        targetScreen = const DoctorMainScreen();
+      } else if (normalizedRole == 'guardian') {
+        targetScreen = const GuardianMainScreen();
+      } else if (normalizedRole == 'admin') {
+        targetScreen = const AdminMainScreen();
+      }
 
       if (!mounted) return;
       _didNavigateAfterAuth = true;
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => targetScreen ?? const SignUpScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => targetScreen ?? const SignUpScreen()),
         (route) => false,
       );
     } catch (e) {
