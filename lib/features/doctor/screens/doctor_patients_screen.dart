@@ -70,37 +70,72 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   Future<void> _fetchPatients() async {
     try {
       final userId = supabase.auth.currentUser!.id;
-      final doctorRow = await supabase
-          .from('doctor_profile')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-      final doctorProfileId = doctorRow['id'] as String;
 
-      final response = await supabase
-          .from('patient_list_view')
-          .select()
-          .eq('doctor_id', doctorProfileId);
+      // Step 1: Get accepted patient IDs
+      final connectionsResponse = await supabase
+          .from('doctor_patient_connections')
+          .select('patient_id, patient_profile(user_id, users(full_name))')
+          .eq('doctor_id', userId)
+          .eq('status', 'accepted');
 
-      print(response);
       if (!mounted) return;
+
+      final connections = connectionsResponse as List;
+      if (connections.isEmpty) {
+        setState(() => _allPatients = []);
+        return;
+      }
+
+      // Step 2: Fetch glucose readings separately using patient_id
+      final patientIds = connections.map((row) => row['patient_id']).toList();
+
+      final readingsResponse = await supabase
+          .from('glucose_readings')
+          .select('patient_id, value_mg_dl, trend, recorded_at')
+          .inFilter('patient_id', patientIds);
+
+      final readings = readingsResponse as List;
+
+      // Step 3: Group readings by patient_id
+      final Map<dynamic, List<dynamic>> readingsByPatient = {};
+      for (final r in readings) {
+        final pid = r['patient_id'];
+        readingsByPatient.putIfAbsent(pid, () => []).add(r);
+      }
+
       setState(() {
-        _allPatients = (response as List)
-            .map(
-              (row) => _Patient(
-                id: (row['patient_id'] as num).toInt(),
-                name: row['full_name'],
-                glucoseValue: row['value_mg_dl'] != null
-                    ? (row['value_mg_dl'] as num).toInt()
-                    : 0,
-                trend: row['trend'] ?? 'stable',
-                lastReadingTime: row['recorded_at'] != null
-                    ? _timeAgo(row['recorded_at'])
-                    : 'No readings',
-                status: _calculateStatus((row['value_mg_dl'] as num).toInt()),
-              ),
-            )
-            .toList();
+        _allPatients = connections.map((row) {
+          final fullName =
+              row['patient_profile']?['users']?['full_name'] ?? 'Unknown';
+          final patientId = row['patient_id'];
+
+          final patientReadings = readingsByPatient[patientId] ?? [];
+
+          // Sort to get the latest reading
+          patientReadings.sort(
+            (a, b) => DateTime.parse(
+              b['recorded_at'],
+            ).compareTo(DateTime.parse(a['recorded_at'])),
+          );
+
+          final latestReading = patientReadings.isNotEmpty
+              ? patientReadings.first
+              : null;
+          final glucoseValue = latestReading != null
+              ? (latestReading['value_mg_dl'] as num).toInt()
+              : 0;
+
+          return _Patient(
+            id: (patientId as num).toInt(),
+            name: fullName,
+            glucoseValue: glucoseValue,
+            trend: latestReading?['trend'] ?? 'stable',
+            lastReadingTime: latestReading != null
+                ? _timeAgo(latestReading['recorded_at'])
+                : 'No readings',
+            status: _calculateStatus(glucoseValue),
+          );
+        }).toList();
       });
     } catch (e) {
       print('FETCH ERROR: $e');
