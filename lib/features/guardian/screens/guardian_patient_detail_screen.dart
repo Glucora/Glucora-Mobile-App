@@ -1324,84 +1324,94 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
   }
 
   Future<void> _fetchCarePlan() async {
-    try {
-      // Step 1: fetch the care plan row directly — no joins
-      final planRow = await Supabase.instance.client
-          .from('care_plans')
-          .select(
-            'target_glucose_min, target_glucose_max, insulin_type, '
-            'max_auto_dose_units, aid_mode_enabled, notes, '
-            'next_appointment, updated_at, doctor_id',
+  try {
+    print("🔍 [DoctorPlan] Fetching for patientId: ${widget.patient.patientId}");
+    
+    // Fetch with nested doctor data like the doctor side does
+    final response = await Supabase.instance.client
+        .from('care_plans')
+        .select('''
+          target_glucose_min, 
+          target_glucose_max, 
+          insulin_type, 
+          max_auto_dose_units, 
+          aid_mode_enabled, 
+          notes, 
+          next_appointment, 
+          updated_at,
+          doctor_profile!care_plans_doctor_id_fkey(
+            user_id,
+            users(
+              full_name
+            )
           )
-          .eq('patient_id', widget.patient.patientId)
-          .order('updated_at', ascending: false)
-          .limit(1)
-          .single();
-
-      // Step 2: use doctor_id (uuid) to look up doctor_profile.user_id
-      String doctorName = 'Your Doctor';
-      final doctorProfileId = planRow['doctor_id'] as String?;
-
-      if (doctorProfileId != null) {
-        try {
-          final profileRow = await Supabase.instance.client
-              .from('doctor_profile')
-              .select('user_id')
-              .eq('id', doctorProfileId)
-              .single();
-
-          final doctorUserId = profileRow['user_id'] as String?;
-
-          // Step 3: use user_id to get the doctor's full name
-          if (doctorUserId != null) {
-            final userRow = await Supabase.instance.client
-                .from('users')
-                .select('full_name')
-                .eq('id', doctorUserId)
-                .single();
-
-            final rawName = userRow['full_name'] as String?;
-            if (rawName != null && rawName.trim().isNotEmpty) {
-              doctorName =
-                  rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
-            }
-          }
-        } catch (_) {
-          // Doctor name lookup failed — keep default 'Your Doctor'
-        }
+        ''')
+        .eq('patient_id', widget.patient.patientId)
+        .order('updated_at', ascending: false)
+        .limit(1);
+    
+    print("🔍 [DoctorPlan] Response type: ${response.runtimeType}");
+    print("🔍 [DoctorPlan] Response: $response");
+    
+    final plans = response as List;
+    if (plans.isEmpty) {
+      print("❌ [DoctorPlan] No care plan found");
+      if (mounted) {
+        setState(() {
+          _error = 'No care plan available for this patient';
+          _loading = false;
+        });
       }
-
-      if (!mounted) return;
-      setState(() {
-        _plan = _CarePlanData(
-          targetMin:
-              (planRow['target_glucose_min'] as num?)?.toDouble() ?? 70,
-          targetMax:
-              (planRow['target_glucose_max'] as num?)?.toDouble() ?? 180,
-          insulinType:
-              planRow['insulin_type'] as String? ?? 'Not specified',
-          maxAutoDose:
-              (planRow['max_auto_dose_units'] as num?)?.toDouble() ?? 0,
-          aidModeEnabled: planRow['aid_mode_enabled'] as bool? ?? false,
-          notes: planRow['notes'] as String?,
-          nextAppointment: planRow['next_appointment'] != null
-              ? DateTime.tryParse(planRow['next_appointment'] as String)
-              : null,
-          doctorName: doctorName,
-          updatedAt: planRow['updated_at'] != null
-              ? DateTime.tryParse(planRow['updated_at'] as String)
-              : null,
-        );
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Could not load doctor plan';
-        _loading = false;
-      });
+      return;
     }
+    
+    final planRow = plans.first;
+    print("✅ [DoctorPlan] Plan found: ${planRow['id']}");
+    
+    // Extract doctor name from nested structure
+    String doctorName = 'Your Doctor';
+    final doctorProfile = planRow['doctor_profile'];
+    print("🔍 [DoctorPlan] doctorProfile: $doctorProfile");
+    
+    if (doctorProfile != null) {
+      final users = doctorProfile['users'];
+      print("🔍 [DoctorPlan] users: $users");
+      if (users != null && users['full_name'] != null) {
+        final rawName = users['full_name'] as String;
+        doctorName = rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
+        print("✅ [DoctorPlan] Doctor name: $doctorName");
+      }
+    }
+    
+    if (!mounted) return;
+    setState(() {
+      _plan = _CarePlanData(
+        targetMin: (planRow['target_glucose_min'] as num?)?.toDouble() ?? 70,
+        targetMax: (planRow['target_glucose_max'] as num?)?.toDouble() ?? 180,
+        insulinType: planRow['insulin_type'] as String? ?? 'Not specified',
+        maxAutoDose: (planRow['max_auto_dose_units'] as num?)?.toDouble() ?? 0,
+        aidModeEnabled: planRow['aid_mode_enabled'] as bool? ?? false,
+        notes: planRow['notes'] as String?,
+        nextAppointment: planRow['next_appointment'] != null
+            ? DateTime.tryParse(planRow['next_appointment'] as String)
+            : null,
+        doctorName: doctorName,
+        updatedAt: planRow['updated_at'] != null
+            ? DateTime.tryParse(planRow['updated_at'] as String)
+            : null,
+      );
+      _loading = false;
+    });
+  } catch (e, stackTrace) {
+    print("❌ [DoctorPlan] ERROR: $e");
+    print("❌ [DoctorPlan] StackTrace: $stackTrace");
+    if (!mounted) return;
+    setState(() {
+      _error = 'Could not load doctor plan: $e';
+      _loading = false;
+    });
   }
+}
 
   /// Returns how many days from today to [date], formatted as a human string.
   String _daysFromNow(DateTime date) {
