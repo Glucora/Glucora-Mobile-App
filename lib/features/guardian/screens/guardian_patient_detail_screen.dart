@@ -274,10 +274,130 @@ class _GuardianPatientDetailScreenState
 
 // ─── OVERVIEW TAB ────────────────────────────────────────────────────────────
 
-class _OverviewTab extends StatelessWidget {
+class _OverviewTab extends StatefulWidget {
   final GuardianPatient patient;
   final bool isLandscape;
   const _OverviewTab({required this.patient, required this.isLandscape});
+
+  @override
+  State<_OverviewTab> createState() => _OverviewTabState();
+}
+
+class _OverviewTabState extends State<_OverviewTab> {
+  GuardianPatient get patient => widget.patient;
+  bool get isLandscape => widget.isLandscape;
+
+  // Total insulin delivered today — null means still loading
+  double? _totalInsulinToday;
+
+  // Today's glucose readings keyed by time-of-day slot
+  // Each entry: { 'value': double, 'inRange': bool, 'label': String }
+  Map<String, Map<String, dynamic>> _glucoseSlots = {};
+  bool _glucoseSlotsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTotalInsulin();
+    _fetchTodayGlucoseSlots();
+  }
+
+  // ── Insulin ────────────────────────────────────────────────────────────────
+
+  Future<void> _fetchTotalInsulin() async {
+    try {
+      final today = DateTime.now().toUtc();
+      final startOfDay = DateTime.utc(today.year, today.month, today.day)
+          .toIso8601String();
+      final endOfDay = DateTime.utc(
+              today.year, today.month, today.day, 23, 59, 59)
+          .toIso8601String();
+
+      final rows = await Supabase.instance.client
+          .from('insulin_doses')
+          .select('units')
+          .eq('patient_id', patient.patientId)
+          .gte('delivered_at', startOfDay)
+          .lte('delivered_at', endOfDay);
+
+      if (!mounted) return;
+      double total = 0;
+      for (final row in rows as List) {
+        total += (row['units'] as num?)?.toDouble() ?? 0;
+      }
+      setState(() => _totalInsulinToday = total);
+    } catch (_) {
+      if (mounted) setState(() => _totalInsulinToday = null);
+    }
+  }
+
+  String get _totalInsulinLabel {
+    if (_totalInsulinToday == null) return '—';
+    final formatted = _totalInsulinToday!.toStringAsFixed(1);
+    return '${formatted.endsWith('.0') ? formatted.split('.')[0] : formatted} U';
+  }
+
+  // ── Today at a Glance ──────────────────────────────────────────────────────
+  // Fetches glucose readings for today and buckets them into time slots:
+  //   morning  = 05:00–09:59 local
+  //   breakfast = 07:00–10:59 local  (first reading after morning)
+  //   midday   = 11:00–14:59 local
+  // "Now" is always derived from the live patient.glucoseValue from the model.
+
+  Future<void> _fetchTodayGlucoseSlots() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
+      final endOfDay =
+          DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc();
+
+      final rows = await Supabase.instance.client
+          .from('glucose_readings')
+          .select('value_mg_dl, recorded_at')
+          .eq('patient_id', patient.patientId)
+          .gte('recorded_at', startOfDay.toIso8601String())
+          .lte('recorded_at', endOfDay.toIso8601String())
+          .order('recorded_at', ascending: true);
+
+      if (!mounted) return;
+
+      final slots = <String, Map<String, dynamic>>{};
+
+      for (final row in rows as List) {
+        final value = (row['value_mg_dl'] as num?)?.toDouble();
+        if (value == null) continue;
+        final recorded =
+            DateTime.tryParse(row['recorded_at'] as String? ?? '')?.toLocal();
+        if (recorded == null) continue;
+
+        final hour = recorded.hour;
+        final inRange = value >= 70 && value <= 180;
+        final entry = {'value': value, 'inRange': inRange};
+
+        // Morning: 5am–10am (first reading wins)
+        if (hour >= 5 && hour < 10 && !slots.containsKey('morning')) {
+          slots['morning'] = entry;
+        }
+        // Breakfast: 7am–11am (first reading wins — overlaps morning intentionally)
+        if (hour >= 7 && hour < 11 && !slots.containsKey('breakfast')) {
+          slots['breakfast'] = entry;
+        }
+        // Midday: 11am–15pm (first reading wins)
+        if (hour >= 11 && hour < 15 && !slots.containsKey('midday')) {
+          slots['midday'] = entry;
+        }
+      }
+
+      setState(() {
+        _glucoseSlots = slots;
+        _glucoseSlotsLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _glucoseSlotsLoaded = true);
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   Color gColor(BuildContext context) {
     final colors = context.colors;
@@ -595,7 +715,7 @@ class _OverviewTab extends StatelessWidget {
                 'How given',
               ),
               _divider(context),
-              _stat(colors, '18.3 U', 'Total amount'),
+              _stat(colors, _totalInsulinLabel, 'Total amount'),
             ],
           ),
           const SizedBox(height: 12),
@@ -671,6 +791,30 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _todayCard(BuildContext context) {
     final colors = context.colors;
+
+    // Helper: build a story entry from a glucose slot or fall back to a default
+    String _slotText(String slot, String fallback) {
+      final entry = _glucoseSlots[slot];
+      if (entry == null) return fallback;
+      final value = (entry['value'] as double).toStringAsFixed(0);
+      final inRange = entry['inRange'] as bool;
+      if (inRange) {
+        return 'Sugar was ${value} mg/dL — in the safe range';
+      } else if ((entry['value'] as double) < 70) {
+        return 'Sugar was low at ${value} mg/dL — device managed it';
+      } else {
+        return 'Sugar was high at ${value} mg/dL — device managed it';
+      }
+    }
+
+    bool _slotOk(String slot, bool fallback) {
+      final entry = _glucoseSlots[slot];
+      if (entry == null) return fallback;
+      return entry['inRange'] as bool;
+    }
+
+    final nowInRange = patient.glucoseLabel == 'In Range';
+
     return _card(
       context,
       child: Column(
@@ -681,23 +825,36 @@ class _OverviewTab extends StatelessWidget {
           _story(
             context,
             'Morning',
-            'Sugar was in the safe zone when ${patient.name} woke up',
-            true,
+            _glucoseSlotsLoaded
+                ? _slotText('morning',
+                    'Sugar was in the safe zone when ${patient.name} woke up')
+                : 'Loading...',
+            _glucoseSlotsLoaded ? _slotOk('morning', true) : true,
           ),
           _story(
             context,
             'Breakfast',
-            'Ate breakfast, device gave insulin automatically',
-            true,
+            _glucoseSlotsLoaded
+                ? _slotText('breakfast',
+                    'Ate breakfast, device gave insulin automatically')
+                : 'Loading...',
+            _glucoseSlotsLoaded ? _slotOk('breakfast', true) : true,
           ),
-          _story(context, 'Midday', 'Sugar stayed in the normal range', true),
+          _story(
+            context,
+            'Midday',
+            _glucoseSlotsLoaded
+                ? _slotText('midday', 'Sugar stayed in the normal range')
+                : 'Loading...',
+            _glucoseSlotsLoaded ? _slotOk('midday', true) : true,
+          ),
           _story(
             context,
             'Now',
-            patient.glucoseLabel == 'In Range'
+            nowInRange
                 ? 'Doing well — sugar is in the normal range'
                 : 'Sugar is ${patient.glucoseLabel.toLowerCase()} — device is managing it',
-            patient.glucoseLabel == 'In Range',
+            nowInRange,
           ),
         ],
       ),
@@ -785,7 +942,7 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-// ─── LOCATION TAB ────────────────────────────────────────────────────────────
+// ─── LOCATION TAB ──────────────────────────────────────────────────────────── 
 class _LocationTab extends StatefulWidget {
   final GuardianPatient patient;
   final bool isLandscape;
@@ -814,7 +971,7 @@ class _LocationTabState extends State<_LocationTab> {
       final data = await Supabase.instance.client
           .from('patient_locations')
           .select()
-          .eq('patient_id', widget.patient.patientId)
+          .eq('patient_id', widget.patient.id) // uuid → users(id)
           .single();
 
       if (mounted) {
@@ -831,7 +988,7 @@ class _LocationTabState extends State<_LocationTab> {
 
     // Then listen for real time updates
     _channel = Supabase.instance.client
-        .channel('location_${widget.patient.patientId}')
+        .channel('location_${widget.patient.id}')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -839,7 +996,7 @@ class _LocationTabState extends State<_LocationTab> {
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'patient_id',
-            value: widget.patient.patientId,
+            value: widget.patient.id, // uuid → users(id)
           ),
           callback: (payload) {
             if (!mounted) return;
@@ -1121,21 +1278,193 @@ class _LocationTabState extends State<_LocationTab> {
 
 // ─── DOCTOR PLAN TAB ─────────────────────────────────────────────────────────
 
-class _DoctorPlanTab extends StatelessWidget {
+// Simple data class to hold the fetched care plan
+class _CarePlanData {
+  final double targetMin;
+  final double targetMax;
+  final String insulinType;
+  final double maxAutoDose;
+  final bool aidModeEnabled;
+  final String? notes;
+  final DateTime? nextAppointment;
+  final String doctorName;
+  final DateTime? updatedAt;
+
+  const _CarePlanData({
+    required this.targetMin,
+    required this.targetMax,
+    required this.insulinType,
+    required this.maxAutoDose,
+    required this.aidModeEnabled,
+    this.notes,
+    this.nextAppointment,
+    required this.doctorName,
+    this.updatedAt,
+  });
+}
+
+class _DoctorPlanTab extends StatefulWidget {
   final GuardianPatient patient;
   final bool isLandscape;
   const _DoctorPlanTab({required this.patient, required this.isLandscape});
 
   @override
+  State<_DoctorPlanTab> createState() => _DoctorPlanTabState();
+}
+
+class _DoctorPlanTabState extends State<_DoctorPlanTab> {
+  _CarePlanData? _plan;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCarePlan();
+  }
+
+  Future<void> _fetchCarePlan() async {
+    try {
+      // Step 1: fetch the care plan row directly — no joins
+      final planRow = await Supabase.instance.client
+          .from('care_plans')
+          .select(
+            'target_glucose_min, target_glucose_max, insulin_type, '
+            'max_auto_dose_units, aid_mode_enabled, notes, '
+            'next_appointment, updated_at, doctor_id',
+          )
+          .eq('patient_id', widget.patient.patientId)
+          .order('updated_at', ascending: false)
+          .limit(1)
+          .single();
+
+      // Step 2: use doctor_id (uuid) to look up doctor_profile.user_id
+      String doctorName = 'Your Doctor';
+      final doctorProfileId = planRow['doctor_id'] as String?;
+
+      if (doctorProfileId != null) {
+        try {
+          final profileRow = await Supabase.instance.client
+              .from('doctor_profile')
+              .select('user_id')
+              .eq('id', doctorProfileId)
+              .single();
+
+          final doctorUserId = profileRow['user_id'] as String?;
+
+          // Step 3: use user_id to get the doctor's full name
+          if (doctorUserId != null) {
+            final userRow = await Supabase.instance.client
+                .from('users')
+                .select('full_name')
+                .eq('id', doctorUserId)
+                .single();
+
+            final rawName = userRow['full_name'] as String?;
+            if (rawName != null && rawName.trim().isNotEmpty) {
+              doctorName =
+                  rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
+            }
+          }
+        } catch (_) {
+          // Doctor name lookup failed — keep default 'Your Doctor'
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _plan = _CarePlanData(
+          targetMin:
+              (planRow['target_glucose_min'] as num?)?.toDouble() ?? 70,
+          targetMax:
+              (planRow['target_glucose_max'] as num?)?.toDouble() ?? 180,
+          insulinType:
+              planRow['insulin_type'] as String? ?? 'Not specified',
+          maxAutoDose:
+              (planRow['max_auto_dose_units'] as num?)?.toDouble() ?? 0,
+          aidModeEnabled: planRow['aid_mode_enabled'] as bool? ?? false,
+          notes: planRow['notes'] as String?,
+          nextAppointment: planRow['next_appointment'] != null
+              ? DateTime.tryParse(planRow['next_appointment'] as String)
+              : null,
+          doctorName: doctorName,
+          updatedAt: planRow['updated_at'] != null
+              ? DateTime.tryParse(planRow['updated_at'] as String)
+              : null,
+        );
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load doctor plan';
+        _loading = false;
+      });
+    }
+  }
+
+  /// Returns how many days from today to [date], formatted as a human string.
+  String _daysFromNow(DateTime date) {
+    final today = DateTime.now();
+    final diff = date.difference(DateTime(today.year, today.month, today.day)).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Tomorrow';
+    if (diff < 0) return '${diff.abs()} days ago';
+    return '$diff days from now';
+  }
+
+  /// Formats [date] as e.g. "April 2, 2025"
+  String _formatDate(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  /// Formats [updatedAt] as e.g. "March 15" for the doctor card subtitle.
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+
+    if (_loading) {
+      return Center(child: CircularProgressIndicator(color: colors.accent));
+    }
+
+    if (_error != null || _plan == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.medical_services_outlined, size: 48, color: colors.textSecondary),
+            const SizedBox(height: 12),
+            Text(
+              _error ?? 'No plan available',
+              style: TextStyle(color: colors.textSecondary, fontSize: 15),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final plan = _plan!;
+
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(16, 20, 16, isLandscape ? 12 : 24),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, widget.isLandscape ? 12 : 24),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
+              // ── Doctor header card ──
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1161,22 +1490,24 @@ class _DoctorPlanTab extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Dr. Nouran',
-                            style: TextStyle(
+                            plan.doctorName,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
-                            'Endocrinologist  ·  Last updated March 15',
-                            style: TextStyle(
+                            plan.updatedAt != null
+                                ? 'Endocrinologist  ·  Last updated ${_formatShortDate(plan.updatedAt!)}'
+                                : 'Endocrinologist',
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
                             ),
@@ -1208,6 +1539,7 @@ class _DoctorPlanTab extends StatelessWidget {
 
               const SizedBox(height: 16),
 
+              // ── Safe Sugar Range ──
               _planCard(
                 context,
                 title: 'Safe Sugar Range',
@@ -1217,7 +1549,7 @@ class _DoctorPlanTab extends StatelessWidget {
                       child: _rangeBox(
                         context,
                         'Lowest safe',
-                        '70 mg/dL',
+                        '${plan.targetMin.toStringAsFixed(0)} mg/dL',
                         'Below this is too low',
                         colors.accent,
                       ),
@@ -1227,7 +1559,7 @@ class _DoctorPlanTab extends StatelessWidget {
                       child: _rangeBox(
                         context,
                         'Highest safe',
-                        '180 mg/dL',
+                        '${plan.targetMax.toStringAsFixed(0)} mg/dL',
                         'Above this is too high',
                         colors.warning,
                       ),
@@ -1238,6 +1570,7 @@ class _DoctorPlanTab extends StatelessWidget {
 
               const SizedBox(height: 14),
 
+              // ── Insulin Being Used ──
               _planCard(
                 context,
                 title: 'Insulin Being Used',
@@ -1245,7 +1578,7 @@ class _DoctorPlanTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'NovoLog (fast-acting)',
+                      plan.insulinType,
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -1267,6 +1600,7 @@ class _DoctorPlanTab extends StatelessWidget {
 
               const SizedBox(height: 14),
 
+              // ── How the Device Works ──
               _planCard(
                 context,
                 title: 'How the Device Works',
@@ -1275,95 +1609,92 @@ class _DoctorPlanTab extends StatelessWidget {
                     _planRow(
                       context,
                       'Mode',
-                      'Fully automatic — no manual doses needed',
+                      plan.aidModeEnabled
+                          ? 'Fully automatic — no manual doses needed'
+                          : 'Manual mode — doses given by hand',
                     ),
-                    _planRow(context, 'Max dose', 'Up to 4 units at a time'),
+                    _planRow(
+                      context,
+                      'Max dose',
+                      'Up to ${plan.maxAutoDose.toStringAsFixed(0)} units at a time',
+                    ),
                     _planRow(
                       context,
                       'Low sugar',
-                      'Pauses insulin if sugar drops below 70',
+                      'Pauses insulin if sugar drops below ${plan.targetMin.toStringAsFixed(0)}',
                     ),
                     _planRow(
                       context,
                       'High sugar',
-                      'Gives extra insulin if sugar goes above 180',
+                      'Gives extra insulin if sugar goes above ${plan.targetMax.toStringAsFixed(0)}',
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 14),
-
-              _planCard(
-                context,
-                title: 'Next Doctor Visit',
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colors.accent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.calendar_today_rounded,
-                        color: colors.accent,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'April 2, 2025',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: colors.textPrimary,
-                          ),
+              // ── Next Doctor Visit (only if available) ──
+              if (plan.nextAppointment != null) ...[
+                const SizedBox(height: 14),
+                _planCard(
+                  context,
+                  title: 'Next Doctor Visit',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '18 days from now',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                          ),
+                        child: Icon(
+                          Icons.calendar_today_rounded,
+                          color: colors.accent,
+                          size: 24,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _formatDate(plan.nextAppointment!),
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _daysFromNow(plan.nextAppointment!),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
 
-              const SizedBox(height: 14),
-
-              _planCard(
-                context,
-                title: "Doctor's Notes for You",
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _note(
-                      context,
-                      'Make sure ${patient.name} eats regular meals — skipping meals can cause low sugar.',
-                    ),
-                    _note(
-                      context,
-                      'Physical activity lowers blood sugar. Keep snacks nearby when they exercise.',
-                    ),
-                    _note(
-                      context,
-                      'Sleep is important. Irregular sleep can affect sugar levels.',
-                    ),
-                    _note(
-                      context,
-                      'If ${patient.name} feels dizzy, shaky, or confused — check the app immediately and give them something sweet.',
-                    ),
-                  ],
+              // ── Doctor's Notes (only if available) ──
+              if (plan.notes != null && plan.notes!.trim().isNotEmpty) ...[
+                const SizedBox(height: 14),
+                _planCard(
+                  context,
+                  title: "Doctor's Notes for You",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: plan.notes!
+                        .split('\n')
+                        .where((line) => line.trim().isNotEmpty)
+                        .map((line) => _note(context, line.trim()))
+                        .toList(),
+                  ),
                 ),
-              ),
+              ],
             ]),
           ),
         ),
