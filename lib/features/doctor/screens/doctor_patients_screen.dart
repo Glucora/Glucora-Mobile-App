@@ -74,10 +74,11 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       // Step 1: Get accepted patient IDs
       final connectionsResponse = await supabase
           .from('doctor_patient_connections')
-          .select('patient_id, patient_profile(user_id, users(full_name))')
+          .select(
+            'patient_id, users!doctor_patient_connections_patient_id_fkey(full_name)',
+          )
           .eq('doctor_id', userId)
           .eq('status', 'accepted');
-
       if (!mounted) return;
 
       final connections = connectionsResponse as List;
@@ -87,29 +88,44 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       }
 
       // Step 2: Fetch glucose readings separately using patient_id
-      final patientIds = connections.map((row) => row['patient_id']).toList();
+      // TO:
+      final patientUserIds = connections
+          .map((row) => row['patient_id'] as String)
+          .toList();
+
+      final profilesResp = await supabase
+          .from('patient_profile')
+          .select('id, user_id')
+          .inFilter('user_id', patientUserIds);
+
+      final Map<String, int> uuidToProfileId = {};
+      for (final p in profilesResp as List) {
+        uuidToProfileId[p['user_id'] as String] = p['id'] as int;
+      }
+
+      final patientProfileIds = uuidToProfileId.values.toList();
 
       final readingsResponse = await supabase
           .from('glucose_readings')
           .select('patient_id, value_mg_dl, trend, recorded_at')
-          .inFilter('patient_id', patientIds);
+          .inFilter('patient_id', patientProfileIds);
 
       final readings = readingsResponse as List;
 
-      // Step 3: Group readings by patient_id
-      final Map<dynamic, List<dynamic>> readingsByPatient = {};
+      // Step 3: Group readings by patient_profile bigint id
+      final Map<int, List<dynamic>> readingsByPatient = {};
       for (final r in readings) {
-        final pid = r['patient_id'];
+        final pid = r['patient_id'] as int;
         readingsByPatient.putIfAbsent(pid, () => []).add(r);
       }
 
       setState(() {
         _allPatients = connections.map((row) {
-          final fullName =
-              row['patient_profile']?['users']?['full_name'] ?? 'Unknown';
-          final patientId = row['patient_id'];
+          final fullName = row['users']?['full_name'] ?? 'Unknown';
+          final patientUuid = row['patient_id'] as String;
+          final profileId = uuidToProfileId[patientUuid] ?? 0;
 
-          final patientReadings = readingsByPatient[patientId] ?? [];
+          final patientReadings = readingsByPatient[profileId] ?? [];
 
           // Sort to get the latest reading
           patientReadings.sort(
@@ -126,7 +142,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
               : 0;
 
           return _Patient(
-            id: (patientId as num).toInt(),
+            id: profileId,
             name: fullName,
             glucoseValue: glucoseValue,
             trend: latestReading?['trend'] ?? 'stable',
