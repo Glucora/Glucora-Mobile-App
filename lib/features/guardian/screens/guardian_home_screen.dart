@@ -136,7 +136,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
           return GuardianPatient(
             id: patientUuid,
-            patientId: profileId ?? 0,
+            patientId: patientUuid,
             name: name,
             age: age,
             relationship: rel,

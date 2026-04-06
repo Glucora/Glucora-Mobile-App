@@ -3,7 +3,7 @@
 
 class GuardianPatient {
   final String id;
-  final int patientId;
+  final String patientId;
   final String name;
   final int age;
   final String relationship;

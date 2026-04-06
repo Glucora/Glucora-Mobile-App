@@ -1,5 +1,5 @@
+// lib\features\auth\login_screen.dart
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/admin/screens/admin_main_screen.dart';
@@ -69,13 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Widget? targetScreen;
       if (normalizedRole == 'patient') {
         try {
-          final patientData = await Supabase.instance.client
-              .from('patient_profile')
-              .select('id')
-              .eq('user_id', user.id)
-              .single();
-          final patientId = patientData['id'] as int;
-          LocationService.startSharingLocation(patientId);
+          LocationService.startSharingLocation(user.id);
         } catch (e) {
           print('Could not start location: $e');
         }

@@ -1,3 +1,4 @@
+// main.dart
 import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
@@ -127,23 +128,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
 
     if (normalizedRole == 'patient') {
-      try {
-        final patientData = await Supabase.instance.client
-            .from('patient_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        if (patientData == null) {
-          print("No patient profile found");
-          return;
-        }
-        final patientId = patientData['id'] as int;
-        print("STARTING LOCATION FOR PATIENT ID: $patientId");
-        LocationService.startSharingLocation(patientId);
-      } catch (e) {
-        print('Could not start location: $e');
-      }
+      LocationService.startSharingLocation(user.id);
     }
   }
 

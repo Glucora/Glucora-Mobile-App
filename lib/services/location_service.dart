@@ -6,7 +6,7 @@ class LocationService {
   static final _supabase = Supabase.instance.client;
   static bool _running = false;
 
-  static Future<void> startSharingLocation(int patientId) async {
+  static Future<void> startSharingLocation(String userId) async {
     if (_running) {
       print("Location already running");
       return;
@@ -35,7 +35,7 @@ class LocationService {
         print("Sending: ${position.latitude}, ${position.longitude}");
 
         await _supabase.from('patient_locations').upsert({
-          'patient_id': patientId,
+          'patient_id': userId,
           'latitude': position.latitude,
           'longitude': position.longitude,
           'sharing_enabled': true,
