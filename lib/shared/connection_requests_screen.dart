@@ -98,7 +98,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   late TabController _tabController;
   late _RoleConfig _config;
   List<ConnectionRequest> _requests = [];
-  
+
   List<ConnectionRequest> get _incoming => _requests
       .where(
         (r) =>
@@ -137,19 +137,17 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   Future<void> _fetchRequests() async {
     final userId = supabase.auth.currentUser!.id;
 
-    // get the other person's name by joining through patient_profile → users
     final response = await supabase
         .from(_config.connectionsTable)
         .select(
-          'id, status, requested_by, requested_at, patient_id, patient_profile(user_id, users(full_name))',
+          'id, status, requested_by, requested_at, patient_id, users!${_config.connectionsTable}_patient_id_fkey(full_name)',
         )
         .eq(_config.profileIdField, userId);
 
     if (!mounted) return;
     setState(() {
       _requests = (response as List).map((row) {
-        final fullName =
-            row['patient_profile']?['users']?['full_name'] ?? 'Unknown';
+        final fullName = row['users']?['full_name'] ?? 'Unknown';
         return ConnectionRequest(
           id: row['id'].toString(),
           personName: fullName,
