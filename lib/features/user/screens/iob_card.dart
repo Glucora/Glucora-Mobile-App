@@ -256,7 +256,7 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
                     context,
                     label: 'Doses',
                     value:
-                        '${_safeDouble(_iob!['contributing_dose_count']).toStringAsFixed(0)}',
+                        _safeDouble(_iob!['contributing_dose_count']).toStringAsFixed(0),
                     icon: Icons.medication_rounded,
                     color: colors.primary,
                   ),

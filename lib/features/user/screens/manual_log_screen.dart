@@ -290,7 +290,7 @@ Future<void> _save() async {
             else if (_logs.isEmpty)
               const Text("No logs yet")
             else
-              ..._logs.map((log) => _logTile(context, log)).toList(),
+              ..._logs.map((log) => _logTile(context, log)),
             const SizedBox(height: 30),
           ],
         ),

@@ -171,8 +171,6 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     required int patientProfileId,
     required String patientName,
   }) async {
-    if (userId == null) return;
-
     final data = widget.role == 'doctor'
         ? {
             'doctor_id': userId,
@@ -191,7 +189,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
           }
         : {
             'doctor_id': patientProfileId.toString(),
-            'patient_id': int.parse(userId!),
+            'patient_id': int.parse(userId),
             'status': 'pending',
             'requested_by': widget.role,
             'requested_at': DateTime.now().toIso8601String(),

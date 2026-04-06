@@ -31,7 +31,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   List<Map<String, dynamic>> _insulinDoses = [];
   List<Map<String, dynamic>> _alerts = [];
   Map<String, dynamic>? _device;
+  Map<String, dynamic>? _latestPrediction;
+  Map<String, dynamic>? _latestIob;
   bool _isLoading = true;
+
   List<GlucoseReading> get glucoseHistory => _glucoseReadings.map((r) {
     final dt = DateTime.parse(r['recorded_at']).toLocal();
     final hour = dt.hour;
@@ -68,6 +71,52 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }).toList();
 
+  // ── Derived pump stats from insulin_doses ──────────────────────────────────
+  double get _tddToday {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    return _insulinDoses
+        .where((d) {
+          final dt = DateTime.parse(d['delivered_at']).toLocal();
+          return dt.isAfter(startOfDay);
+        })
+        .fold(0.0, (s, d) => s + (d['units'] as num).toDouble());
+  }
+
+  double get _basalToday {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    return _insulinDoses
+        .where((d) {
+          final dt = DateTime.parse(d['delivered_at']).toLocal();
+          return dt.isAfter(startOfDay) && d['dose_type'] == 'Basal';
+        })
+        .fold(0.0, (s, d) => s + (d['units'] as num).toDouble());
+  }
+
+  double get _bolusToday {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    return _insulinDoses
+        .where((d) {
+          final dt = DateTime.parse(d['delivered_at']).toLocal();
+          return dt.isAfter(startOfDay) && d['dose_type'] != 'Basal';
+        })
+        .fold(0.0, (s, d) => s + (d['units'] as num).toDouble());
+  }
+
+  /// Most recent basal dose as a proxy for current basal rate
+  String get _currentBasalRate {
+    final basalDoses = _insulinDoses
+        .where((d) => d['dose_type'] == 'Basal')
+        .toList();
+    if (basalDoses.isEmpty) return '—';
+    basalDoses.sort((a, b) => DateTime.parse(b['delivered_at'])
+        .compareTo(DateTime.parse(a['delivered_at'])));
+    final units = (basalDoses.first['units'] as num).toDouble();
+    return '${units.toStringAsFixed(2)} U/h';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -83,9 +132,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Future<void> _fetchPatientData() async {
     try {
+      // Fetch profile including age from users join
       final profile = await supabase
           .from('patient_profile')
-          .select('*, users(full_name)')
+          .select('*, users(full_name, age)')
           .eq('id', widget.patientId)
           .single();
 
@@ -118,8 +168,24 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         supabase
             .from('devices')
             .select()
-            .eq('patient_id', userId) // ← correct: uuid not int
+            .eq('patient_id', userId)
             .eq('is_active', true)
+            .maybeSingle(),
+        // Latest AI prediction
+        supabase
+            .from('ai_predictions')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+        // Latest IOB snapshot
+        supabase
+            .from('insulin_on_board')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('calculated_at', ascending: false)
+            .limit(1)
             .maybeSingle(),
       ]);
 
@@ -131,13 +197,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         _insulinDoses = (results[2] as List).cast<Map<String, dynamic>>();
         _alerts = (results[3] as List).cast<Map<String, dynamic>>();
         _device = results[4] as Map<String, dynamic>?;
+        _latestPrediction = results[5] as Map<String, dynamic>?;
+        _latestIob = results[6] as Map<String, dynamic>?;
         _isLoading = false;
-        print('Profile: $_patientProfile');
-        print('Glucose readings: ${_glucoseReadings.length}');
-        print('Insulin doses: ${_insulinDoses.length}');
-        print('Alerts: ${_alerts.length}');
-        print('Care plan: $_carePlan');
-        print('Device: $_device');
       });
     } catch (e) {
       print('Error fetching patient data: $e');
@@ -181,6 +243,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   AppBar _buildAppBar(BuildContext context) {
     final colors = context.colors;
+    // Format patient ID as #PT-XXXXX (zero-padded to 5 digits)
+    final formattedId = '#PT-${widget.patientId.toString().padLeft(5, '0')}';
     return AppBar(
       backgroundColor: colors.primaryDark,
       foregroundColor: Colors.white,
@@ -196,9 +260,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               letterSpacing: 0.2,
             ),
           ),
-          const Text(
-            'Patient ID: #PT-20481',
-            style: TextStyle(
+          Text(
+            'Patient ID: $formattedId',
+            style: const TextStyle(
               fontSize: 11,
               color: Colors.white70,
               fontWeight: FontWeight.w400,
@@ -219,7 +283,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildPatientHeader(BuildContext context) {
     final colors = context.colors;
-    final age = _patientProfile?['age']?.toString() ?? '—';
+    // Age: prefer users.age, fallback to patient_profile.age
+    final usersMap = _patientProfile?['users'] as Map<String, dynamic>?;
+    final age = (usersMap?['age'] ?? _patientProfile?['age'])?.toString() ?? '—';
     final gender = _patientProfile?['gender'] ?? '—';
     final name = widget.patientName;
     final initials = name
@@ -230,7 +296,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         .map((p) => p[0].toUpperCase())
         .join();
 
-    // Latest glucose reading
     final latest = _glucoseReadings.isNotEmpty ? _glucoseReadings.last : null;
     final latestValue = latest != null
         ? (latest['value_mg_dl'] as num).toInt().toString()
@@ -527,7 +592,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text(
+              content: const Text(
                                 'Failed to remove patient. Please try again.',
                               ),
                               backgroundColor: context.colors.error,
@@ -572,10 +637,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         ? 0.0
         : values.reduce((a, b) => a + b) / values.length;
 
-    // GMI formula: 3.31 + 0.02392 * avg_mg_dl
     final gmi = values.isEmpty ? 0.0 : 3.31 + 0.02392 * avg;
 
-    // CV = (stddev / mean) * 100
     double cv = 0;
     if (values.length > 1) {
       final mean = avg;
@@ -707,7 +770,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     final low = pct((v) => v >= 54 && v < 70);
     final veryLow = pct((v) => v < 54);
 
-    // rest of your TIR widget, replacing the hardcoded consts with these variables
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
@@ -837,7 +899,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   }
 
   Widget _tirBar(double percent, Color color) {
-    final flex = percent.toInt().clamp(1, 100); // never 0
+    final flex = percent.toInt().clamp(1, 100);
     return Flexible(
       flex: flex,
       child: Container(height: 10, color: color),
@@ -846,6 +908,20 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildPumpStatusCard(BuildContext context) {
     final colors = context.colors;
+
+    // Device info from devices table
+    final deviceName = _device?['device_name'] as String? ?? 'Pump';
+    final batteryRaw = _device?['battery_health'] as String? ?? '—';
+    final lastSyncAt = _device?['last_sync_at'] as String?;
+    final lastSyncDisplay = lastSyncAt != null ? _timeAgo(lastSyncAt) : '—';
+    final isActive = _device?['is_active'] as bool? ?? false;
+
+    // Derived stats from insulin_doses
+    final tdd = _tddToday;
+    final basalToday = _basalToday;
+    final bolusToday = _bolusToday;
+    final autoCount = insulinLog.where((d) => d.source == 'AID Auto').length;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
@@ -867,7 +943,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Omnipod 5 — Pump',
+                      deviceName,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -875,7 +951,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                       ),
                     ),
                     Text(
-                      'Last sync: 2 min ago',
+                      'Last sync: $lastSyncDisplay',
                       style: TextStyle(
                         color: colors.textSecondary,
                         fontSize: 12,
@@ -884,7 +960,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   ],
                 ),
               ),
-              _statusBadge(context, 'Active', Colors.green),
+              _statusBadge(
+                context,
+                isActive ? 'Active' : 'Inactive',
+                isActive ? Colors.green : Colors.grey,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -892,27 +972,27 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             children: [
               Expanded(
                 child: _pumpStat(
-                  'Reservoir',
-                  '142 U',
-                  'Remaining',
-                  const Color(0xFF5B8CF5),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _pumpStat(
                   'Battery',
-                  '78%',
-                  'Pump battery',
+                  batteryRaw,
+                  'Device battery',
                   const Color(0xFF6FCF97),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _pumpStat(
+                  'Auto Doses',
+                  '$autoCount',
+                  'AID-delivered',
+                  const Color(0xFF5B8CF5),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _pumpStat(
                   'Basal Rate',
-                  '0.85 U/h',
-                  'Current',
+                  _currentBasalRate,
+                  'Last recorded',
                   colors.warning,
                 ),
               ),
@@ -926,7 +1006,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               Expanded(
                 child: _pumpStat(
                   'Total Daily\nDose',
-                  '38.7 U',
+                  '${tdd.toStringAsFixed(1)} U',
                   'Today so far',
                   colors.accent,
                 ),
@@ -935,7 +1015,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               Expanded(
                 child: _pumpStat(
                   'Basal Today',
-                  '20.4 U',
+                  '${basalToday.toStringAsFixed(1)} U',
                   'Delivered',
                   Colors.blueGrey,
                 ),
@@ -944,32 +1024,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               Expanded(
                 child: _pumpStat(
                   'Bolus Today',
-                  '18.3 U',
+                  '${bolusToday.toStringAsFixed(1)} U',
                   'Delivered',
                   const Color(0xFFFF6B6B),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: colors.warning.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: colors.warning, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Temp basal: +20% active for 45 min (AID adjustment)',
-                    style: TextStyle(fontSize: 12, color: colors.warning),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -1006,6 +1066,44 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _buildAIDStatusCard(BuildContext context) {
     final colors = context.colors;
+
+    // ai_predictions fields
+    final predictedValue = _latestPrediction?['predicted_value_mg_dl'];
+    final predictedDisplay = predictedValue != null
+        ? '${(predictedValue as num).toStringAsFixed(0)} mg/dL'
+        : '—';
+    final horizon = _latestPrediction?['horizon_minutes'];
+    final horizonDisplay = horizon != null ? '${(horizon as num).toInt()} min' : '—';
+    final riskLevel = _latestPrediction?['risk_level'] as String? ?? '—';
+    final modelVersion = _latestPrediction?['model_version'] as String? ?? '—';
+
+    // care_plans fields
+    final isf = _carePlan?['insulin_sensitivity_factor'] as String? ?? '—';
+    final carbRatio = _carePlan?['carb_ratio'];
+    final carbRatioDisplay = carbRatio != null
+        ? '1 U : ${(carbRatio as num).toStringAsFixed(0)}g carbs'
+        : '—';
+    final aidEnabled = _carePlan?['aid_mode_enabled'] as bool? ?? false;
+
+    // Latest glucose trend from readings
+    final latestReading = _glucoseReadings.isNotEmpty ? _glucoseReadings.last : null;
+    final trend = latestReading?['trend'] as String? ?? 'stable';
+    final trendDisplay = trend == 'up'
+        ? '↗ Rising slowly'
+        : trend == 'down'
+        ? '↘ Falling slowly'
+        : '→ Stable';
+
+    // Risk color
+    Color riskColor;
+    if (riskLevel == 'high') {
+      riskColor = colors.error;
+    } else if (riskLevel == 'medium') {
+      riskColor = colors.warning;
+    } else {
+      riskColor = colors.success;
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
@@ -1027,11 +1125,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'AI-Powered AID System',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
@@ -1039,81 +1137,84 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                       ),
                     ),
                     Text(
-                      'Model: ClosedLoop v3.2 • Adaptive mode',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      'Model: $modelVersion • ${aidEnabled ? 'Adaptive mode' : 'Manual mode'}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              _statusBadge(context, 'AUTO', const Color(0xFF5B8CF5)),
+              _statusBadge(
+                context,
+                aidEnabled ? 'AUTO' : 'OFF',
+                aidEnabled ? const Color(0xFF5B8CF5) : Colors.grey,
+              ),
             ],
           ),
           const SizedBox(height: 18),
           _aidRow(
             Icons.show_chart,
-            'Predicted Glucose (30 min)',
-            '126 mg/dL',
+            'Predicted Glucose ($horizonDisplay)',
+            predictedDisplay,
             colors.textPrimary,
           ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
           _aidRow(
             Icons.trending_up,
             'Current Glucose Trend',
-            '↗ Rising slowly (+2 mg/dL·min)',
+            trendDisplay,
             colors.accent,
           ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
           _aidRow(
-            Icons.bolt,
-            'Next Auto-Bolus',
-            '0.3 U in ~8 min (predicted high)',
-            colors.warning,
-          ),
-          const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          _aidRow(
-            Icons.do_not_disturb_alt,
-            'Suspend Guard',
-            'Active below 70 mg/dL',
-            colors.error,
+            Icons.warning_amber_rounded,
+            'Risk Level',
+            riskLevel.toUpperCase(),
+            riskColor,
           ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
           _aidRow(
             Icons.tune,
             'Insulin Sensitivity Factor',
-            '1 U : 45 mg/dL (current)',
+            isf.isNotEmpty && isf != '—' ? '1 U : $isf mg/dL' : '—',
             Colors.blueGrey,
           ),
           const Divider(height: 1, color: Color(0xFFF0F0F0)),
           _aidRow(
             Icons.rice_bowl_outlined,
             'Insulin-to-Carb Ratio',
-            '1 U : 12g carbs',
+            carbRatioDisplay,
             Colors.blueGrey,
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: colors.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  color: colors.success,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'AID system is performing well. Glucose has remained in target range for 72% of today.',
-                    style: TextStyle(fontSize: 12, color: colors.success),
+          if (_latestPrediction != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: riskColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    riskLevel == 'low'
+                        ? Icons.check_circle_outline
+                        : Icons.info_outline,
+                    color: riskColor,
+                    size: 16,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      riskLevel == 'low'
+                          ? 'AID system is performing well. Risk level is low.'
+                          : 'Risk level is ${riskLevel.toUpperCase()}. Monitor closely.',
+                      style: TextStyle(fontSize: 12, color: riskColor),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1275,18 +1376,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       final dt = DateTime.tryParse(nextAppt);
       if (dt != null) {
         const months = [
-          'Jan',
-          'Feb',
-          'Mar',
-          'Apr',
-          'May',
-          'Jun',
-          'Jul',
-          'Aug',
-          'Sep',
-          'Oct',
-          'Nov',
-          'Dec',
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
         ];
         apptDisplay = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
       }
@@ -1394,7 +1485,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Chart ──────────────────────────────────────
           _sectionTitle(context, '24-Hour Glucose Trace'),
           const SizedBox(height: 12),
           Container(
@@ -1448,7 +1538,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
           ),
 
-          // ── 2. Device Info ────────────────────────────────
           const SizedBox(height: 36),
           _sectionTitle(context, 'CGM Device Info'),
           const SizedBox(height: 12),
@@ -1481,7 +1570,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
           ),
 
-          // ── 3. Recent Readings ────────────────────────────
           const SizedBox(height: 36),
           _sectionTitle(context, 'Recent Readings (Last 12)'),
           const SizedBox(height: 12),
@@ -1699,87 +1787,139 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 12),
           Container(
             decoration: _cardDecoration(context),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: insulinLog.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-              itemBuilder: (context, i) =>
-                  _insulinLogTile(insulinLog[i], context),
-            ),
+            child: insulinLog.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: Text(
+                        'No insulin doses recorded',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: insulinLog.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                    itemBuilder: (context, i) =>
+                        _insulinLogTile(insulinLog[i], context),
+                  ),
           ),
           const SizedBox(height: 36),
           _sectionTitle(context, 'Active Insulin on Board (IOB)'),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: _cardDecoration(context),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          _buildIobCard(context),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIobCard(BuildContext context) {
+    final colors = context.colors;
+    final iob = _latestIob;
+
+    // Pull values from insulin_on_board table
+    final totalIob = iob?['total_iob_units'];
+    final iobDisplay = totalIob != null
+        ? '${(totalIob as num).toStringAsFixed(1)} U'
+        : '—';
+    final dia = iob?['dia_minutes'];
+    final diaDisplay = dia != null
+        ? '${((dia as num) / 60).toStringAsFixed(0)}h'
+        : '—';
+    final expiresAt = iob?['expires_at'] as String?;
+    String expiryDisplay = '—';
+    if (expiresAt != null) {
+      final dt = DateTime.tryParse(expiresAt)?.toLocal();
+      if (dt != null) {
+        final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
+        final m = dt.minute.toString().padLeft(2, '0');
+        final period = dt.hour < 12 ? 'AM' : 'PM';
+        expiryDisplay = '$h:$m $period';
+      }
+    }
+    final decayModel = iob?['decay_model'] as String? ?? '—';
+    final doseCount = iob?['contributing_dose_count'];
+    final doseCountDisplay = doseCount != null
+        ? '${(doseCount as num).toInt()} recent doses'
+        : '—';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                iobDisplay,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF5B8CF5),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '1.4 U',
+                    Text(
+                      'Insulin on Board',
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF5B8CF5),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: colors.textPrimary,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Insulin on Board',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'Estimated from last 3h doses',
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'DIA: 4h',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF5B8CF5),
-                        ),
+                    Text(
+                      'Based on $doseCountDisplay',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'IOB decays to 0 around 2:30 PM. AID will account for active insulin before issuing next auto-bolus.',
-                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
+              if (diaDisplay != '—')
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'DIA: $diaDisplay',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF5B8CF5),
+                    ),
+                  ),
                 ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
+          if (expiresAt != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'IOB decays to 0 around $expiryDisplay. Model: $decayModel. AID will account for active insulin before issuing next auto-bolus.',
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Text(
+              'No active IOB data available.',
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+            ),
+          ],
         ],
       ),
     );
