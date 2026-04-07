@@ -1,5 +1,4 @@
-/* lib\features\guardian\screens\guardian_patient_model.dart
- */// Shared model used across all guardian screens
+/// Shared model used across all guardian screens
 
 class GuardianPatient {
   final String id;
@@ -42,8 +41,11 @@ class GuardianPatient {
   }
 
   String get overallStatus {
-    if (glucoseValue < 54 || glucoseValue > 300) return 'emergency';
+    // Severe hypo (<54) or severe hyper (>250) - Emergency
+    if (glucoseValue < 54 || glucoseValue > 250) return 'emergency';
+    // Mild hypo (54-69) or mild hyper (181-250) - Needs attention
     if (glucoseValue < 70 || glucoseValue > 180) return 'attention';
+    // In range (70-180) - Good
     return 'good';
   }
 }

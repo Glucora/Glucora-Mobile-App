@@ -1,4 +1,4 @@
-/*\lib\features\guardian\screens\guardian_home_screen.dart */
+// lib\features\guardian\screens\guardian_home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'guardian_patient_model.dart';
@@ -20,7 +20,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String? _filterStatus;
-
   List<GuardianPatient> _allPatients = [];
   bool _isLoading = true;
 
@@ -44,7 +43,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           .eq('status', 'accepted');
 
       final connections = connectionsResp as List;
-
       if (connections.isEmpty) {
         if (!mounted) return;
         setState(() {
@@ -55,7 +53,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       }
 
       // Step 2: get patient_profile bigint ids from user uuids
-      // needed because glucose_readings and insulin_doses still use patient_profile.id
       final patientUserIds = connections
           .map((r) => r['patient_id'] as String)
           .toList();
@@ -93,10 +90,38 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           .inFilter('patient_id', patientProfileIds)
           .gte('delivered_at', startOfDay);
 
-      // Group by patient_profile bigint id
+      // Step 5: fetch devices for all patients using their user uuids
+      // devices.patient_id is uuid → users(id)
+      final devicesResp = await _supabase
+          .from('devices')
+          .select('patient_id, device_type, is_active')
+          .inFilter('patient_id', patientUserIds);
+
+      // Build device status map: uuid -> { sensorConnected, pumpActive }
+      final Map<String, Map<String, bool>> deviceStatusByUuid = {};
+      for (final d in devicesResp as List) {
+        final uuid = d['patient_id'] as String;
+        final type = (d['device_type'] as String? ?? '').toLowerCase();
+        final active = d['is_active'] as bool? ?? false;
+        deviceStatusByUuid.putIfAbsent(
+          uuid,
+          () => {'sensor': false, 'pump': false},
+        );
+        if (type.contains('cgm') || type.contains('sensor')) {
+          // only mark connected if currently active
+          if (active) deviceStatusByUuid[uuid]!['sensor'] = true;
+        }
+        if (type.contains('pump')) {
+          if (active) deviceStatusByUuid[uuid]!['pump'] = true;
+        }
+      }
+
+      // Group readings and doses by patient_profile bigint id
       final Map<int, List<dynamic>> readingsByPatient = {};
       for (final r in readingsResp as List) {
-        readingsByPatient.putIfAbsent(r['patient_id'] as int, () => []).add(r);
+        readingsByPatient
+            .putIfAbsent(r['patient_id'] as int, () => [])
+            .add(r);
       }
 
       final Map<int, List<dynamic>> dosesByPatient = {};
@@ -134,6 +159,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               doses.isNotEmpty &&
               doses.every((d) => d['delivery_method'] == 'Pump');
 
+          // Real device status from devices table, defaults to false if not found
+          final deviceStatus = deviceStatusByUuid[patientUuid];
+          final sensorConnected = deviceStatus?['sensor'] ?? false;
+          final pumpActive = deviceStatus?['pump'] ?? false;
+
           return GuardianPatient(
             id: patientUuid,
             patientId: patientUuid,
@@ -142,8 +172,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             relationship: rel,
             glucoseValue: glucose,
             glucoseTrend: trend,
-            sensorConnected: true,
-            pumpActive: true,
+            sensorConnected: sensorConnected,
+            pumpActive: pumpActive,
             dosesToday: doses.length,
             allDosesAutomatic: allAutomatic,
             lastSeenTime: lastSeen,
@@ -184,7 +214,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   int get _emergencyCount =>
       _allPatients.where((p) => p.overallStatus == 'emergency').length;
-
   int get _attentionCount =>
       _allPatients.where((p) => p.overallStatus == 'attention').length;
 
@@ -273,14 +302,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-
     if (_isLoading) {
       return Scaffold(
         backgroundColor: colors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-
     final list = _filtered;
     return Scaffold(
       backgroundColor: colors.background,
@@ -318,10 +345,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           ),
                   ),
                 ),
-
-                /*      if (_emergencyCount > 0 || _attentionCount > 0)
-                  SliverToBoxAdapter(child: _nudgeBar(context)),
- */
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -421,7 +444,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     ),
                   ),
                 ),
-
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -447,7 +469,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     ),
                   ),
                 ),
-
                 if (list.isEmpty)
                   SliverFillRemaining(
                     child: Center(
@@ -486,7 +507,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                       ),
                     ),
                   ),
-
                 if (list.isNotEmpty)
                   isLandscape
                       ? SliverPadding(
@@ -612,18 +632,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         .where((p) => p.overallStatus == 'attention')
         .map((p) => p.name)
         .toList();
-
     final bool isUrgent = urgentNames.isNotEmpty;
     final names = isUrgent ? urgentNames : attnNames;
     final color = isUrgent ? colors.error : colors.accent;
     final bg = isUrgent
         ? colors.error.withValues(alpha: 0.1)
         : colors.accent.withValues(alpha: 0.1);
-
     final message = isUrgent
         ? 'It might be a good time to check on ${names.join(' and ')}'
         : "${names.join(' and ')}'s sugar is slightly off — nothing urgent";
-
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -656,7 +673,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     final sColor = statusColor(p.overallStatus, colors);
     final sBg = statusBg(p.overallStatus, colors);
     final gColor = glucoseColor(p, colors);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -739,7 +755,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ],
             ),
           ),
-
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -814,7 +829,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ],
             ),
           ),
-
           if (!p.sensorConnected || !p.pumpActive)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -837,7 +851,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ],
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
             child: Row(
