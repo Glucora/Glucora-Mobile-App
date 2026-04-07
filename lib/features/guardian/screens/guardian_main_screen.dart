@@ -625,13 +625,28 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PatientNavigation(),
-                    ),
-                  );
+                onPressed: () async {
+                  final supabase = Supabase.instance.client;
+                  final userId = supabase.auth.currentUser?.id;
+                  if (userId == null) return;
+
+                  try {
+                    await supabase
+                        .from('users')
+                        .update({'role': 'patient'})
+                        .eq('id', userId);
+
+                    if (!mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const PatientNavigation()),
+                      (route) => false,
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to switch: $e'), backgroundColor: Colors.red),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primary,
