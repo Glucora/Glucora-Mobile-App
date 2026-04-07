@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'care_plan_editor_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/shared/location_view.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -111,8 +112,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         .where((d) => d['dose_type'] == 'Basal')
         .toList();
     if (basalDoses.isEmpty) return '—';
-    basalDoses.sort((a, b) => DateTime.parse(b['delivered_at'])
-        .compareTo(DateTime.parse(a['delivered_at'])));
+    basalDoses.sort(
+      (a, b) => DateTime.parse(
+        b['delivered_at'],
+      ).compareTo(DateTime.parse(a['delivered_at'])),
+    );
     final units = (basalDoses.first['units'] as num).toDouble();
     return '${units.toStringAsFixed(2)} U/h';
   }
@@ -276,8 +280,39 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           onPressed: () {},
           tooltip: 'Alerts',
         ),
+        IconButton(
+          icon: const Icon(Icons.location_on_outlined),
+          onPressed: () => _openLocationView(context),
+          tooltip: 'Location',
+        ),
         IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
       ],
+    );
+  }
+
+  void _openLocationView(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: context.colors.background,
+          appBar: AppBar(
+            backgroundColor: context.colors.primaryDark,
+            foregroundColor: Colors.white,
+            title: Text('${widget.patientName} — Location'),
+          ),
+          body: OrientationBuilder(
+            builder: (ctx, orientation) => LocationView(
+              patient: LocationPatientInfo(
+                patientUserId: _patientProfile!['user_id'] as String,
+                fullName: widget.patientName,
+              ),
+              isLandscape: orientation == Orientation.landscape,
+              userRole: 'doctor',
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -285,7 +320,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     final colors = context.colors;
     // Age: prefer users.age, fallback to patient_profile.age
     final usersMap = _patientProfile?['users'] as Map<String, dynamic>?;
-    final age = (usersMap?['age'] ?? _patientProfile?['age'])?.toString() ?? '—';
+    final age =
+        (usersMap?['age'] ?? _patientProfile?['age'])?.toString() ?? '—';
     final gender = _patientProfile?['gender'] ?? '—';
     final name = widget.patientName;
     final initials = name
@@ -592,7 +628,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-              content: const Text(
+                              content: const Text(
                                 'Failed to remove patient. Please try again.',
                               ),
                               backgroundColor: context.colors.error,
@@ -1073,7 +1109,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         ? '${(predictedValue as num).toStringAsFixed(0)} mg/dL'
         : '—';
     final horizon = _latestPrediction?['horizon_minutes'];
-    final horizonDisplay = horizon != null ? '${(horizon as num).toInt()} min' : '—';
+    final horizonDisplay = horizon != null
+        ? '${(horizon as num).toInt()} min'
+        : '—';
     final riskLevel = _latestPrediction?['risk_level'] as String? ?? '—';
     final modelVersion = _latestPrediction?['model_version'] as String? ?? '—';
 
@@ -1086,7 +1124,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     final aidEnabled = _carePlan?['aid_mode_enabled'] as bool? ?? false;
 
     // Latest glucose trend from readings
-    final latestReading = _glucoseReadings.isNotEmpty ? _glucoseReadings.last : null;
+    final latestReading = _glucoseReadings.isNotEmpty
+        ? _glucoseReadings.last
+        : null;
     final trend = latestReading?['trend'] as String? ?? 'stable';
     final trendDisplay = trend == 'up'
         ? '↗ Rising slowly'
@@ -1376,8 +1416,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       final dt = DateTime.tryParse(nextAppt);
       if (dt != null) {
         const months = [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ];
         apptDisplay = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
       }
@@ -1835,7 +1885,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     if (expiresAt != null) {
       final dt = DateTime.tryParse(expiresAt)?.toLocal();
       if (dt != null) {
-        final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
+        final h = dt.hour > 12
+            ? dt.hour - 12
+            : dt.hour == 0
+            ? 12
+            : dt.hour;
         final m = dt.minute.toString().padLeft(2, '0');
         final period = dt.hour < 12 ? 'AM' : 'PM';
         expiryDisplay = '$h:$m $period';
