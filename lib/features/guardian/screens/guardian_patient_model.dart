@@ -1,6 +1,7 @@
 /// Shared model used across all guardian screens
 
 class GuardianPatient {
+  final int? profileId;
   final String id;
   final String patientId;
   final String name;
@@ -16,6 +17,7 @@ class GuardianPatient {
   final String phoneNumber;
 
   const GuardianPatient({
+    this.profileId,
     required this.id,
     required this.patientId,
     required this.name,
@@ -32,8 +34,8 @@ class GuardianPatient {
   });
 
   String get glucoseLabel {
-    if (glucoseValue < 54)   return 'Very low';
-    if (glucoseValue < 70)   return 'Too low';
+    if (glucoseValue < 54) return 'Very low';
+    if (glucoseValue < 70) return 'Too low';
     if (glucoseValue <= 180) return 'In range';
     if (glucoseValue <= 250) return 'A bit high';
     if (glucoseValue <= 300) return 'Too high';

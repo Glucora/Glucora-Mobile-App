@@ -332,7 +332,7 @@ class _OverviewTabState extends State<_OverviewTab> {
       final rows = await Supabase.instance.client
           .from('insulin_doses')
           .select('units')
-          .eq('patient_id', patient.patientId)
+          .eq('patient_id', widget.patient.profileId!)
           .gte('delivered_at', startOfDay)
           .lte('delivered_at', endOfDay);
 
@@ -376,7 +376,7 @@ class _OverviewTabState extends State<_OverviewTab> {
       final rows = await Supabase.instance.client
           .from('glucose_readings')
           .select('value_mg_dl, recorded_at')
-          .eq('patient_id', patient.patientId)
+          .eq('patient_id', widget.patient.profileId!)
           .gte('recorded_at', startOfDay.toIso8601String())
           .lte('recorded_at', endOfDay.toIso8601String())
           .order('recorded_at', ascending: false); // Get most recent first
@@ -1093,7 +1093,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
             )
           )
         ''')
-          .eq('patient_id', widget.patient.patientId)
+          .eq('patient_id', widget.patient.profileId!)
           .order('updated_at', ascending: false)
           .limit(1);
 

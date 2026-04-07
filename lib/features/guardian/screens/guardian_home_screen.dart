@@ -119,9 +119,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       // Group readings and doses by patient_profile bigint id
       final Map<int, List<dynamic>> readingsByPatient = {};
       for (final r in readingsResp as List) {
-        readingsByPatient
-            .putIfAbsent(r['patient_id'] as int, () => [])
-            .add(r);
+        readingsByPatient.putIfAbsent(r['patient_id'] as int, () => []).add(r);
       }
 
       final Map<int, List<dynamic>> dosesByPatient = {};
@@ -165,6 +163,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           final pumpActive = deviceStatus?['pump'] ?? false;
 
           return GuardianPatient(
+            profileId: profileId,
             id: patientUuid,
             patientId: patientUuid,
             name: name,
