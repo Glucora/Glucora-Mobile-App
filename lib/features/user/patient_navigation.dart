@@ -10,6 +10,7 @@ import 'package:glucora_ai_companion/features/patient/screens/weekly_report_scre
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 
 class _ConnectionsScreen extends StatefulWidget {
   const _ConnectionsScreen();
@@ -1920,6 +1921,7 @@ class _ProfileTabState extends State<_ProfileTab> {
               ],
             ),
             const SizedBox(height: 12),
+            // My Connections & Sharing button
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -1991,6 +1993,80 @@ class _ProfileTabState extends State<_ProfileTab> {
               ),
             ),
 
+            // ✅ CORRECT: New button goes HERE (outside the previous button)
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ConnectionRequestsScreen(role: 'patient'),
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.person_add_alt_1_rounded,
+                        color: colors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Connect with Care Team',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Find and connect with doctors & guardians',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: colors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             SwitchListTile(
               title: Text(
