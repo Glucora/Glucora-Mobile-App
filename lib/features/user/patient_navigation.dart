@@ -9,6 +9,657 @@ import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dar
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
+import 'package:flutter/services.dart';
+
+class _ConnectionsScreen extends StatefulWidget {
+  const _ConnectionsScreen();
+
+  @override
+  State<_ConnectionsScreen> createState() => _ConnectionsScreenState();
+}
+
+class _ConnectionsScreenState extends State<_ConnectionsScreen> {
+  final supabase = Supabase.instance.client;
+  bool _isLoading = true;
+  bool _globalLocationSharing = true;
+  int? _patientLocationRowId;
+  final Map<String, bool> _sharingMap = {};
+  List<Map<String, dynamic>> _guardians = [];
+  List<Map<String, dynamic>> _doctors = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConnections();
+  }
+
+  Future<void> _loadConnections() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final userId = user.id; // Store UUID once
+
+      // Use userId directly - no need to fetch patient_profile first
+      var locationRow = await supabase
+          .from('patient_locations')
+          .select('id, sharing_enabled')
+          .eq('patient_id', userId)
+          .maybeSingle();
+
+      locationRow ??= await supabase
+          .from('patient_locations')
+          .insert({'patient_id': userId, 'sharing_enabled': true})
+          .select('id, sharing_enabled')
+          .single();
+
+      _patientLocationRowId = locationRow['id'] as int;
+      _globalLocationSharing = locationRow['sharing_enabled'] ?? true;
+
+      final guardianRows = await supabase
+          .from('guardian_patient_connections')
+          .select(
+            'id, guardian_id, relationship, is_sharing, users!guardian_id(full_name, email, phone_no)',
+          )
+          .eq('patient_id', userId)
+          .eq('status', 'accepted');
+
+      final doctorRows = await supabase
+          .from('doctor_patient_connections')
+          .select(
+            'id, doctor_id, is_sharing, users!doctor_id(full_name, email, phone_no)',
+          )
+          .eq('patient_id', userId)
+          .eq('status', 'accepted');
+
+      final List<Map<String, dynamic>> guardians = [];
+      for (final row in (guardianRows as List)) {
+        final userInfo = row['users'] as Map<String, dynamic>?;
+        final connectionId = row['id'].toString();
+        guardians.add({
+          'connectionId': connectionId,
+          'name': userInfo?['full_name'] ?? 'Unknown',
+          'email': userInfo?['email'] ?? '',
+          'phone': userInfo?['phone_no'] ?? '',
+          'relationship': row['relationship'] ?? '',
+          'role': 'Guardian',
+        });
+        _sharingMap[connectionId] = row['is_sharing'] ?? true;
+      }
+
+      final List<Map<String, dynamic>> doctors = [];
+      for (final row in (doctorRows as List)) {
+        final userInfo = row['users'] as Map<String, dynamic>?;
+        final connectionId = row['id'].toString();
+        doctors.add({
+          'connectionId': connectionId,
+          'name': userInfo?['full_name'] ?? 'Unknown',
+          'email': userInfo?['email'] ?? '',
+          'phone': userInfo?['phone_no'] ?? '',
+          'role': 'Doctor',
+        });
+        _sharingMap[connectionId] = row['is_sharing'] ?? true;
+      }
+
+      setState(() {
+        _guardians = guardians;
+        _doctors = doctors;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading connections: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _onGlobalToggled(bool value) async {
+    setState(() => _globalLocationSharing = value);
+    try {
+      await supabase
+          .from('patient_locations')
+          .update({'sharing_enabled': value})
+          .eq('id', _patientLocationRowId!);
+    } catch (e) {
+      setState(() => _globalLocationSharing = !value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _onPersonToggled(Map<String, dynamic> person, bool value) async {
+    final connectionId = person['connectionId'] as String;
+    final table = person['role'] == 'Guardian'
+        ? 'guardian_patient_connections'
+        : 'doctor_patient_connections';
+
+    setState(() => _sharingMap[connectionId] = value);
+
+    try {
+      await supabase
+          .from(table)
+          .update({'is_sharing': value})
+          .eq('id', int.parse(connectionId));
+    } catch (e) {
+      setState(() => _sharingMap[connectionId] = !value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeConnection(Map<String, dynamic> person) async {
+    final connectionId = int.parse(person['connectionId'] as String);
+    final table = person['role'] == 'Guardian'
+        ? 'guardian_patient_connections'
+        : 'doctor_patient_connections';
+
+    try {
+      await supabase.from(table).delete().eq('id', connectionId);
+      setState(() {
+        if (person['role'] == 'Guardian') {
+          _guardians.removeWhere(
+            (g) => g['connectionId'] == person['connectionId'],
+          );
+        } else {
+          _doctors.removeWhere(
+            (d) => d['connectionId'] == person['connectionId'],
+          );
+        }
+        _sharingMap.remove(person['connectionId'] as String);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${person['name']} removed.'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to remove: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _confirmRemove(Map<String, dynamic> person) {
+    final colors = context.colors;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Remove ${person['role']}'),
+        content: Text(
+          'Remove ${person['name']}? They will no longer see your data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _removeConnection(person);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Connections',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadConnections,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                children: [
+                  _buildGlobalToggle(colors),
+                  const SizedBox(height: 32),
+                  _buildSection(
+                    colors: colors,
+                    title: 'Guardians',
+                    icon: Icons.shield_outlined,
+                    people: _guardians,
+                    emptyMessage: 'No guardians connected yet.',
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSection(
+                    colors: colors,
+                    title: 'Doctors',
+                    icon: Icons.medical_services_outlined,
+                    people: _doctors,
+                    emptyMessage: 'No doctors connected yet.',
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildGlobalToggle(dynamic colors) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _globalLocationSharing
+            ? colors.primary.withValues(alpha: 0.07)
+            : colors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _globalLocationSharing
+              ? colors.primary.withValues(alpha: 0.25)
+              : colors.error.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _globalLocationSharing
+                      ? colors.primary.withValues(alpha: 0.12)
+                      : colors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _globalLocationSharing
+                      ? Icons.location_on_rounded
+                      : Icons.location_off_rounded,
+                  color: _globalLocationSharing ? colors.primary : colors.error,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Location Sharing',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _globalLocationSharing
+                          ? 'Your location is visible to connections'
+                          : 'Hidden from everyone',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _globalLocationSharing,
+                onChanged: _onGlobalToggled,
+                activeColor: colors.primary,
+              ),
+            ],
+          ),
+          if (!_globalLocationSharing) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: colors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: colors.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Individual toggles are disabled while global sharing is off.',
+                      style: TextStyle(fontSize: 12, color: colors.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required dynamic colors,
+    required String title,
+    required IconData icon,
+    required List<Map<String, dynamic>> people,
+    required String emptyMessage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: colors.primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${people.length}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (people.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colors.textSecondary.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  size: 32,
+                  color: colors.textSecondary.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  emptyMessage,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          )
+        else
+          ...people.map((p) => _buildPersonCard(colors, p)),
+      ],
+    );
+  }
+
+  Widget _buildPersonCard(dynamic colors, Map<String, dynamic> person) {
+    final connectionId = person['connectionId'] as String;
+    final isSharing = _sharingMap[connectionId] ?? true;
+    final name = person['name'] as String;
+    final initials = name
+        .trim()
+        .split(' ')
+        .where((e) => e.isNotEmpty)
+        .map((e) => e[0])
+        .take(2)
+        .join();
+    final effectivelySharing = isSharing && _globalLocationSharing;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Top row: avatar, name, remove button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colors.primary.withValues(alpha: 0.12),
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        person['role'] == 'Guardian' &&
+                                (person['relationship'] as String).isNotEmpty
+                            ? '${person['role']} · ${person['relationship']}'
+                            : person['role'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.person_remove_outlined,
+                    color: colors.error,
+                    size: 20,
+                  ),
+                  onPressed: () => _confirmRemove(person),
+                ),
+              ],
+            ),
+          ),
+
+          // Contact info
+          if ((person['phone'] as String).isNotEmpty ||
+              (person['email'] as String).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                children: [
+                  if ((person['phone'] as String).isNotEmpty)
+                    _contactRow(
+                      colors,
+                      Icons.phone_outlined,
+                      person['phone'] as String,
+                    ),
+                  if ((person['email'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    _contactRow(
+                      colors,
+                      Icons.email_outlined,
+                      person['email'] as String,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+          // Location sharing toggle row
+          Container(
+            decoration: BoxDecoration(
+              color: effectivelySharing
+                  ? colors.primary.withValues(alpha: 0.05)
+                  : colors.textSecondary.withValues(alpha: 0.05),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  effectivelySharing
+                      ? Icons.location_on_rounded
+                      : Icons.location_off_rounded,
+                  size: 16,
+                  color: effectivelySharing
+                      ? colors.primary
+                      : colors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    effectivelySharing
+                        ? 'Seeing your location'
+                        : !_globalLocationSharing
+                        ? 'Blocked — global sharing is off'
+                        : 'Location hidden from this person',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: effectivelySharing
+                          ? colors.primary
+                          : colors.textSecondary,
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: isSharing,
+                  onChanged: _globalLocationSharing
+                      ? (val) => _onPersonToggled(person, val)
+                      : null,
+                  activeColor: colors.primary,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactRow(dynamic colors, IconData icon, String text) {
+    return GestureDetector(
+      onLongPress: () {
+        Clipboard.setData(ClipboardData(text: text));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Copied: $text'),
+            duration: const Duration(seconds: 1),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: colors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 13, color: colors.textPrimary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -176,16 +827,16 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   late TextEditingController _emailController; // Added
   late TextEditingController _phoneController; // Added
 
-@override
-void initState() {
-  super.initState();
-  _nameController = TextEditingController(text: widget.name);
-  _ageController = TextEditingController(text: widget.age.toString());
-  _heightController = TextEditingController(text: widget.height);
-  _weightController = TextEditingController(text: widget.weight);
-  _emailController = TextEditingController(text: widget.email);
-  _phoneController = TextEditingController(text: widget.phone);}
-
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.name);
+    _ageController = TextEditingController(text: widget.age.toString());
+    _heightController = TextEditingController(text: widget.height);
+    _weightController = TextEditingController(text: widget.weight);
+    _emailController = TextEditingController(text: widget.email);
+    _phoneController = TextEditingController(text: widget.phone);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +874,7 @@ void initState() {
           ),
         ],
       ),
-       body: Padding(
+      body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -231,134 +882,159 @@ void initState() {
             const SizedBox(height: 16),
             // ADD EMAIL FIELD HERE
             _buildField(
-              context, 
-              'Email', 
-              _emailController, 
+              context,
+              'Email',
+              _emailController,
               Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
             ),
-              const SizedBox(height: 16),
-              _buildField(context, 'Height', _heightController, Icons.height, 
-              keyboardType: TextInputType.number, suffix: 'cm'),
-              const SizedBox(height: 16),
-              _buildField(context, 'Weight', _weightController, Icons.monitor_weight_outlined, 
-              keyboardType: TextInputType.number, suffix: 'kg'),
-              const SizedBox(height: 16),
-             _buildField(context, 'Age', _ageController, Icons.cake_outlined, 
-              keyboardType: TextInputType.number, suffix: 'years'),
-              const SizedBox(height: 16),
-              _buildField(context, 'Phone Number', _phoneController, Icons.phone_outlined, 
-              keyboardType: TextInputType.phone),
+            const SizedBox(height: 16),
+            _buildField(
+              context,
+              'Height',
+              _heightController,
+              Icons.height,
+              keyboardType: TextInputType.number,
+              suffix: 'cm',
+            ),
+            const SizedBox(height: 16),
+            _buildField(
+              context,
+              'Weight',
+              _weightController,
+              Icons.monitor_weight_outlined,
+              keyboardType: TextInputType.number,
+              suffix: 'kg',
+            ),
+            const SizedBox(height: 16),
+            _buildField(
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+              suffix: 'years',
+            ),
+            const SizedBox(height: 16),
+            _buildField(
+              context,
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       ),
     );
   }
 
-
-Widget _buildField(
-  BuildContext context,
-  String label, // This should only be for the Label/Hint
-  TextEditingController controller,
-  IconData icon, {
-  TextInputType keyboardType = TextInputType.text,
-  String? suffix,
-}) {
-  final colors = context.colors;
-  return TextField(
-    controller: controller, // This holds the actual data (phone value)
-    keyboardType: keyboardType,
-    decoration: InputDecoration(
-      labelText: label, // 👈 Make sure 'Phone Number' is only here
-      suffixText: suffix,
-      prefixIcon: Icon(icon, size: 20, color: colors.primary),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      filled: true,
-      fillColor: const Color(0xFFF5F5F5),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    ),
-  );
-}
-
-
-Future<void> _save() async {
-  final supabase = Supabase.instance.client;
-  final user = supabase.auth.currentUser;
-  if (user == null) return;
-
-  try {
-    final newEmail = _emailController.text.trim();
-    final newName = _nameController.text.trim();
-    final newPhone = _phoneController.text.trim(); // 1. Define this variable
-
-    // 2. Update Authentication (Dashboard)
-    await supabase.auth.updateUser(
-      UserAttributes(
-        email: newEmail != user.email ? newEmail : null,
-        // This updates the 'raw_user_meta_data' in the Auth tab
-        data: {
-          'full_name': newName,
-          'phone': newPhone, 
-        },
+  Widget _buildField(
+    BuildContext context,
+    String label, // This should only be for the Label/Hint
+    TextEditingController controller,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+    String? suffix,
+  }) {
+    final colors = context.colors;
+    return TextField(
+      controller: controller, // This holds the actual data (phone value)
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label, // 👈 Make sure 'Phone Number' is only here
+        suffixText: suffix,
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF5F5F5),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
-    // 4. Parse and Update Patient Profile
-    // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
-    final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-    final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-    final ageValue = int.tryParse(_ageController.text) ?? 0;
-    // 3. Update the Users table
-    await supabase
-        .from('users')
-        .update({
-          'full_name': newName,
+  }
+
+  Future<void> _save() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final newEmail = _emailController.text.trim();
+      final newName = _nameController.text.trim();
+      final newPhone = _phoneController.text.trim(); // 1. Define this variable
+
+      // 2. Update Authentication (Dashboard)
+      await supabase.auth.updateUser(
+        UserAttributes(
+          email: newEmail != user.email ? newEmail : null,
+          // This updates the 'raw_user_meta_data' in the Auth tab
+          data: {'full_name': newName, 'phone': newPhone},
+        ),
+      );
+      // 4. Parse and Update Patient Profile
+      // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
+      final weightValue =
+          double.tryParse(
+            _weightController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+          ) ??
+          0;
+      final heightValue =
+          double.tryParse(
+            _heightController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+          ) ??
+          0;
+      final ageValue = int.tryParse(_ageController.text) ?? 0;
+      // 3. Update the Users table
+      await supabase
+          .from('users')
+          .update({
+            'full_name': newName,
+            'email': newEmail,
+            'phone_no': newPhone,
+            'age': ageValue,
+          })
+          .eq('id', user.id);
+
+      await supabase
+          .from('patient_profile')
+          .update({'weight_kg': weightValue, 'height_cm': heightValue})
+          .eq('user_id', user.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Pass the new data back to the Profile Tab
+        Navigator.pop(context, {
+          'name': newName,
           'email': newEmail,
-          'phone_no': newPhone,
+          'phone': newPhone, // Return the phone number too
           'age': ageValue,
-        })
-        .eq('id', user.id);
-
-    await supabase
-        .from('patient_profile')
-        .update({
-          'weight_kg': weightValue,
-          'height_cm': heightValue,
-        })
-        .eq('user_id', user.id);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      // Pass the new data back to the Profile Tab
-      Navigator.pop(context, {
-        'name': newName,
-        'email': newEmail,
-        'phone': newPhone, // Return the phone number too
-        'age': ageValue,
-        'height': "${heightValue.toInt()} cm",
-        'weight': "${weightValue.toInt()} kgs",
-      });
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating profile: $e'), 
-          backgroundColor: Colors.red,
-        ),
-      );
+          'height': "${heightValue.toInt()} cm",
+          'weight': "${weightValue.toInt()} kgs",
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
-
 
   @override
   void dispose() {
@@ -874,79 +1550,77 @@ class _ProfileTab extends StatefulWidget {
   State<_ProfileTab> createState() => _ProfileTabState();
 }
 
-
-
 class _ProfileTabState extends State<_ProfileTab> {
-    String _name = "";
-    int _age = 0; 
-    String _height = "";
-    String _phone = ""; // Add this
-    String _email = ""; // Add this
-    String _weight = "";
+  String _name = "";
+  int _age = 0;
+  String _height = "";
+  String _phone = "";
+  String _email = "";
+  String _weight = "";
 
-    bool _isLoading = true;
-    final supabase = Supabase.instance.client;
+  bool _isLoading = true;
+  final supabase = Supabase.instance.client;
 
-    @override
-    void initState() {
-      super.initState();
-      _loadProfile();
-    }
-
-Future<void> _loadProfile() async {
-  try {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    // 🔹 Try to get user
-    var userData = await supabase
-      .from('users')
-      .select()
-      .eq('id', user.id)
-      .maybeSingle();
-
-    // 👉 If user doesn't exist → create it
-    userData ??= await supabase.from('users').insert({
-        'id': user.id,
-        'email': user.email,
-        'full_name': 'New User',
-      }).select().single();
-
-    // 🔹 Try to get patient profile
-  var patientData = await supabase
-      .from('patient_profile')
-      .select()
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    // 👉 If patient profile doesn't exist → create it
-    patientData ??= await supabase.from('patient_profile').insert({
-        'user_id': user.id,
-        'height_cm': 0,
-        'weight_kg': 0,
-      }).select().single();
-    // ignore: avoid_print
-    print("USER DATA: $userData");
-    // ignore: avoid_print
-    print("PATIENT DATA: $patientData");
-    // ✅ Set UI
-    setState(() {
-      _name = userData?['full_name'] ?? "No Name";
-      _phone = userData?['phone_no'] ?? ""; // Add this
-      _email = userData?['email'] ?? ""; // Add this
-      _age = (userData?['age'] ?? 0).toInt();
-      // Keep only the numbers in the variables for internal logic
-      _height = "${patientData?['height_cm'] ?? 0} cm";
-      _weight = "${patientData?['weight_kg'] ?? 0} kg";
-      
-      _isLoading = false;
-    });
-  } catch (e) {
-    // ignore: avoid_print
-    print("Error loading profile: $e");
-    setState(() => _isLoading = false);
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
   }
-}
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      // 🔹 Try to get user
+      var userData = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      // 👉 If user doesn't exist → create it
+      userData ??= await supabase
+          .from('users')
+          .insert({'id': user.id, 'email': user.email, 'full_name': 'New User'})
+          .select()
+          .single();
+
+      // 🔹 Try to get patient profile
+      var patientData = await supabase
+          .from('patient_profile')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      // 👉 If patient profile doesn't exist → create it
+      patientData ??= await supabase
+          .from('patient_profile')
+          .insert({'user_id': user.id, 'height_cm': 0, 'weight_kg': 0})
+          .select()
+          .single();
+      // ignore: avoid_print
+      print("USER DATA: $userData");
+      // ignore: avoid_print
+      print("PATIENT DATA: $patientData");
+      // ✅ Set UI
+      setState(() {
+        _name = userData?['full_name'] ?? "No Name";
+        _phone = userData?['phone_no'] ?? ""; // Add this
+        _email = userData?['email'] ?? ""; // Add this
+        _age = (userData?['age'] ?? 0).toInt();
+        // Keep only the numbers in the variables for internal logic
+        _height = "${patientData?['height_cm'] ?? 0} cm";
+        _weight = "${patientData?['weight_kg'] ?? 0} kg";
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print("Error loading profile: $e");
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _showLogoutDialog(BuildContext context) {
     final colors = context.colors;
@@ -999,7 +1673,7 @@ Future<void> _loadProfile() async {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
-    
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1245,6 +1919,77 @@ Future<void> _loadProfile() async {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const _ConnectionsScreen()),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: colors.textSecondary.withValues(alpha: 0.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.people_outline_rounded,
+                        color: colors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'My Connections & Sharing',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Doctors, guardians & location sharing',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: colors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
             const SizedBox(height: 24),
             SwitchListTile(
@@ -1373,33 +2118,32 @@ Future<void> _loadProfile() async {
     );
   }
 
-Future<void> _editProfile() async {
-  // 1. Pass all variables to the constructor
-  final result = await Navigator.push<Map<String, dynamic>>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => _EditProfileScreen(
-        name: _name,
-        age: _age,
-        email: _email,
-        phone: _phone, // Now this won't be empty in the edit screen!
-        height: _height,
-        weight: _weight,
+  Future<void> _editProfile() async {
+    // 1. Pass all variables to the constructor
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditProfileScreen(
+          name: _name,
+          age: _age,
+          email: _email,
+          phone: _phone, // Now this won't be empty in the edit screen!
+          height: _height,
+          weight: _weight,
+        ),
       ),
-    ),
-  );
+    );
 
-  // 2. If the user saved, update the local UI variables
-  if (result != null) {
-    setState(() {
-      _name = result['name'];
-      _email = result['email'];
-      _phone = result['phone'];
-      _age = result['age'];
-      _height = result['height'];
-      _weight = result['weight'];
-    });
+    // 2. If the user saved, update the local UI variables
+    if (result != null) {
+      setState(() {
+        _name = result['name'];
+        _email = result['email'];
+        _phone = result['phone'];
+        _age = result['age'];
+        _height = result['height'];
+        _weight = result['weight'];
+      });
+    }
   }
-}
-
 }

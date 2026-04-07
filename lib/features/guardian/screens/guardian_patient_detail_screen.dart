@@ -800,7 +800,9 @@ class _LocationTabState extends State<_LocationTab> {
   double? _lng;
   String _lastSeen = 'Loading...';
   bool _loading = true;
+  bool _isSharing = true;
   RealtimeChannel? _channel;
+  RealtimeChannel? _sharingChannel;
 
   @override
   void initState() {
@@ -809,7 +811,105 @@ class _LocationTabState extends State<_LocationTab> {
   }
 
   Future<void> _fetchAndListen() async {
-    // First fetch current location
+    try {
+      // FIRST: Check if patient is sharing with THIS guardian
+      final connection = await Supabase.instance.client
+          .from('guardian_patient_connections')
+          .select('is_sharing')
+          .eq('patient_id', widget.patient.patientId)
+          .eq('guardian_id', Supabase.instance.client.auth.currentUser!.id)
+          .maybeSingle();
+
+      if (connection != null && mounted) {
+        setState(() {
+          _isSharing = connection['is_sharing'] ?? true;
+        });
+      }
+
+      // ONLY fetch location if sharing is enabled
+      if (_isSharing) {
+        final data = await Supabase.instance.client
+            .from('patient_locations')
+            .select()
+            .eq('patient_id', widget.patient.patientId)
+            .single();
+
+        if (mounted) {
+          setState(() {
+            _lat = (data['latitude'] as num).toDouble();
+            _lng = (data['longitude'] as num).toDouble();
+            _lastSeen = _timeAgo(data['updated_at']);
+            _loading = false;
+          });
+        }
+
+        // Listen for updates only if sharing
+        _channel = Supabase.instance.client
+            .channel('location_${widget.patient.patientId}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'patient_locations',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'patient_id',
+                value: widget.patient.patientId,
+              ),
+              callback: (payload) {
+                if (!mounted || !_isSharing) return;
+                final row = payload.newRecord;
+                setState(() {
+                  _lat = (row['latitude'] as num).toDouble();
+                  _lng = (row['longitude'] as num).toDouble();
+                  _lastSeen = _timeAgo(row['updated_at']);
+                });
+              },
+            )
+            .subscribe();
+      } else {
+        setState(() => _loading = false);
+      }
+
+      _sharingChannel = Supabase
+          .instance
+          .client
+          .channel('sharing_${widget.patient.patientId}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'guardian_patient_connections',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'patient_id',
+              value: widget.patient.patientId,
+            ),
+            callback: (payload) {
+              if (!mounted) return;
+              final newSharing = payload.newRecord['is_sharing'] ?? true;
+              print('🔄 Sharing status changed to: $newSharing');
+
+              setState(() {
+                _isSharing = newSharing;
+                if (!newSharing) {
+                  _lat = null;
+                  _lng = null;
+                  _lastSeen = '';
+                } else {
+                  _fetchLocation();
+                }
+              });
+            },
+          )
+          .subscribe();
+      // =============================================================
+    } catch (e) {
+      print('Error in _fetchAndListen: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // ADD THIS HELPER METHOD
+  Future<void> _fetchLocation() async {
     try {
       final data = await Supabase.instance.client
           .from('patient_locations')
@@ -822,36 +922,11 @@ class _LocationTabState extends State<_LocationTab> {
           _lat = (data['latitude'] as num).toDouble();
           _lng = (data['longitude'] as num).toDouble();
           _lastSeen = _timeAgo(data['updated_at']);
-          _loading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      print('Error fetching location: $e');
     }
-
-    // Then listen for real time updates
-    _channel = Supabase.instance.client
-        .channel('location_${widget.patient.patientId}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'patient_locations',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'patient_id',
-            value: widget.patient.patientId,
-          ),
-          callback: (payload) {
-            if (!mounted) return;
-            final row = payload.newRecord;
-            setState(() {
-              _lat = (row['latitude'] as num).toDouble();
-              _lng = (row['longitude'] as num).toDouble();
-              _lastSeen = _timeAgo(row['updated_at']);
-            });
-          },
-        )
-        .subscribe();
   }
 
   String _timeAgo(String? isoString) {
@@ -873,6 +948,7 @@ class _LocationTabState extends State<_LocationTab> {
   @override
   void dispose() {
     _channel?.unsubscribe();
+    _sharingChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -882,6 +958,35 @@ class _LocationTabState extends State<_LocationTab> {
 
     if (_loading) {
       return Center(child: CircularProgressIndicator(color: colors.accent));
+    }
+    // SHOW DISABLED MESSAGE INSTEAD OF LOCATION
+    if (!_isSharing || _lat == null || _lng == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.location_off_rounded,
+              size: 48,
+              color: colors.textSecondary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              !_isSharing
+                  ? 'Location sharing is disabled'
+                  : 'Location not available',
+              style: TextStyle(color: colors.textSecondary, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              !_isSharing
+                  ? 'This person has turned off location sharing for you'
+                  : 'No location data available',
+              style: TextStyle(color: colors.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_lat == null || _lng == null) {

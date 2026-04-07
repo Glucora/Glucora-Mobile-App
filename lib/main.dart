@@ -17,6 +17,9 @@ import 'features/onboarding/screens/landing_screen.dart';
 import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,9 +32,15 @@ void main() async {
   );
 
   final appLinks = AppLinks();
+
   appLinks.uriLinkStream.listen((uri) {
     Supabase.instance.client.auth.getSessionFromUrl(uri);
   });
+
+  await Permission.notification.request();
+  if (!kIsWeb) {
+  await LocationService.initializeService();
+}
 
   runApp(const GlucoraApp());
 }
