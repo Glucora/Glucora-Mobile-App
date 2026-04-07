@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/shared/location_view.dart';
 
 class GuardianPatientDetailScreen extends StatefulWidget {
   final GuardianPatient patient;
@@ -258,7 +259,14 @@ class _GuardianPatientDetailScreenState
                     physics: const ClampingScrollPhysics(),
                     children: [
                       _OverviewTab(patient: p, isLandscape: isLandscape),
-                      _LocationTab(patient: p, isLandscape: isLandscape),
+                      LocationView(
+                        patient: LocationPatientInfo(
+                          patientUserId: p.patientId,
+                          fullName: p.name,
+                        ),
+                        isLandscape: isLandscape,
+                        userRole: 'guardian',
+                      ),
                       _DoctorPlanTab(patient: p, isLandscape: isLandscape),
                     ],
                   ),
@@ -307,11 +315,19 @@ class _OverviewTabState extends State<_OverviewTab> {
   Future<void> _fetchTotalInsulin() async {
     try {
       final today = DateTime.now().toUtc();
-      final startOfDay = DateTime.utc(today.year, today.month, today.day)
-          .toIso8601String();
+      final startOfDay = DateTime.utc(
+        today.year,
+        today.month,
+        today.day,
+      ).toIso8601String();
       final endOfDay = DateTime.utc(
-              today.year, today.month, today.day, 23, 59, 59)
-          .toIso8601String();
+        today.year,
+        today.month,
+        today.day,
+        23,
+        59,
+        59,
+      ).toIso8601String();
 
       final rows = await Supabase.instance.client
           .from('insulin_doses')
@@ -345,64 +361,76 @@ class _OverviewTabState extends State<_OverviewTab> {
   // "Now" is always derived from the live patient.glucoseValue from the model.
 
   Future<void> _fetchTodayGlucoseSlots() async {
-  try {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc();
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
+      final endOfDay = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        23,
+        59,
+        59,
+      ).toUtc();
 
-    final rows = await Supabase.instance.client
-        .from('glucose_readings')
-        .select('value_mg_dl, recorded_at')
-        .eq('patient_id', patient.patientId)
-        .gte('recorded_at', startOfDay.toIso8601String())
-        .lte('recorded_at', endOfDay.toIso8601String())
-        .order('recorded_at', ascending: false); // Get most recent first
+      final rows = await Supabase.instance.client
+          .from('glucose_readings')
+          .select('value_mg_dl, recorded_at')
+          .eq('patient_id', patient.patientId)
+          .gte('recorded_at', startOfDay.toIso8601String())
+          .lte('recorded_at', endOfDay.toIso8601String())
+          .order('recorded_at', ascending: false); // Get most recent first
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    final slots = <String, Map<String, dynamic>>{};
-    
-    // If we have readings, just take the most recent ones
-    // No time slot restrictions - just show what we have!
-    final readingsList = rows as List;
-    
-    if (readingsList.isNotEmpty) {
-      // Take up to 3 most recent readings
-      for (int i = 0; i < readingsList.length && i < 3; i++) {
-        final row = readingsList[i];
-        final value = (row['value_mg_dl'] as num?)?.toDouble();
-        if (value == null) continue;
-        
-        final recorded = DateTime.tryParse(row['recorded_at'] as String? ?? '')?.toLocal();
-        if (recorded == null) continue;
-        
-        final inRange = value >= 70 && value <= 180;
-        
-        // Use time as the key instead of fixed slots
-        final timeKey = _formatTimeKey(recorded);
-        slots[timeKey] = {'value': value, 'inRange': inRange, 'time': recorded};
+      final slots = <String, Map<String, dynamic>>{};
+
+      // If we have readings, just take the most recent ones
+      // No time slot restrictions - just show what we have!
+      final readingsList = rows as List;
+
+      if (readingsList.isNotEmpty) {
+        // Take up to 3 most recent readings
+        for (int i = 0; i < readingsList.length && i < 3; i++) {
+          final row = readingsList[i];
+          final value = (row['value_mg_dl'] as num?)?.toDouble();
+          if (value == null) continue;
+
+          final recorded = DateTime.tryParse(
+            row['recorded_at'] as String? ?? '',
+          )?.toLocal();
+          if (recorded == null) continue;
+
+          final inRange = value >= 70 && value <= 180;
+
+          // Use time as the key instead of fixed slots
+          final timeKey = _formatTimeKey(recorded);
+          slots[timeKey] = {
+            'value': value,
+            'inRange': inRange,
+            'time': recorded,
+          };
+        }
       }
+
+      setState(() {
+        _glucoseSlots = slots;
+        _glucoseSlotsLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _glucoseSlotsLoaded = true);
     }
-
-    setState(() {
-      _glucoseSlots = slots;
-      _glucoseSlotsLoaded = true;
-    });
-  } catch (_) {
-    if (mounted) setState(() => _glucoseSlotsLoaded = true);
   }
-}
 
-String _formatTimeKey(DateTime time) {
-  // Returns something like "2:30 PM"
-  final hour = time.hour;
-  final minute = time.minute;
-  final period = hour >= 12 ? 'PM' : 'AM';
-  final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-  final minuteStr = minute.toString().padLeft(2, '0');
-  return '$displayHour:$minuteStr $period';
-}
-
+  String _formatTimeKey(DateTime time) {
+    // Returns something like "2:30 PM"
+    final hour = time.hour;
+    final minute = time.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final minuteStr = minute.toString().padLeft(2, '0');
+    return '$displayHour:$minuteStr $period';
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -796,170 +824,167 @@ String _formatTimeKey(DateTime time) {
     );
   }
 
-Widget _todayCard(BuildContext context) {
-  final colors = context.colors;
-  return _card(
-    context,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _secLabel(context, 'Latest Readings'),
-        const SizedBox(height: 12),
-        _latestReadingsList(context),
-      ],
-    ),
-  );
-}
-
-Widget _latestReadingsList(BuildContext context) {
-  final colors = context.colors;
-  
-  if (!_glucoseSlotsLoaded) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
+  Widget _todayCard(BuildContext context) {
+    final colors = context.colors;
+    return _card(
+      context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _secLabel(context, 'Latest Readings'),
+          const SizedBox(height: 12),
+          _latestReadingsList(context),
+        ],
       ),
     );
   }
-  
-  // Convert slots to list and sort by time (morning -> breakfast -> midday)
-  final List<MapEntry<String, Map<String, dynamic>>> readings = 
-      _glucoseSlots.entries.toList();
-  
-  // Define order priority
-  final order = {'morning': 0, 'breakfast': 1, 'midday': 2};
-  readings.sort((a, b) => (order[a.key] ?? 999).compareTo(order[b.key] ?? 999));
-  
-  if (readings.isEmpty) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Center(
-        child: Text(
-          'No readings recorded today',
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-            fontStyle: FontStyle.italic,
+
+  Widget _latestReadingsList(BuildContext context) {
+    final colors = context.colors;
+
+    if (!_glucoseSlotsLoaded) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-      ),
+      );
+    }
+
+    // Convert slots to list and sort by time (morning -> breakfast -> midday)
+    final List<MapEntry<String, Map<String, dynamic>>> readings = _glucoseSlots
+        .entries
+        .toList();
+
+    // Define order priority
+    final order = {'morning': 0, 'breakfast': 1, 'midday': 2};
+    readings.sort(
+      (a, b) => (order[a.key] ?? 999).compareTo(order[b.key] ?? 999),
     );
-  }
-  
-  return Column(
-    children: [
-      for (final entry in readings.take(3)) ...[
+
+    if (readings.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'No readings recorded today',
+            style: TextStyle(
+              fontSize: 13,
+              color: colors.textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final entry in readings.take(3)) ...[
+          _readingRow(
+            context,
+            _getTimeLabel(entry.key),
+            (entry.value['value'] as double).toInt(),
+            entry.value['inRange'] as bool,
+          ),
+          if (entry != readings.last) const SizedBox(height: 10),
+        ],
+        // Always show current reading
+        const Divider(height: 20),
         _readingRow(
           context,
-          _getTimeLabel(entry.key),
-          (entry.value['value'] as double).toInt(),
-          entry.value['inRange'] as bool,
+          'Current',
+          patient.glucoseValue,
+          patient.glucoseLabel == 'In Range',
+          isCurrent: true,
         ),
-        if (entry != readings.last) const SizedBox(height: 10),
       ],
-      // Always show current reading
-      const Divider(height: 20),
-      _readingRow(
-        context,
-        'Current',
-        patient.glucoseValue,
-        patient.glucoseLabel == 'In Range',
-        isCurrent: true,
-      ),
-    ],
-  );
-}
-
-Widget _readingRow(
-  BuildContext context,
-  String timeLabel,
-  int value,
-  bool inRange, {
-  bool isCurrent = false,
-}) {
-  final colors = context.colors;
-  final valueColor = inRange 
-      ? colors.accent 
-      : (value < 70 ? colors.error : colors.warning);
-  
-  return Row(
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          color: valueColor,
-          shape: BoxShape.circle,
-        ),
-      ),
-      const SizedBox(width: 12),
-      SizedBox(
-        width: 70,
-        child: Text(
-          timeLabel,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
-            color: isCurrent ? colors.textPrimary : colors.textSecondary,
-          ),
-        ),
-      ),
-      Expanded(
-        child: Text(
-          _getReadingDescription(value, inRange),
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: valueColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          '$value mg/dL',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: valueColor,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-String _getTimeLabel(String slot) {
-  switch (slot) {
-    case 'morning':
-      return 'Morning';
-    case 'breakfast':
-      return 'Breakfast';
-    case 'midday':
-      return 'Midday';
-    default:
-      return slot;
+    );
   }
-}
 
-String _getReadingDescription(int value, bool inRange) {
-  if (inRange) {
-    return 'In safe range';
-  } else if (value < 70) {
-    return 'Low - needs attention';
-  } else {
-    return 'High - needs attention';
+  Widget _readingRow(
+    BuildContext context,
+    String timeLabel,
+    int value,
+    bool inRange, {
+    bool isCurrent = false,
+  }) {
+    final colors = context.colors;
+    final valueColor = inRange
+        ? colors.accent
+        : (value < 70 ? colors.error : colors.warning);
+
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: valueColor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 70,
+          child: Text(
+            timeLabel,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+              color: isCurrent ? colors.textPrimary : colors.textSecondary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            _getReadingDescription(value, inRange),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: valueColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '$value mg/dL',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+            ),
+          ),
+        ),
+      ],
+    );
   }
-}
+
+  String _getTimeLabel(String slot) {
+    switch (slot) {
+      case 'morning':
+        return 'Morning';
+      case 'breakfast':
+        return 'Breakfast';
+      case 'midday':
+        return 'Midday';
+      default:
+        return slot;
+    }
+  }
+
+  String _getReadingDescription(int value, bool inRange) {
+    if (inRange) {
+      return 'In safe range';
+    } else if (value < 70) {
+      return 'Low - needs attention';
+    } else {
+      return 'High - needs attention';
+    }
+  }
 
   Widget _card(BuildContext context, {required Widget child}) {
     final colors = context.colors;
@@ -991,340 +1016,6 @@ String _getReadingDescription(int value, bool inRange) {
         fontWeight: FontWeight.w700,
         color: colors.textSecondary,
         letterSpacing: 0.8,
-      ),
-    );
-  }
-}
-
-// ─── LOCATION TAB ──────────────────────────────────────────────────────────── 
-class _LocationTab extends StatefulWidget {
-  final GuardianPatient patient;
-  final bool isLandscape;
-  const _LocationTab({required this.patient, required this.isLandscape});
-
-  @override
-  State<_LocationTab> createState() => _LocationTabState();
-}
-
-class _LocationTabState extends State<_LocationTab> {
-  double? _lat;
-  double? _lng;
-  String _lastSeen = 'Loading...';
-  bool _loading = true;
-  RealtimeChannel? _channel;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchAndListen();
-  }
-
-  Future<void> _fetchAndListen() async {
-    // First fetch current location
-    try {
-      final data = await Supabase.instance.client
-          .from('patient_locations')
-          .select()
-          .eq('patient_id', widget.patient.id) // uuid → users(id)
-          .single();
-
-      if (mounted) {
-        setState(() {
-          _lat = (data['latitude'] as num).toDouble();
-          _lng = (data['longitude'] as num).toDouble();
-          _lastSeen = _timeAgo(data['updated_at']);
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loading = false);
-    }
-
-    // Then listen for real time updates
-    _channel = Supabase.instance.client
-        .channel('location_${widget.patient.id}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'patient_locations',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'patient_id',
-            value: widget.patient.id, // uuid → users(id)
-          ),
-          callback: (payload) {
-            if (!mounted) return;
-            final row = payload.newRecord;
-            setState(() {
-              _lat = (row['latitude'] as num).toDouble();
-              _lng = (row['longitude'] as num).toDouble();
-              _lastSeen = _timeAgo(row['updated_at']);
-            });
-          },
-        )
-        .subscribe();
-  }
-
-  String _timeAgo(String? isoString) {
-    if (isoString == null) return 'Unknown';
-    final dt = DateTime.tryParse(isoString);
-    if (dt == null) return 'Unknown';
-    final diff = DateTime.now().difference(dt.toLocal());
-    if (diff.inSeconds < 60) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
-
-  void _openInMaps() async {
-    if (_lat == null || _lng == null) return;
-    final uri = Uri.parse('geo:$_lat,$_lng?q=$_lat,$_lng');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  @override
-  void dispose() {
-    _channel?.unsubscribe();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    if (_loading) {
-      return Center(child: CircularProgressIndicator(color: colors.accent));
-    }
-
-    if (_lat == null || _lng == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.location_off_rounded,
-              size: 48,
-              color: colors.textSecondary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Location not available',
-              style: TextStyle(color: colors.textSecondary, fontSize: 15),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Patient may have location sharing off',
-              style: TextStyle(color: colors.textSecondary, fontSize: 12),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return CustomScrollView(
-      physics: const ClampingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(16, 20, 16, isLandscape ? 12 : 24),
-          sliver: SliverToBoxAdapter(
-            child: widget.isLandscape
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _mapCard(context)),
-                      const SizedBox(width: 14),
-                      Expanded(flex: 2, child: _lastSeenCard(context)),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _mapCard(context),
-                      const SizedBox(height: 14),
-                      _lastSeenCard(context),
-                    ],
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  bool get isLandscape => widget.isLandscape;
-
-  Widget _mapCard(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      height: isLandscape ? 260 : 320,
-      decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: LatLng(_lat!, _lng!),
-              initialZoom: 15,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.glucora.companion',
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(_lat!, _lng!),
-                    width: 48,
-                    height: 48,
-                    child: const Icon(
-                      Icons.location_pin,
-                      color: Color(0xFFE76F51),
-                      size: 48,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            top: 14,
-            left: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: colors.accent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    'Updated $_lastSeen',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _lastSeenCard(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'LIVE LOCATION',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: colors.textSecondary,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.my_location_rounded, color: colors.accent, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                '${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                Icons.access_time_rounded,
-                size: 14,
-                color: colors.textSecondary,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                'Last updated $_lastSeen',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _openInMaps,
-              icon: const Icon(Icons.navigation_rounded, size: 16),
-              label: const Text(
-                'Get Directions',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.accent,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1378,13 +1069,15 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
   }
 
   Future<void> _fetchCarePlan() async {
-  try {
-    print("🔍 [DoctorPlan] Fetching for patientId: ${widget.patient.patientId}");
-    
-    // Fetch with nested doctor data like the doctor side does
-    final response = await Supabase.instance.client
-        .from('care_plans')
-        .select('''
+    try {
+      print(
+        "🔍 [DoctorPlan] Fetching for patientId: ${widget.patient.patientId}",
+      );
+
+      // Fetch with nested doctor data like the doctor side does
+      final response = await Supabase.instance.client
+          .from('care_plans')
+          .select('''
           target_glucose_min, 
           target_glucose_max, 
           insulin_type, 
@@ -1400,77 +1093,80 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
             )
           )
         ''')
-        .eq('patient_id', widget.patient.patientId)
-        .order('updated_at', ascending: false)
-        .limit(1);
-    
-    print(" [DoctorPlan] Response type: ${response.runtimeType}");
-    print(" [DoctorPlan] Response: $response");
-    
-    final plans = response as List;
-    if (plans.isEmpty) {
-      print(" [DoctorPlan] No care plan found");
-      if (mounted) {
-        setState(() {
-          _error = 'No care plan available for this patient';
-          _loading = false;
-        });
+          .eq('patient_id', widget.patient.patientId)
+          .order('updated_at', ascending: false)
+          .limit(1);
+
+      print(" [DoctorPlan] Response type: ${response.runtimeType}");
+      print(" [DoctorPlan] Response: $response");
+
+      final plans = response as List;
+      if (plans.isEmpty) {
+        print(" [DoctorPlan] No care plan found");
+        if (mounted) {
+          setState(() {
+            _error = 'No care plan available for this patient';
+            _loading = false;
+          });
+        }
+        return;
       }
-      return;
-    }
-    
-    final planRow = plans.first;
-    print(" [DoctorPlan] Plan found: ${planRow['id']}");
-    
-    // Extract doctor name from nested structure
-    String doctorName = 'Your Doctor';
-    final doctorProfile = planRow['doctor_profile'];
-    print(" [DoctorPlan] doctorProfile: $doctorProfile");
-    
-    if (doctorProfile != null) {
-      final users = doctorProfile['users'];
-      print(" [DoctorPlan] users: $users");
-      if (users != null && users['full_name'] != null) {
-        final rawName = users['full_name'] as String;
-        doctorName = rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
-        print(" [DoctorPlan] Doctor name: $doctorName");
+
+      final planRow = plans.first;
+      print(" [DoctorPlan] Plan found: ${planRow['id']}");
+
+      // Extract doctor name from nested structure
+      String doctorName = 'Your Doctor';
+      final doctorProfile = planRow['doctor_profile'];
+      print(" [DoctorPlan] doctorProfile: $doctorProfile");
+
+      if (doctorProfile != null) {
+        final users = doctorProfile['users'];
+        print(" [DoctorPlan] users: $users");
+        if (users != null && users['full_name'] != null) {
+          final rawName = users['full_name'] as String;
+          doctorName = rawName.startsWith('Dr') ? rawName : 'Dr. $rawName';
+          print(" [DoctorPlan] Doctor name: $doctorName");
+        }
       }
+
+      if (!mounted) return;
+      setState(() {
+        _plan = _CarePlanData(
+          targetMin: (planRow['target_glucose_min'] as num?)?.toDouble() ?? 70,
+          targetMax: (planRow['target_glucose_max'] as num?)?.toDouble() ?? 180,
+          insulinType: planRow['insulin_type'] as String? ?? 'Not specified',
+          maxAutoDose:
+              (planRow['max_auto_dose_units'] as num?)?.toDouble() ?? 0,
+          aidModeEnabled: planRow['aid_mode_enabled'] as bool? ?? false,
+          notes: planRow['notes'] as String?,
+          nextAppointment: planRow['next_appointment'] != null
+              ? DateTime.tryParse(planRow['next_appointment'] as String)
+              : null,
+          doctorName: doctorName,
+          updatedAt: planRow['updated_at'] != null
+              ? DateTime.tryParse(planRow['updated_at'] as String)
+              : null,
+        );
+        _loading = false;
+      });
+    } catch (e, stackTrace) {
+      print(" [DoctorPlan] ERROR: $e");
+      print(" [DoctorPlan] StackTrace: $stackTrace");
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load doctor plan: $e';
+        _loading = false;
+      });
     }
-    
-    if (!mounted) return;
-    setState(() {
-      _plan = _CarePlanData(
-        targetMin: (planRow['target_glucose_min'] as num?)?.toDouble() ?? 70,
-        targetMax: (planRow['target_glucose_max'] as num?)?.toDouble() ?? 180,
-        insulinType: planRow['insulin_type'] as String? ?? 'Not specified',
-        maxAutoDose: (planRow['max_auto_dose_units'] as num?)?.toDouble() ?? 0,
-        aidModeEnabled: planRow['aid_mode_enabled'] as bool? ?? false,
-        notes: planRow['notes'] as String?,
-        nextAppointment: planRow['next_appointment'] != null
-            ? DateTime.tryParse(planRow['next_appointment'] as String)
-            : null,
-        doctorName: doctorName,
-        updatedAt: planRow['updated_at'] != null
-            ? DateTime.tryParse(planRow['updated_at'] as String)
-            : null,
-      );
-      _loading = false;
-    });
-  } catch (e, stackTrace) {
-    print(" [DoctorPlan] ERROR: $e");
-    print(" [DoctorPlan] StackTrace: $stackTrace");
-    if (!mounted) return;
-    setState(() {
-      _error = 'Could not load doctor plan: $e';
-      _loading = false;
-    });
   }
-}
 
   /// Returns how many days from today to [date], formatted as a human string.
   String _daysFromNow(DateTime date) {
     final today = DateTime.now();
-    final diff = date.difference(DateTime(today.year, today.month, today.day)).inDays;
+    final diff = date
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Tomorrow';
     if (diff < 0) return '${diff.abs()} days ago';
@@ -1480,8 +1176,18 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
   /// Formats [date] as e.g. "April 2, 2025"
   String _formatDate(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -1489,8 +1195,18 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
   /// Formats [updatedAt] as e.g. "March 15" for the doctor card subtitle.
   String _formatShortDate(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]} ${date.day}';
   }
@@ -1508,7 +1224,11 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.medical_services_outlined, size: 48, color: colors.textSecondary),
+            Icon(
+              Icons.medical_services_outlined,
+              size: 48,
+              color: colors.textSecondary,
+            ),
             const SizedBox(height: 12),
             Text(
               _error ?? 'No plan available',
@@ -1525,7 +1245,12 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
       physics: const ClampingScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(16, 20, 16, widget.isLandscape ? 12 : 24),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            20,
+            16,
+            widget.isLandscape ? 12 : 24,
+          ),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               // ── Doctor header card ──
