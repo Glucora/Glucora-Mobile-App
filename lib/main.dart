@@ -1,5 +1,6 @@
 // main.dart
 import 'package:app_links/app_links.dart';
+import 'package:glucora_ai_companion/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+    await NotificationService.init();
   await dotenv.load(fileName: ".env");
   await Supabase.initialize(
     url: "https://yzmkzfqgigsaqhnbsiyn.supabase.co",

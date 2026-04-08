@@ -8,6 +8,7 @@ import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/medication_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
@@ -672,12 +673,13 @@ class PatientNavigation extends StatefulWidget {
 class _PatientNavigationState extends State<PatientNavigation> {
   int _currentIndex = 0;
 
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    CalorieLogScreen(),
-    ManualLogScreen(),
-    _ProfileTab(),
-  ];
+static const List<Widget> _screens = [
+  HomeScreen(),
+  CalorieLogScreen(),
+  ManualLogScreen(),
+  MedicationScreen(), // ✅ NEW
+  _ProfileTab(),
+];
 
   @override
   Widget build(BuildContext context) {
@@ -711,6 +713,7 @@ class _PatientNavigationState extends State<PatientNavigation> {
           height: 62,
           child: Row(
             children: [
+              // Profile was index 3, now it's index 4
               _NavTile(
                 context,
                 icon: Icons.home_rounded,
@@ -728,16 +731,23 @@ class _PatientNavigationState extends State<PatientNavigation> {
               _NavTile(
                 context,
                 icon: Icons.edit_rounded,
-                label: "Manual Log",
+                label: "Log",
                 active: _currentIndex == 2,
                 onTap: () => setState(() => _currentIndex = 2),
+              ),
+              _NavTile(                                          // ✅ NEW
+                context,
+                icon: Icons.medication_rounded,
+                label: "Meds",
+                active: _currentIndex == 3,
+                onTap: () => setState(() => _currentIndex = 3),
               ),
               _NavTile(
                 context,
                 icon: Icons.person_outline_rounded,
                 label: "Profile",
-                active: _currentIndex == 3,
-                onTap: () => setState(() => _currentIndex = 3),
+                active: _currentIndex == 4,                      // ✅ was 3
+                onTap: () => setState(() => _currentIndex = 4),  // ✅ was 3
               ),
             ],
           ),
