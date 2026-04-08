@@ -177,8 +177,9 @@ class _LocationViewState extends State<LocationView> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    if (_loading)
+    if (_loading) {
       return Center(child: CircularProgressIndicator(color: colors.accent));
+    }
 
     if (!_isSharing || _lat == null || _lng == null) {
       return _buildDisabledView(colors);

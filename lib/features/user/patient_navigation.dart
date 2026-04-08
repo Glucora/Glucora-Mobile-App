@@ -360,7 +360,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
               Switch(
                 value: _globalLocationSharing,
                 onChanged: _onGlobalToggled,
-                activeColor: colors.primary,
+                activeThumbColor: colors.primary,
               ),
             ],
           ),
@@ -623,7 +623,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
                   onChanged: _globalLocationSharing
                       ? (val) => _onPersonToggled(person, val)
                       : null,
-                  activeColor: colors.primary,
+                  activeThumbColor: colors.primary,
                 ),
               ],
             ),

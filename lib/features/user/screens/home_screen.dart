@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/iob_card.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';

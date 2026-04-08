@@ -1,7 +1,6 @@
 // lib\features\guardian\screens\guardian_main_screen.dart
 import 'package:flutter/material.dart';
 import 'guardian_home_screen.dart';
-import 'guardian_alerts_screen.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
