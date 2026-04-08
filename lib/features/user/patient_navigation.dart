@@ -43,9 +43,8 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     }
 
     try {
-      final userId = user.id; // Store UUID once
+      final userId = user.id;
 
-      // Use userId directly - no need to fetch patient_profile first
       var locationRow = await supabase
           .from('patient_locations')
           .select('id, sharing_enabled')
@@ -498,7 +497,6 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       ),
       child: Column(
         children: [
-          // Top row: avatar, name, remove button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
             child: Row(
@@ -553,8 +551,6 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
               ],
             ),
           ),
-
-          // Contact info
           if ((person['phone'] as String).isNotEmpty ||
               (person['email'] as String).isNotEmpty)
             Padding(
@@ -578,8 +574,6 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
                 ],
               ),
             ),
-
-          // Location sharing toggle row
           Container(
             decoration: BoxDecoration(
               color: effectivelySharing
@@ -673,13 +667,13 @@ class PatientNavigation extends StatefulWidget {
 class _PatientNavigationState extends State<PatientNavigation> {
   int _currentIndex = 0;
 
-static const List<Widget> _screens = [
-  HomeScreen(),
-  CalorieLogScreen(),
-  ManualLogScreen(),
-  MedicationScreen(), // ✅ NEW
-  _ProfileTab(),
-];
+  static const List<Widget> _screens = [
+    HomeScreen(),
+    CalorieLogScreen(),
+    ManualLogScreen(),
+    MedicationScreen(),
+    _ProfileTab(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -713,7 +707,6 @@ static const List<Widget> _screens = [
           height: 62,
           child: Row(
             children: [
-              // Profile was index 3, now it's index 4
               _NavTile(
                 context,
                 icon: Icons.home_rounded,
@@ -735,7 +728,7 @@ static const List<Widget> _screens = [
                 active: _currentIndex == 2,
                 onTap: () => setState(() => _currentIndex = 2),
               ),
-              _NavTile(                                          // ✅ NEW
+              _NavTile(
                 context,
                 icon: Icons.medication_rounded,
                 label: "Meds",
@@ -746,8 +739,8 @@ static const List<Widget> _screens = [
                 context,
                 icon: Icons.person_outline_rounded,
                 label: "Profile",
-                active: _currentIndex == 4,                      // ✅ was 3
-                onTap: () => setState(() => _currentIndex = 4),  // ✅ was 3
+                active: _currentIndex == 4,
+                onTap: () => setState(() => _currentIndex = 4),
               ),
             ],
           ),
@@ -812,8 +805,8 @@ class _NavTile extends StatelessWidget {
 class _EditProfileScreen extends StatefulWidget {
   final String name;
   final int age;
-  final String? email; // Made optional
-  final String? phone; // Made optional
+  final String? email;
+  final String? phone;
   final String height;
   final String weight;
 
@@ -835,8 +828,8 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   late TextEditingController _ageController;
   late TextEditingController _heightController;
   late TextEditingController _weightController;
-  late TextEditingController _emailController; // Added
-  late TextEditingController _phoneController; // Added
+  late TextEditingController _emailController;
+  late TextEditingController _phoneController;
 
   @override
   void initState() {
@@ -891,7 +884,6 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           children: [
             _buildField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            // ADD EMAIL FIELD HERE
             _buildField(
               context,
               'Email',
@@ -942,7 +934,7 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
 
   Widget _buildField(
     BuildContext context,
-    String label, // This should only be for the Label/Hint
+    String label,
     TextEditingController controller,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
@@ -950,10 +942,10 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   }) {
     final colors = context.colors;
     return TextField(
-      controller: controller, // This holds the actual data (phone value)
+      controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
-        labelText: label, // 👈 Make sure 'Phone Number' is only here
+        labelText: label,
         suffixText: suffix,
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
@@ -978,18 +970,15 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     try {
       final newEmail = _emailController.text.trim();
       final newName = _nameController.text.trim();
-      final newPhone = _phoneController.text.trim(); // 1. Define this variable
+      final newPhone = _phoneController.text.trim();
 
-      // 2. Update Authentication (Dashboard)
       await supabase.auth.updateUser(
         UserAttributes(
           email: newEmail != user.email ? newEmail : null,
-          // This updates the 'raw_user_meta_data' in the Auth tab
           data: {'full_name': newName, 'phone': newPhone},
         ),
       );
-      // 4. Parse and Update Patient Profile
-      // The replaceAll ensures we only save numbers even if 'cm' or 'kg' is in the text
+
       final weightValue =
           double.tryParse(
             _weightController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
@@ -1001,7 +990,7 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           ) ??
           0;
       final ageValue = int.tryParse(_ageController.text) ?? 0;
-      // 3. Update the Users table
+
       await supabase
           .from('users')
           .update({
@@ -1025,11 +1014,10 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           ),
         );
 
-        // Pass the new data back to the Profile Tab
         Navigator.pop(context, {
           'name': newName,
           'email': newEmail,
-          'phone': newPhone, // Return the phone number too
+          'phone': newPhone,
           'age': ageValue,
           'height': "${heightValue.toInt()} cm",
           'weight': "${weightValue.toInt()} kgs",
@@ -1053,8 +1041,8 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
-    _emailController.dispose(); // Added
-
+    _emailController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 }
@@ -1064,6 +1052,7 @@ class _SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
@@ -1107,18 +1096,99 @@ class _SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _settingsCard(
               context,
-              icon: Icons.medical_services_outlined,
-              title: 'Doctor Connecting',
-              subtitle: 'Find and connect with your doctor',
-              color: const Color(0xFF5B8CF5),
+              icon: Icons.people_outline_rounded,
+              title: 'My Connections & Sharing',
+              subtitle: 'Doctors, guardians & location sharing',
+              color: colors.primary,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const _DoctorSearchScreen(),
+                    builder: (_) => const _ConnectionsScreen(),
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 16),
+            _settingsCard(
+              context,
+              icon: Icons.person_add_alt_1_rounded,
+              title: 'Connect with Care Team',
+              subtitle: 'Find and connect with doctors & guardians',
+              color: colors.primary,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ConnectionRequestsScreen(role: 'patient'),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            // Dark Mode toggle styled to match the settings cards
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.2),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.dark_mode_outlined,
+                      color: colors.primary,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Dark Mode',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Switch between light and dark theme',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: Theme.of(context).brightness == Brightness.dark,
+                    onChanged: (_) => themeProvider.toggleTheme(),
+                    activeThumbColor: colors.primary,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1334,226 +1404,6 @@ class _BluetoothPairingScreen extends StatelessWidget {
   }
 }
 
-class _DoctorSearchScreen extends StatefulWidget {
-  const _DoctorSearchScreen();
-
-  @override
-  State<_DoctorSearchScreen> createState() => _DoctorSearchScreenState();
-}
-
-class _DoctorSearchScreenState extends State<_DoctorSearchScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  String _query = '';
-
-  final List<Map<String, String>> _allDoctors = [
-    {
-      'name': 'Dr. Sarah Ahmed',
-      'phone': '0100 123 4567',
-      'email': 'sarah.ahmed@hospital.com',
-      'address': '15 Nile Street, Cairo',
-    },
-    {
-      'name': 'Dr. Mahmoud Youssef',
-      'phone': '0111 234 5678',
-      'email': 'mahmoud.y@clinic.com',
-      'address': '22 El Tahrir, Alexandria',
-    },
-    {
-      'name': 'Dr. Nouran Adel',
-      'phone': '0122 345 6789',
-      'email': 'nouran.adel@medical.org',
-      'address': '8 Zamalek, Cairo',
-    },
-    {
-      'name': 'Dr. Karim Hassan',
-      'phone': '0155 456 7890',
-      'email': 'karim.h@diabetes-care.com',
-      'address': '44 Maadi, Cairo',
-    },
-  ];
-
-  List<Map<String, String>> get _filteredDoctors {
-    if (_query.isEmpty) return _allDoctors;
-    return _allDoctors.where((doc) {
-      return doc['name']!.toLowerCase().contains(_query.toLowerCase());
-    }).toList();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: colors.textPrimary,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Find a Doctor',
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => setState(() => _query = val),
-                decoration: InputDecoration(
-                  icon: Icon(Icons.search, color: colors.textSecondary),
-                  hintText: 'Search by doctor name...',
-                  hintStyle: TextStyle(color: colors.textSecondary),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _filteredDoctors.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No doctors found',
-                        style: TextStyle(color: colors.textSecondary),
-                      ),
-                    )
-                  : ListView.builder(
-                      physics: const ClampingScrollPhysics(),
-                      itemCount: _filteredDoctors.length,
-                      itemBuilder: (context, index) {
-                        final doc = _filteredDoctors[index];
-                        return _doctorCard(context, doc);
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _doctorCard(BuildContext context, Map<String, String> doctor) {
-    final colors = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: colors.primary.withValues(alpha: 0.15),
-                child: Text(
-                  doctor['name']!.split(' ').map((e) => e[0]).take(2).join(),
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  doctor['name']!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Connect',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _detailRow(context, Icons.phone_outlined, doctor['phone']!),
-          const SizedBox(height: 6),
-          _detailRow(context, Icons.email_outlined, doctor['email']!),
-          const SizedBox(height: 6),
-          _detailRow(context, Icons.location_on_outlined, doctor['address']!),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailRow(BuildContext context, IconData icon, String text) {
-    final colors = context.colors;
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: colors.textSecondary),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 13, color: colors.textPrimary),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
 
@@ -1583,47 +1433,42 @@ class _ProfileTabState extends State<_ProfileTab> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // 🔹 Try to get user
       var userData = await supabase
           .from('users')
           .select()
           .eq('id', user.id)
           .maybeSingle();
 
-      // 👉 If user doesn't exist → create it
       userData ??= await supabase
           .from('users')
           .insert({'id': user.id, 'email': user.email, 'full_name': 'New User'})
           .select()
           .single();
 
-      // 🔹 Try to get patient profile
       var patientData = await supabase
           .from('patient_profile')
           .select()
           .eq('user_id', user.id)
           .maybeSingle();
 
-      // 👉 If patient profile doesn't exist → create it
       patientData ??= await supabase
           .from('patient_profile')
           .insert({'user_id': user.id, 'height_cm': 0, 'weight_kg': 0})
           .select()
           .single();
+
       // ignore: avoid_print
       print("USER DATA: $userData");
       // ignore: avoid_print
       print("PATIENT DATA: $patientData");
-      // ✅ Set UI
+
       setState(() {
         _name = userData?['full_name'] ?? "No Name";
-        _phone = userData?['phone_no'] ?? ""; // Add this
-        _email = userData?['email'] ?? ""; // Add this
+        _phone = userData?['phone_no'] ?? "";
+        _email = userData?['email'] ?? "";
         _age = (userData?['age'] ?? 0).toInt();
-        // Keep only the numbers in the variables for internal logic
         _height = "${patientData?['height_cm'] ?? 0} cm";
         _weight = "${patientData?['weight_kg'] ?? 0} kg";
-
         _isLoading = false;
       });
     } catch (e) {
@@ -1654,9 +1499,7 @@ class _ProfileTabState extends State<_ProfileTab> {
               Navigator.pop(ctx);
               try {
                 await Supabase.instance.client.auth.signOut();
-              } catch (_) {
-                // Continue navigation even if remote sign out fails.
-              }
+              } catch (_) {}
 
               if (!mounted) return;
               Navigator.pushNamedAndRemoveUntil(
@@ -1682,7 +1525,6 @@ class _ProfileTabState extends State<_ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
 
     if (_isLoading) {
@@ -1930,165 +1772,6 @@ class _ProfileTabState extends State<_ProfileTab> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // My Connections & Sharing button
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const _ConnectionsScreen()),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: colors.textSecondary.withValues(alpha: 0.2),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.people_outline_rounded,
-                        color: colors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'My Connections & Sharing',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'Doctors, guardians & location sharing',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: colors.textSecondary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ✅ CORRECT: New button goes HERE (outside the previous button)
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ConnectionRequestsScreen(role: 'patient'),
-                  ),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: colors.textSecondary.withValues(alpha: 0.2),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.person_add_alt_1_rounded,
-                        color: colors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Connect with Care Team',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'Find and connect with doctors & guardians',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: colors.textSecondary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SwitchListTile(
-              title: Text(
-                'Dark Mode',
-                style: TextStyle(color: colors.textPrimary),
-              ),
-              value: Theme.of(context).brightness == Brightness.dark,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeThumbColor: colors.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
-
             const SizedBox(height: 24),
             Text(
               "FAQs",
@@ -2103,7 +1786,6 @@ class _ProfileTabState extends State<_ProfileTab> {
             _faqItem(context, "What do the glucose ranges mean?"),
             _faqItem(context, "Can I share data with my doctor?"),
             _faqItem(context, "How accurate are the predictions?"),
-
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
@@ -2120,13 +1802,18 @@ class _ProfileTabState extends State<_ProfileTab> {
 
                     if (!mounted) return;
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const GuardianMainScreen(),
+                      ),
                       (route) => false,
                     );
                   } catch (e) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to switch: $e'), backgroundColor: Colors.red),
+                      SnackBar(
+                        content: Text('Failed to switch: $e'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   }
                 },
@@ -2141,7 +1828,6 @@ class _ProfileTabState extends State<_ProfileTab> {
                 child: const Text('Switch to Guardian View'),
               ),
             ),
-
             const SizedBox(height: 24),
             Center(
               child: SizedBox(
@@ -2220,7 +1906,6 @@ class _ProfileTabState extends State<_ProfileTab> {
   }
 
   Future<void> _editProfile() async {
-    // 1. Pass all variables to the constructor
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -2228,14 +1913,13 @@ class _ProfileTabState extends State<_ProfileTab> {
           name: _name,
           age: _age,
           email: _email,
-          phone: _phone, // Now this won't be empty in the edit screen!
+          phone: _phone,
           height: _height,
           weight: _weight,
         ),
       ),
     );
 
-    // 2. If the user saved, update the local UI variables
     if (result != null) {
       setState(() {
         _name = result['name'];
