@@ -8,7 +8,7 @@ import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                TranslatedText(
                   "Welcome Back, $userName!",
                   style: TextStyle(
                     fontSize: 22,
@@ -516,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       "Current Glucose Level:",
                       style: TextStyle(
                         fontSize: 13,
@@ -529,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text(
+                        TranslatedText(
                           _glucoseLoading
                               ? '– mg/dL'
                               : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL',
@@ -541,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text(
+                          child: TranslatedText(
                             'Last updated: ${_timeAgo(_glucoseUpdatedAt)}',
                             style: TextStyle(
                               fontSize: 10,
@@ -587,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(color: c, shape: BoxShape.circle),
           ),
           const SizedBox(width: 5),
-          Text(label,
+          TranslatedText(label,
               style: TextStyle(fontSize: 12, color: colors.textSecondary)),
         ],
       );
@@ -666,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        TranslatedText(
                           "IOB",
                           style: TextStyle(
                             fontSize: 11,
@@ -679,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Text(
+                            TranslatedText(
                               iobDisplay,
                               style: TextStyle(
                                 fontSize: 22,
@@ -688,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 3),
-                            Text(
+                            TranslatedText(
                               " U",
                               style: TextStyle(
                                 fontSize: 13,
@@ -698,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text(
+                        TranslatedText(
                           "Insulin on board",
                           style: TextStyle(
                             fontSize: 9.5,
@@ -762,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         "Sensor Battery",
                         style: TextStyle(
                           fontSize: 11,
@@ -775,7 +775,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(
+                          TranslatedText(
                             batteryDisplay,
                             style: TextStyle(
                               fontSize: 22,
@@ -784,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           if (batteryPercent != null) ...[
-                            Text(
+                            TranslatedText(
                               " %",
                               style: TextStyle(
                                 fontSize: 13,
@@ -808,7 +808,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         )
                       else if (!_batteryLoading && _batteryHealth == null)
-                        Text(
+                        TranslatedText(
                           'No device paired',
                           style: TextStyle(
                             fontSize: 9.5,
@@ -818,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       else if (_batteryLoading)
                         const SizedBox.shrink()
                       else
-                        Text(
+                        TranslatedText(
                           _batteryHealth ?? 'Unknown',
                           style: TextStyle(
                             fontSize: 9.5,
@@ -861,12 +861,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("AI Prediction",
+              TranslatedText("AI Prediction",
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: colors.textPrimary)),
-              Text("View details",
+              TranslatedText("View details",
                   style: TextStyle(
                       fontSize: 13,
                       color: colors.primary,
@@ -878,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text("135",
+              TranslatedText("135",
                   style: TextStyle(
                       fontSize: 46,
                       fontWeight: FontWeight.bold,
@@ -886,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(" mg/dL",
+                child: TranslatedText(" mg/dL",
                     style: TextStyle(
                         fontSize: 18, color: colors.textSecondary)),
               ),
@@ -898,19 +898,19 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
-              Text("22.73%",
+              TranslatedText("22.73%",
                   style: TextStyle(
                       fontSize: 13,
                       color: colors.error,
                       fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              Text("Expected glucose in 30 minutes",
+              TranslatedText("Expected glucose in 30 minutes",
                   style:
                       TextStyle(fontSize: 12, color: colors.textSecondary)),
             ],
           ),
           const SizedBox(height: 4),
-          Text("Glucose from 10:21pm 15 Jan, 2026",
+          TranslatedText("Glucose from 10:21pm 15 Jan, 2026",
               style: TextStyle(fontSize: 11, color: colors.textSecondary)),
           const SizedBox(height: 14),
           SizedBox(
@@ -925,13 +925,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              Text("Next 60 minutes",
+              TranslatedText("Next 60 minutes",
                   style:
                       TextStyle(fontSize: 11, color: colors.textSecondary)),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              Text("Last Hour",
+              TranslatedText("Last Hour",
                   style:
                       TextStyle(fontSize: 11, color: colors.textSecondary)),
             ],
@@ -987,7 +987,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Recommendations",
+                  TranslatedText("Recommendations",
                       style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -997,7 +997,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) => const RecommendationsScreen())),
-                    child: Text("View details",
+                    child: TranslatedText("View details",
                         style: TextStyle(
                             fontSize: 13,
                             color: colors.primary,
@@ -1021,7 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
+                    child: TranslatedText(
                       "Recommendations are supportive and not a medical diagnosis.",
                       style: TextStyle(
                           fontSize: 10, color: colors.textSecondary),
@@ -1131,7 +1131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 18, color: colors.primary),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('My Care Plan',
+                          child: TranslatedText('My Care Plan',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -1142,7 +1142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text('$_doctorName  ·  Target: $_targetRange',
+                    TranslatedText('$_doctorName  ·  Target: $_targetRange',
                         style: TextStyle(
                             fontSize: 12, color: colors.textSecondary)),
                     const SizedBox(height: 10),
@@ -1151,7 +1151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(Icons.calendar_today_outlined,
                             size: 12, color: colors.textSecondary),
                         const SizedBox(width: 4),
-                        Text('Next appointment: $_nextAppointment',
+                        TranslatedText('Next appointment: $_nextAppointment',
                             style: TextStyle(
                                 fontSize: 11, color: colors.textSecondary)),
                       ],

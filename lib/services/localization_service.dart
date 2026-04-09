@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_strings.dart';
 
 /// Supported languages for Glucora
 class GlucoraLocale {
@@ -237,54 +238,6 @@ Return format:
   }
 
   List<String> _getCommonAppStrings() {
-    return [
-      // Navigation
-      'Home', 'Calories', 'Log', 'Meds', 'Profile',
-      // Profile screen
-      'Profile', 'Settings', 'Edit Profile', 'Save', 'Cancel',
-      'Height', 'Weight', 'Weekly Report', 'History & Export',
-      'Reports & History', 'FAQs', 'Log Out', 'Switch to Guardian View',
-      'years', 'cm', 'kg',
-      // FAQs
-      'How do I connect my glucose monitor?',
-      'What do the glucose ranges mean?',
-      'Can I share data with my doctor?',
-      'How accurate are the predictions?',
-      // Settings
-      'Bluetooth Pairing', 'Connect your CGM sensor or pump',
-      'My Connections & Sharing', 'Doctors, guardians & location sharing',
-      'Connect with Care Team', 'Find and connect with doctors & guardians',
-      'Dark Mode', 'Switch between light and dark theme',
-      'Language', 'Choose your preferred language',
-      // Connections
-      'Connections', 'Guardians', 'Doctors',
-      'Location Sharing', 'Your location is visible to connections',
-      'Hidden from everyone', 'Seeing your location',
-      'Location hidden from this person',
-      'Blocked — global sharing is off',
-      'Individual toggles are disabled while global sharing is off.',
-      'No guardians connected yet.', 'No doctors connected yet.',
-      'Remove', 'Remove Guardian', 'Remove Doctor',
-      'They will no longer see your data.',
-      // Bluetooth
-      'Connect Device', 'Available Devices', 'Connected',
-      'Pair', 'Pairing mode',
-      'To pair a new device, put it in discovery mode and tap on it.',
-      // Auth
-      'Login', 'Sign Up', 'Email', 'Password', 'Name',
-      'Phone Number', 'Age',
-      // General
-      'Loading...', 'Error', 'Success', 'Retry',
-      'Failed to update', 'Profile updated successfully!',
-      'Error updating profile',
-      // Edit profile
-      'Edit Profile',
-      // Logout dialog
-      'Log Out', 'Are you sure to log out of your account?', 'Logout',
-      // Medication
-      'Medications', 'Add Medication', 'No medications added yet.',
-      // Snackbars
-      'Copied', 'Failed to remove', 'Failed to load',
-    ];
+  return AppStrings.getAllStrings();
   }
 }

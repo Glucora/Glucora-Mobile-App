@@ -26,7 +26,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-
+import '../utils/app_strings.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
@@ -52,7 +52,9 @@ void main() async {
   // ✅ Initialize localization (loads saved language preference)
   final localizationService = LocalizationService();
   await localizationService.init();
-
+if (localizationService.currentLanguageCode != 'en') {
+  await localizationService.translateBatch(AppStrings.getAllStrings());
+}
   runApp(GlucoraApp(localizationService: localizationService));
 }
 
