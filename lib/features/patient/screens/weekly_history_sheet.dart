@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'weekly_report_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class WeeklyHistorySheet extends StatelessWidget {
   const WeeklyHistorySheet({super.key});
@@ -35,7 +36,7 @@ class WeeklyHistorySheet extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: TranslatedText(
                 'Previous Weeks',
                 style: TextStyle(
                   fontSize: 18,
@@ -136,7 +137,7 @@ class _WeekTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TranslatedText(
                     label,
                     style: TextStyle(
                       fontSize: 14,
@@ -145,7 +146,7 @@ class _WeekTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
+                  TranslatedText(
                     '$avgText$tirText  $eventText'.trim(),
                     style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),

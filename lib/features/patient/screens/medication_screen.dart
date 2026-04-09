@@ -6,6 +6,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/notification_service.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class MedicationScreen extends StatefulWidget {
   const MedicationScreen({super.key});
@@ -143,7 +144,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
           setState(() => _error = e.toString());
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: $e'),
+              content: TranslatedText('Error: $e'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -267,7 +268,7 @@ Future<void> _deleteMedication(int medId) async {
                 ),
                 const SizedBox(height: 20),
 
-                Text('Add Medication',
+                TranslatedText('Add Medication',
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -306,7 +307,7 @@ Future<void> _deleteMedication(int medId) async {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Reminders',
+                    TranslatedText('Reminders',
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -333,7 +334,7 @@ Future<void> _deleteMedication(int medId) async {
                             Icon(Icons.add_alarm_rounded,
                                 size: 14, color: colors.primary),
                             const SizedBox(width: 4),
-                            Text('Add time',
+                            TranslatedText('Add time',
                                 style: TextStyle(
                                     fontSize: 12, color: colors.primary)),
                           ],
@@ -345,7 +346,7 @@ Future<void> _deleteMedication(int medId) async {
                 const SizedBox(height: 10),
 
                 if (reminders.isEmpty)
-                  Text('No reminders added yet',
+                  TranslatedText('No reminders added yet',
                       style: TextStyle(
                           fontSize: 12, color: colors.textSecondary))
                 else
@@ -368,7 +369,7 @@ Future<void> _deleteMedication(int medId) async {
                             Icon(Icons.alarm_rounded,
                                 size: 13, color: Colors.white),
                             const SizedBox(width: 4),
-                            Text(t.format(context),
+                            TranslatedText(t.format(context),
                                 style: const TextStyle(
                                     fontSize: 12, color: Colors.white)),
                             const SizedBox(width: 6),
@@ -435,12 +436,12 @@ Future<void> _deleteMedication(int medId) async {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Medications',
+                    TranslatedText('Medications',
                         style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: colors.textPrimary)),
-                    Text('${activeMeds.length} active',
+                    TranslatedText('${activeMeds.length} active',
                         style: TextStyle(
                             fontSize: 12,
                             color: colors.textSecondary)),
@@ -466,7 +467,7 @@ Future<void> _deleteMedication(int medId) async {
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
                     ? Center(
-                        child: Text(_error!,
+                        child: TranslatedText(_error!,
                             style:
                                 const TextStyle(color: Colors.red)))
                     : RefreshIndicator(
@@ -493,7 +494,7 @@ Future<void> _deleteMedication(int medId) async {
                                           color:
                                               colors.textSecondary),
                                       const SizedBox(height: 12),
-                                      Text(
+                                      TranslatedText(
                                           'No medications yet.\nTap + to add one.',
                                           textAlign:
                                               TextAlign.center,
@@ -591,7 +592,7 @@ Future<void> _deleteMedication(int medId) async {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(med.name,
+                      TranslatedText(med.name,
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
@@ -601,7 +602,7 @@ Future<void> _deleteMedication(int medId) async {
                       if (med.notes != null &&
                           med.notes!.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(med.notes!,
+                        TranslatedText(med.notes!,
                             style: TextStyle(
                                 fontSize: 12,
                                 color: colors.textSecondary,
@@ -614,7 +615,7 @@ Future<void> _deleteMedication(int medId) async {
                               size: 12,
                               color: colors.textSecondary),
                           const SizedBox(width: 4),
-                          Text('${med.frequency}x per day',
+                          TranslatedText('${med.frequency}x per day',
                               style: TextStyle(
                                   fontSize: 11,
                                   color: colors.textSecondary)),
@@ -651,7 +652,7 @@ Future<void> _deleteMedication(int medId) async {
                     Icon(Icons.alarm_rounded,
                         size: 12, color: colors.textSecondary),
                     const SizedBox(width: 4),
-                    Text('Reminders',
+                    TranslatedText('Reminders',
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -686,7 +687,7 @@ Future<void> _deleteMedication(int medId) async {
                                           : colors
                                               .textSecondary),
                                   const SizedBox(width: 4),
-                                  Text(
+                                  TranslatedText(
                                     _formatTime(r.remindAt),
                                     style: TextStyle(
                                         fontSize: 11,
@@ -716,7 +717,7 @@ Future<void> _deleteMedication(int medId) async {
             onPressed: () => _confirmDelete(context, med),
             icon: Icon(Icons.delete_outline_rounded,
                 size: 16, color: colors.error),
-            label: Text('Remove',
+            label: TranslatedText('Remove',
                 style:
                     TextStyle(fontSize: 13, color: colors.error)),
           ),
@@ -733,15 +734,15 @@ Future<void> _deleteMedication(int medId) async {
         backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16)),
-        title: Text('Remove Medication',
+        title: TranslatedText('Remove Medication',
             style: TextStyle(color: colors.textPrimary)),
-        content: Text(
+        content: TranslatedText(
             'Are you sure you want to remove "${med.name}"?',
             style: TextStyle(color: colors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
+            child: TranslatedText('Cancel',
                 style: TextStyle(color: colors.textSecondary)),
           ),
           TextButton(
@@ -749,7 +750,7 @@ Future<void> _deleteMedication(int medId) async {
               Navigator.pop(context);
               _deleteMedication(med.id);
             },
-            child: Text('Remove',
+            child: TranslatedText('Remove',
                 style: TextStyle(color: colors.error)),
           ),
         ],
