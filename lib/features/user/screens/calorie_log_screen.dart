@@ -4,6 +4,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class CalorieLogScreen extends StatefulWidget {
   const CalorieLogScreen({super.key});
@@ -184,7 +185,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text("Add Food Entry",
+                TranslatedText("Add Food Entry",
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -223,7 +224,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                 const SizedBox(height: 16),
 
                 // Meal type selector
-                Text("Meal type",
+                TranslatedText("Meal type",
                     style: TextStyle(
                         fontSize: 12, color: colors.textSecondary)),
                 const SizedBox(height: 8),
@@ -243,7 +244,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                               : colors.background,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(mt,
+                        child: TranslatedText(mt,
                             style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -259,7 +260,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(_error!,
+                    child: TranslatedText(_error!,
                         style: const TextStyle(
                             color: Colors.red, fontSize: 12)),
                   ),
@@ -281,7 +282,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
-                        : const Text("Add Entry",
+                        : const TranslatedText("Add Entry",
                             style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600)),
@@ -312,7 +313,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Calorie Tracker",
+                TranslatedText("Calorie Tracker",
                     style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -384,14 +385,14 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                                           ),
                                         ),
                                         Column(children: [
-                                          Text(
+                                          TranslatedText(
                                               "${(_progress * 100).toStringAsFixed(0)}%",
                                               style: const TextStyle(
                                                   color: Colors.white,
                                                   fontWeight:
                                                       FontWeight.bold,
                                                   fontSize: 16)),
-                                          Text("of goal",
+                                          TranslatedText("of goal",
                                               style: TextStyle(
                                                   color: Colors.white
                                                       .withValues(
@@ -423,7 +424,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Text("Daily goal: $_dailyGoal kcal",
+                                TranslatedText("Daily goal: $_dailyGoal kcal",
                                     style: TextStyle(
                                         color: Colors.white
                                             .withValues(alpha: 0.8),
@@ -455,12 +456,12 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                             mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("Today's Entries",
+                              TranslatedText("Today's Entries",
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: colors.textPrimary)),
-                              Text("${_entries.length} items",
+                              TranslatedText("${_entries.length} items",
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: colors.textSecondary)),
@@ -479,7 +480,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                                       size: 48,
                                       color: colors.textSecondary),
                                   const SizedBox(height: 12),
-                                  Text(
+                                  TranslatedText(
                                       "No entries yet.\nTap + to add your first meal.",
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
@@ -537,17 +538,17 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
   Widget _chip(String label, String value, String unit,
           GlucoraColors colors) =>
       Column(children: [
-        Text(label,
+        TranslatedText(label,
             style: TextStyle(
                 fontSize: 11,
                 color: Colors.white.withValues(alpha: 0.75))),
         const SizedBox(height: 4),
-        Text(value,
+        TranslatedText(value,
             style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
-        Text(unit,
+        TranslatedText(unit,
             style: TextStyle(
                 fontSize: 11,
                 color: Colors.white.withValues(alpha: 0.75))),
@@ -561,14 +562,14 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
           decoration: BoxDecoration(
               color: bg, borderRadius: BorderRadius.circular(14)),
           child: Column(children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
+            TranslatedText(emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 4),
-            Text(value,
+            TranslatedText(value,
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: colors.textPrimary)),
-            Text(label,
+            TranslatedText(label,
                 style: TextStyle(
                     fontSize: 11, color: colors.textSecondary)),
           ]),
@@ -624,13 +625,13 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(e.name,
+              TranslatedText(e.name,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: colors.textPrimary)),
               const SizedBox(height: 2),
-              Text(
+              TranslatedText(
                 [
                   if (e.mealType != null) e.mealType!,
                   if (e.carbsG != null)
@@ -644,19 +645,19 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                     fontSize: 11, color: colors.textSecondary),
               ),
               const SizedBox(height: 2),
-              Text(_formatTime(e.loggedAt),
+              TranslatedText(_formatTime(e.loggedAt),
                   style: TextStyle(
                       fontSize: 10, color: colors.textSecondary)),
             ],
           ),
         ),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text("${e.calories}",
+          TranslatedText("${e.calories}",
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: colors.primary)),
-          const Text("kcal",
+          const TranslatedText("kcal",
               style: TextStyle(
                   fontSize: 10, color: Color(0xFF888888))),
         ]),
