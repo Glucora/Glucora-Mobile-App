@@ -1077,7 +1077,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(
+            child: TranslatedText(
               recText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
