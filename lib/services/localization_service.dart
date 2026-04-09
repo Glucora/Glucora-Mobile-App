@@ -21,7 +21,7 @@ class GlucoraLocale {
 
 const List<GlucoraLocale> kSupportedLocales = [
   GlucoraLocale(code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸'),
-  GlucoraLocale(code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦'),
+  GlucoraLocale(code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇪🇬'),
   GlucoraLocale(code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷'),
   GlucoraLocale(code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪'),
   GlucoraLocale(code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸'),
