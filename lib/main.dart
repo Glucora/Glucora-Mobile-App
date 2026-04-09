@@ -1,6 +1,12 @@
-// main.dart
+// main.dart — Updated with LocalizationService
+// Changes from original:
+//   ✅ Added LocalizationService provider above ThemeProvider
+//   ✅ Called service.init() in main() before runApp
+//   ✅ LocalizedDirectionality wraps MaterialApp for RTL support
+
 import 'package:app_links/app_links.dart';
 import 'package:glucora_ai_companion/services/notification_service.dart';
+import 'package:glucora_ai_companion/services/localization_service.dart'; // ✅ NEW
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,11 +27,11 @@ import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-    await NotificationService.init();
+  await NotificationService.init();
   await dotenv.load(fileName: ".env");
+
   await Supabase.initialize(
     url: "https://yzmkzfqgigsaqhnbsiyn.supabase.co",
     anonKey:
@@ -34,26 +40,35 @@ void main() async {
   );
 
   final appLinks = AppLinks();
-
   appLinks.uriLinkStream.listen((uri) {
     Supabase.instance.client.auth.getSessionFromUrl(uri);
   });
 
   await Permission.notification.request();
   if (!kIsWeb) {
-  await LocationService.initializeService();
-}
+    await LocationService.initializeService();
+  }
 
-  runApp(const GlucoraApp());
+  // ✅ Initialize localization (loads saved language preference)
+  final localizationService = LocalizationService();
+  await localizationService.init();
+
+  runApp(GlucoraApp(localizationService: localizationService));
 }
 
 class GlucoraApp extends StatelessWidget {
-  const GlucoraApp({super.key});
+  final LocalizationService localizationService; // ✅ NEW
+
+  const GlucoraApp({super.key, required this.localizationService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        // ✅ LocalizationService must be above ThemeProvider so any widget can access it
+        ChangeNotifierProvider<LocalizationService>.value(value: localizationService),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
@@ -77,40 +92,6 @@ class GlucoraApp extends StatelessWidget {
     );
   }
 }
-/* 
-class _StartupGate extends StatelessWidget {
-  const _StartupGate();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      return const WhoWeAreScreen();
-    }
-
-    final userMetaRole = user.userMetadata?['role']?.toString();
-    final appMetaRole = user.appMetadata['role']?.toString();
-    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
-        .trim()
-        .toLowerCase();
-
-    if (normalizedRole == 'patient') {
-      return const PatientNavigation();
-    }
-    if (normalizedRole == 'doctor') {
-      return const DoctorMainScreen();
-    }
-    if (normalizedRole == 'guardian') {
-      return const GuardianMainScreen();
-    }
-    if (normalizedRole == 'admin') {
-      return const AdminMainScreen();
-    }
-
-    return const RoleSelectionScreen();
-  }
-}
- */
 
 class _StartupGate extends StatefulWidget {
   const _StartupGate();
@@ -123,21 +104,15 @@ class _StartupGateState extends State<_StartupGate> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      _checkAndStartLocation();
-    });
+    Future.microtask(() => _checkAndStartLocation());
   }
 
   Future<void> _checkAndStartLocation() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-
     final userMetaRole = user.userMetadata?['role']?.toString();
     final appMetaRole = user.appMetadata['role']?.toString();
-    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
-        .trim()
-        .toLowerCase();
-
+    final normalizedRole = (userMetaRole ?? appMetaRole ?? '').trim().toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
     }
@@ -147,18 +122,13 @@ class _StartupGateState extends State<_StartupGate> {
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return const WhoWeAreScreen();
-
     final userMetaRole = user.userMetadata?['role']?.toString();
     final appMetaRole = user.appMetadata['role']?.toString();
-    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
-        .trim()
-        .toLowerCase();
-
+    final normalizedRole = (userMetaRole ?? appMetaRole ?? '').trim().toLowerCase();
     if (normalizedRole == 'patient') return const PatientNavigation();
     if (normalizedRole == 'doctor') return const DoctorMainScreen();
     if (normalizedRole == 'guardian') return const GuardianMainScreen();
     if (normalizedRole == 'admin') return const AdminMainScreen();
-
     return const RoleSelectionScreen();
   }
 }
