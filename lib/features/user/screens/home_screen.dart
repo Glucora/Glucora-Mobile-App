@@ -356,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TranslatedText(
-                  "Welcome Back, $userName!",
+                  "Welcome, $userName!",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
