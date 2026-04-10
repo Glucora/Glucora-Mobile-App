@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 
 class AdminAlertRuleFormScreen extends StatefulWidget {
   final AdminAlertRule? rule;
@@ -104,7 +106,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
     final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: TranslatedText(
           _isEditing ? 'Edit Alert Rule' : 'New Alert Rule',
           style: const TextStyle(
             color: Colors.white,
@@ -183,8 +185,8 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: Text('Enabled', style: TextStyle(color: colors.textPrimary)),
-              subtitle: Text(
+              title: TranslatedText('Enabled', style: TextStyle(color: colors.textPrimary)),
+              subtitle: TranslatedText(
                 _isEnabled ? 'Rule is active' : 'Rule is disabled',
                 style: TextStyle(color: colors.textSecondary),
               ),
@@ -214,7 +216,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : Text(
+                    : TranslatedText(
                         _isEditing ? 'Save Changes' : 'Create Rule',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
@@ -230,7 +232,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
+      child: TranslatedText(
         text,
         style: TextStyle(
           fontSize: 13,

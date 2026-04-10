@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'admin_device_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminDeviceListScreen extends StatefulWidget {
   const AdminDeviceListScreen({super.key});
@@ -41,8 +42,8 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Device'),
-        content: Text(
+        title: const TranslatedText('Delete Device'),
+        content: TranslatedText(
           'Are you sure you want to delete "${device.deviceName}"?',
         ),
         actions: [
@@ -55,7 +56,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
               setState(() => mockAdminDevices.remove(device));
               Navigator.pop(ctx);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -69,7 +70,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Devices',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -134,7 +135,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(label, style: TextStyle(color: colors.textPrimary)),
+                    label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
                     selected: selected,
                     selectedColor: colors.accent.withValues(alpha: 0.2),
                     checkmarkColor: colors.accent,
@@ -209,7 +210,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       device.deviceName,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
@@ -218,12 +219,12 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TranslatedText(
                       '${device.model}  •  ${device.serialNumber}',
                       style: TextStyle(fontSize: 11, color: colors.textSecondary),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TranslatedText(
                       'Assigned to: ${device.assignedToUserName}',
                       style: TextStyle(fontSize: 11, color: colors.textSecondary),
                     ),
@@ -242,7 +243,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                       color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
+                    child: TranslatedText(
                       device.deviceType,
                       style: TextStyle(
                         fontSize: 10,
@@ -262,7 +263,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                         color: colors.error.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(
+                      child: TranslatedText(
                         'Inactive',
                         style: TextStyle(fontSize: 10, color: colors.error),
                       ),
@@ -276,7 +277,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                 itemBuilder: (_) => [
                   const PopupMenuItem(
                     value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: Colors.red)),
+                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
                   ),
                 ],
               ),

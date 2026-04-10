@@ -5,6 +5,7 @@ import 'admin_alert_rules_screen.dart';
 import 'admin_role_management_screen.dart';
 import 'admin_assignments_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminMoreScreen extends StatelessWidget {
   const AdminMoreScreen({super.key});
@@ -14,7 +15,7 @@ class AdminMoreScreen extends StatelessWidget {
     final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Admin Panel',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -97,7 +98,7 @@ class AdminMoreScreen extends StatelessWidget {
 
   Widget _sectionTitle(BuildContext context, String title) {
     final colors = context.colors;
-    return Text(
+    return TranslatedText(
       title,
       style: TextStyle(
         fontSize: 16,
@@ -139,7 +140,7 @@ class AdminMoreScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       title,
                       style: const TextStyle(
                         fontSize: 15,
@@ -147,7 +148,7 @@ class AdminMoreScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TranslatedText(
                       subtitle,
                       style: TextStyle(fontSize: 12, color: colors.textSecondary),
                     ),

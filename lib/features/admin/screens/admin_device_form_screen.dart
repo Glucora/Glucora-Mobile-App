@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminDeviceFormScreen extends StatefulWidget {
   final AdminDevice? device;
@@ -92,7 +93,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
     final colors = context.colors;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: TranslatedText(
           _isEditing ? 'Edit Device' : 'Add Device',
           style: const TextStyle(
             color: Colors.white,
@@ -151,7 +152,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
               decoration: _inputDecoration(context, 'Select patient'),
               items: _patients
                   .map(
-                    (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
+                    (p) => DropdownMenuItem(value: p.id, child: TranslatedText(p.name)),
                   )
                   .toList(),
               onChanged: (v) {
@@ -160,8 +161,8 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Active'),
-              subtitle: Text(
+              title: const TranslatedText('Active'),
+              subtitle: TranslatedText(
                 _isActive ? 'Device is operating' : 'Device is deactivated',
               ),
               value: _isActive,
@@ -190,7 +191,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : Text(
+                    : TranslatedText(
                         _isEditing ? 'Save Changes' : 'Add Device',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
@@ -206,7 +207,7 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
+      child: TranslatedText(
         text,
         style: TextStyle(
           fontSize: 13,

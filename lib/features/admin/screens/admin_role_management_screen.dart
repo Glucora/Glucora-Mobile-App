@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminRoleManagementScreen extends StatefulWidget {
   const AdminRoleManagementScreen({super.key});
@@ -66,12 +67,12 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Change Role: ${user.name}'),
+          title: TranslatedText('Change Role: ${user.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: _roles.map((role) {
               return RadioListTile<String>(
-                title: Text(_roleLabel(role)),
+                title: TranslatedText(_roleLabel(role)),
                 value: role,
                 groupValue: selectedRole,
                 onChanged: (v) {
@@ -90,7 +91,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                 Navigator.pop(ctx);
                 await _saveRole(user, selectedRole);
               },
-              child: const Text('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
+              child: const TranslatedText('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
             ),
           ],
         ),
@@ -116,7 +117,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${user.name} is now ${_roleLabel(newRole)}'),
+            content: TranslatedText('${user.name} is now ${_roleLabel(newRole)}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -129,7 +130,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update role: $e'), backgroundColor: Colors.red),
+          SnackBar(content: TranslatedText('Failed to update role: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -167,7 +168,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Role Management',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -233,14 +234,14 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Failed to load users', style: TextStyle(color: colors.error)),
+                            TranslatedText('Failed to load users', style: TextStyle(color: colors.error)),
                             const SizedBox(height: 8),
                             ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
                           ],
                         ),
                       )
                     : filtered.isEmpty
-                        ? Center(child: Text('No users found', style: TextStyle(color: colors.textSecondary)))
+                        ? Center(child: TranslatedText('No users found', style: TextStyle(color: colors.textSecondary)))
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                             itemCount: filtered.length,
@@ -260,7 +261,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
+      child: TranslatedText(
         '$count $label',
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
@@ -284,7 +285,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: color.withValues(alpha: 0.15),
-                child: Text(
+                child: TranslatedText(
                   user.initials,
                   style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14),
                 ),
@@ -294,12 +295,12 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       user.name,
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
-                    Text(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
@@ -312,7 +313,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    TranslatedText(
                       user.roleLabel,
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
                     ),

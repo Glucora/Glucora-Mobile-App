@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/admin/screens/admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});
@@ -70,16 +71,16 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
+        title: const TranslatedText('Delete User'),
+        content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const TranslatedText('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -146,13 +147,13 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
       if (mounted) {
         setState(() => _allUsers.removeWhere((u) => u.id == user.id));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.name} deleted'), backgroundColor: Colors.red),
+          SnackBar(content: TranslatedText('${user.name} deleted'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red),
+          SnackBar(content: TranslatedText('Failed to delete: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -166,17 +167,17 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Edit: ${user.name}'),
+          title: TranslatedText('Edit: ${user.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TranslatedText(
                 'Email: ${user.email}',
                 style: TextStyle(fontSize: 12, color: ctx.colors.textSecondary),
               ),
               const SizedBox(height: 16),
-              Text(
+              TranslatedText(
                 'Role',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ctx.colors.primaryDark),
               ),
@@ -196,7 +197,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
               ),
               const SizedBox(height: 12),
               SwitchListTile(
-                title: const Text('Active'),
+                title: const TranslatedText('Active'),
                 value: isActive,
                 onChanged: (v) => setDialogState(() => isActive = v),
                 contentPadding: EdgeInsets.zero,
@@ -206,14 +207,14 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: const TranslatedText('Cancel'),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 await _saveUserEdits(user, selectedRole, isActive);
               },
-              child: const Text('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
+              child: const TranslatedText('Save', style: TextStyle(color: Color(0xFF2BB6A3))),
             ),
           ],
         ),
@@ -238,13 +239,13 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User updated'), backgroundColor: Colors.green),
+          const SnackBar(content: TranslatedText('User updated'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+          SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -267,7 +268,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Users',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -318,7 +319,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(label, style: TextStyle(color: colors.textPrimary)),
+                    label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
                     selected: selected,
                     selectedColor: colors.accent.withValues(alpha: 0.2),
                     checkmarkColor: colors.accent,
@@ -337,14 +338,14 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Failed to load users', style: TextStyle(color: colors.error)),
+                            TranslatedText('Failed to load users', style: TextStyle(color: colors.error)),
                             const SizedBox(height: 8),
                             ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
                           ],
                         ),
                       )
                     : filtered.isEmpty
-                        ? Center(child: Text('No users found', style: TextStyle(color: colors.textSecondary)))
+                        ? Center(child: TranslatedText('No users found', style: TextStyle(color: colors.textSecondary)))
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                             itemCount: filtered.length,
@@ -374,7 +375,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: roleColor.withValues(alpha: 0.15),
-                child: Text(
+                child: TranslatedText(
                   user.initials,
                   style: TextStyle(color: roleColor, fontWeight: FontWeight.w600, fontSize: 14),
                 ),
@@ -384,12 +385,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       user.name,
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
-                    Text(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
@@ -399,7 +400,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   color: roleColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
+                child: TranslatedText(
                   user.roleLabel,
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: roleColor),
                 ),
@@ -413,7 +414,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     color: colors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text('Inactive', style: TextStyle(fontSize: 10, color: colors.error)),
+                  child: TranslatedText('Inactive', style: TextStyle(fontSize: 10, color: colors.error)),
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) {
@@ -422,7 +423,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 itemBuilder: (_) => [
                   const PopupMenuItem(
                     value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: Colors.red)),
+                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
                   ),
                 ],
               ),

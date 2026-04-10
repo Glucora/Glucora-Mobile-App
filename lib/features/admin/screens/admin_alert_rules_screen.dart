@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'admin_alert_rule_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminAlertRulesScreen extends StatefulWidget {
   const AdminAlertRulesScreen({super.key});
@@ -22,19 +23,19 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Alert Rule'),
-        content: Text('Are you sure you want to delete "${rule.name}"?'),
+        title: const TranslatedText('Delete Alert Rule'),
+        content: TranslatedText('Are you sure you want to delete "${rule.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const TranslatedText('Cancel'),
           ),
           TextButton(
             onPressed: () {
               setState(() => mockAlertRules.remove(rule));
               Navigator.pop(ctx);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -80,7 +81,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Alert Rules',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -114,7 +115,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(label, style: TextStyle(color: colors.textPrimary)),
+                    label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
                     selected: selected,
                     selectedColor: colors.accent.withValues(alpha: 0.2),
                     checkmarkColor: colors.accent,
@@ -127,7 +128,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           Expanded(
             child: filtered.isEmpty
                 ? Center(
-                    child: Text(
+                    child: TranslatedText(
                       'No alert rules',
                       style: TextStyle(color: colors.textSecondary),
                     ),
@@ -186,7 +187,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       rule.name,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
@@ -195,7 +196,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TranslatedText(
                       _ruleDescription(rule),
                       style: TextStyle(fontSize: 11, color: colors.textSecondary),
                     ),
@@ -214,7 +215,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                       color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
+                    child: TranslatedText(
                       rule.severity,
                       style: TextStyle(
                         fontSize: 10,
@@ -238,7 +239,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 itemBuilder: (_) => [
                   const PopupMenuItem(
                     value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: Colors.red)),
+                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
                   ),
                 ],
               ),

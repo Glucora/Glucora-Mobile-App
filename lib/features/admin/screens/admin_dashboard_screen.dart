@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -71,7 +72,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text(
+          title: const TranslatedText(
             'Admin Dashboard',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -85,7 +86,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text(
+          title: const TranslatedText(
             'Admin Dashboard',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
@@ -96,7 +97,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load data', style: TextStyle(color: colors.error)),
+              TranslatedText('Failed to load data', style: TextStyle(color: colors.error)),
               const SizedBox(height: 8),
               ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
             ],
@@ -107,7 +108,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Admin Dashboard',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -395,7 +396,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _sectionTitle(BuildContext context, String title) {
     final colors = context.colors;
-    return Text(
+    return TranslatedText(
       title,
       style: TextStyle(
         fontSize: 18,
@@ -432,7 +433,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 12),
-          Text(
+          TranslatedText(
             value,
             style: TextStyle(
               fontSize: 22,
@@ -441,7 +442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+          TranslatedText(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
         ],
       ),
     );
@@ -476,7 +477,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             color: colors.accent.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 12),
-          Text(
+          TranslatedText(
             'AI Model Statistics',
             style: TextStyle(
               fontSize: 16,
@@ -485,7 +486,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          TranslatedText(
             'Model performance metrics, prediction accuracy, and training stats will appear here.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: colors.textSecondary),

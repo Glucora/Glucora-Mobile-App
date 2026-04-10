@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 // ADDED
 
 class AdminAssignmentsScreen extends StatefulWidget {
@@ -34,7 +36,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
     if (_doctors.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('No doctors available')));
+      ).showSnackBar(const SnackBar(content: TranslatedText('No doctors available')));
       return;
     }
 
@@ -42,12 +44,12 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('New Assignment'),
+          title: const TranslatedText('New Assignment'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TranslatedText(
                 'Doctor',
                 style: TextStyle(
                   fontSize: 13,
@@ -70,13 +72,13 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 ),
                 items: _doctors
                     .map(
-                      (d) => DropdownMenuItem(value: d.id, child: Text(d.name)),
+                      (d) => DropdownMenuItem(value: d.id, child: TranslatedText(d.name)),
                     )
                     .toList(),
                 onChanged: (v) => setDialogState(() => selectedDoctorId = v),
               ),
               const SizedBox(height: 16),
-              Text(
+              TranslatedText(
                 'Patient',
                 style: TextStyle(
                   fontSize: 13,
@@ -86,7 +88,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
               ),
               const SizedBox(height: 6),
               if (availablePatients.isEmpty)
-                Text(
+                TranslatedText(
                   'All patients are assigned',
                   style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                 )
@@ -140,7 +142,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                       Navigator.pop(ctx);
                     }
                   : null,
-              child: const Text(
+              child: const TranslatedText(
                 'Assign',
                 style: TextStyle(color: Color(0xFF2BB6A3)),
               ),
@@ -155,21 +157,21 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Assignment'),
-        content: Text(
+        title: const TranslatedText('Remove Assignment'),
+        content: TranslatedText(
           'Remove ${assignment.patientName} from ${assignment.doctorName}?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const TranslatedText('Cancel'),
           ),
           TextButton(
             onPressed: () {
               setState(() => mockAssignments.remove(assignment));
               Navigator.pop(ctx);
             },
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText('Remove', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -184,7 +186,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TranslatedText(
           'Doctor–Patient Assignments',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
@@ -221,7 +223,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        TranslatedText(
                           '${unassigned.length} Unassigned Patient${unassigned.length > 1 ? 's' : ''}',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
@@ -230,7 +232,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
+                        TranslatedText(
                           unassigned.map((p) => p.name).join(', '),
                           style: TextStyle(
                             fontSize: 11,
@@ -280,7 +282,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                   backgroundColor: const Color(
                     0xFF9B59B6,
                   ).withValues(alpha: 0.15),
-                  child: Text(
+                  child: TranslatedText(
                     doctor.initials,
                     style: const TextStyle(
                       color: Color(0xFF9B59B6),
@@ -294,7 +296,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         doctor.name,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
@@ -302,7 +304,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                           color: colors.textPrimary,
                         ),
                       ),
-                      Text(
+                      TranslatedText(
                         '${assignments.length} patient${assignments.length != 1 ? 's' : ''}',
                         style: TextStyle(fontSize: 11, color: colors.textSecondary),
                       ),
@@ -317,7 +319,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
           if (assignments.isEmpty)
             Padding(
               padding: const EdgeInsets.all(14),
-              child: Text(
+              child: TranslatedText(
                 'No patients assigned',
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
@@ -331,7 +333,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                   backgroundColor: const Color(
                     0xFF5B8CF5,
                   ).withValues(alpha: 0.15),
-                  child: Text(
+                  child: TranslatedText(
                     _initials(a.patientName),
                     style: const TextStyle(
                       color: Color(0xFF5B8CF5),
@@ -340,7 +342,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                     ),
                   ),
                 ),
-                title: Text(
+                title: TranslatedText(
                   a.patientName,
                   style: TextStyle(fontSize: 13, color: colors.textPrimary),
                 ),
