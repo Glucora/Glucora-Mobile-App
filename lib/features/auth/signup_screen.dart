@@ -5,6 +5,8 @@ import 'role_selection_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'login_screen.dart'; 
+import 'package:glucora_ai_companion/services/translated_text.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -33,7 +35,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You must agree to the Terms of Service'),
+          content: TranslatedText('You must agree to the Terms of Service'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -77,13 +79,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        SnackBar(content: TranslatedText(e.message), backgroundColor: Colors.red),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sign up failed. Please try again.'),
+          content: TranslatedText('Sign up failed. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -108,7 +110,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             );
           },
         ),
-        title: Text('Sign Up', style: TextStyle(color: colors.textPrimary)),
+        title: TranslatedText('Sign Up', style: TextStyle(color: colors.textPrimary)),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -454,14 +456,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Sign Up', style: TextStyle(fontSize: 16)),
+                    : const TranslatedText('Sign Up', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
               // Link to login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  TranslatedText(
                     "Already have an account? ",
                     style: TextStyle(color: colors.textSecondary),
                   ),
@@ -469,7 +471,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onTap: () {
                       Navigator.pop(context); // go back to login
                     },
-                    child: Text(
+                    child: TranslatedText(
                       'Login',
                       style: TextStyle(
                         color: colors.accent,
@@ -513,7 +515,7 @@ class SignUpSuccessScreen extends StatelessWidget {
           children: [
             Icon(Icons.check_circle_outline, color: colors.accent, size: 100),
             const SizedBox(height: 24),
-            Text(
+            TranslatedText(
               'Success!',
               style: TextStyle(
                 fontSize: 28,
@@ -522,13 +524,13 @@ class SignUpSuccessScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            const TranslatedText(
               'Your account has been successfully registered',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),
-            Text(
+            TranslatedText(
               'Please check your email to confirm your account.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: colors.textSecondary),
@@ -550,7 +552,7 @@ class SignUpSuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Go to Login', style: TextStyle(fontSize: 18)),
+              child: const TranslatedText('Go to Login', style: TextStyle(fontSize: 18)),
             ),
           ],
         ),

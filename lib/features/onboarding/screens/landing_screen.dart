@@ -3,6 +3,7 @@ import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:glucora_ai_companion/features/auth/terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -39,7 +40,7 @@ class LandingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   const SizedBox(height: 8),
-                  Text(
+                  TranslatedText(
                     'Your glucose. Your insulin.\nAlways under control.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -72,7 +73,7 @@ class LandingScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
+                        child: const TranslatedText(
                           'Create an account',
                           style: TextStyle(
                             fontSize: 15,
@@ -99,7 +100,7 @@ class LandingScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
+                        child: const TranslatedText(
                           'Log in',
                           style: TextStyle(
                             fontSize: 15,

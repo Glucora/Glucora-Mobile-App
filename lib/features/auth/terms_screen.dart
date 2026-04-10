@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
@@ -15,7 +16,7 @@ class TermsScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: TranslatedText(
           'Terms & Privacy',
           style: TextStyle(
             color: colors.textPrimary,
@@ -30,7 +31,7 @@ class TermsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TranslatedText(
                 'Terms of Service',
                 style: TextStyle(
                   fontSize: 18,
@@ -39,7 +40,7 @@ class TermsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
+              TranslatedText(
                 'This is a placeholder for the Terms of Service. '
                 'In a real app, this would contain detailed legal terms about '
                 'how your medical data is handled, stored, and shared.\n\n'
@@ -50,7 +51,7 @@ class TermsScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 14, height: 1.5, color: colors.textSecondary),
               ),
               const SizedBox(height: 30),
-              Text(
+              TranslatedText(
                 'Privacy Policy',
                 style: TextStyle(
                   fontSize: 18,
@@ -59,7 +60,7 @@ class TermsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
+              TranslatedText(
                 'easrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg '
                 'ceasrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg '
                 'easrfewsfwsgfbkiwsygfbikseygrfsedrikygfergerg\n\n'

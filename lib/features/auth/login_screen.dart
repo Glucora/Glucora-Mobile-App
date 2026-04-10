@@ -10,6 +10,7 @@ import 'signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:glucora_ai_companion/services/notifications_service.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -154,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: TranslatedText(message), backgroundColor: Colors.red),
     );
   }
 
@@ -162,8 +163,8 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Forgot Password?'),
-        content: const Text(
+        title: const TranslatedText('Forgot Password?'),
+        content: const TranslatedText(
           'For demo, use one of these:\n'
           'patient@test.com / patient123\n'
           'doctor@test.com / doctor123\n'
@@ -173,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: const TranslatedText('OK'),
           ),
         ],
       ),
@@ -194,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
         ),
-        title: Text('Login', style: TextStyle(color: colors.textPrimary)),
+        title: TranslatedText('Login', style: TextStyle(color: colors.textPrimary)),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -304,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _forgotPassword,
-                    child: Text(
+                    child: TranslatedText(
                       'Forgot Password?',
                       style: TextStyle(color: colors.accent),
                     ),
@@ -331,14 +332,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Login', style: TextStyle(fontSize: 16)),
+                      : const TranslatedText('Login', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(height: 16),
                 // Sign up link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    TranslatedText(
                       "Don't have an account? ",
                       style: TextStyle(color: colors.textSecondary),
                     ),
@@ -351,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: Text(
+                      child: TranslatedText(
                         'Sign Up',
                         style: TextStyle(
                           color: colors.accent,
@@ -362,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Text(
+                TranslatedText(
                   'OR',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: colors.textSecondary),
@@ -372,7 +373,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 OutlinedButton.icon(
                   onPressed: _isLoading ? null : _signInWithGoogle,
                   icon: const Icon(Icons.g_mobiledata, color: Colors.red),
-                  label: Text(
+                  label: TranslatedText(
                     'Sign in with Google',
                     style: TextStyle(color: colors.textPrimary),
                   ),

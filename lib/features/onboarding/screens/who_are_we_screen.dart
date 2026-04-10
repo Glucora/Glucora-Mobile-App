@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class WhoWeAreScreen extends StatefulWidget {
   const WhoWeAreScreen({super.key});
@@ -99,7 +100,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pushReplacementNamed(context, '/ai-explain'),
-                    child: Text(
+                    child: TranslatedText(
                       'Skip',
                       style: TextStyle(color: colors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                     ),
@@ -146,7 +147,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                               color: accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
+                            child: TranslatedText(
                               (p['tag'] as String).toUpperCase(),
                               style: TextStyle(
                                 fontSize: 11,
@@ -159,7 +160,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           const SizedBox(height: 28),
 
-                          Text(
+                          TranslatedText(
                             p['title'] as String,
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -172,7 +173,8 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           const SizedBox(height: 20),
 
-                          Text(
+                          TranslatedText
+                          (
                             p['subtitle'] as String,
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -222,7 +224,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: Text(
+                      child: TranslatedText(
                         _currentPage == _pages.length - 1
                             ? 'How does the AI work?'
                             : 'Next',
