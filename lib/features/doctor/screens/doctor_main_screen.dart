@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
 import 'doctor_patients_screen.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 
@@ -66,8 +68,8 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   final String email;
   final String phone;
   final String address;
-  final String specialty; // Add this
-  final String license; // Add this
+  final String specialty;
+  final String license;
 
   const _EditDoctorProfileScreen({
     required this.name,
@@ -75,8 +77,8 @@ class _EditDoctorProfileScreen extends StatefulWidget {
     required this.email,
     required this.phone,
     required this.address,
-    required this.specialty, // Add this
-    required this.license, // Add this
+    required this.specialty,
+    required this.license,
   });
 
   @override
@@ -99,19 +101,16 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     _ageController = TextEditingController(text: widget.age.toString());
     _phoneController = TextEditingController(text: widget.phone);
     _addressController = TextEditingController(text: widget.address);
-
-    // Use the actual data passed from the profile tab
     _specialityController = TextEditingController(text: widget.specialty);
     _licenseController = TextEditingController(text: widget.license);
   }
 
   @override
   void dispose() {
-    // Always dispose every controller you created in initState
     _nameController.dispose();
     _ageController.dispose();
-    _specialityController.dispose(); // Changed from _emailController
-    _licenseController.dispose(); // Added new controller
+    _specialityController.dispose();
+    _licenseController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
@@ -131,7 +130,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: TranslatedText(
           'Edit Profile',
           style: TextStyle(
             color: colors.textPrimary,
@@ -142,7 +141,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
         actions: [
           TextButton(
             onPressed: _save,
-            child: Text(
+            child: TranslatedText(
               'Save',
               style: TextStyle(
                 color: colors.primary,
@@ -164,7 +163,6 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
               Icons.person_outline,
             ),
             const SizedBox(height: 16),
-            // NEW AGE FIELD
             _buildField(
               context,
               'Age',
@@ -218,15 +216,31 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(
+        color: colors.textPrimary,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 13,
+        ),
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
         filled: true,
-        fillColor: const Color(0xFFF5F5F5),
+        fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -238,8 +252,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
   void _save() {
     Navigator.pop(context, {
       'full_name': _nameController.text.trim(),
-      'age':
-          int.tryParse(_ageController.text.trim()) ?? 0, // Ensure it's an int
+      'age': int.tryParse(_ageController.text.trim()) ?? 0,
       'speciality': _specialityController.text.trim(),
       'license_number': _licenseController.text.trim(),
       'phone_no': _phoneController.text.trim(),
@@ -249,7 +262,243 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────
-// Doctor's Profile Tab (editable, with address)
+// Doctor Settings Screen (like Admin's settings screen)
+// ─────────────────────────────────────────────────────
+class _DoctorSettingsScreen extends StatefulWidget {
+  final bool notificationsEnabled;
+  final void Function(bool notifications) onSettingsChanged;
+
+  const _DoctorSettingsScreen({
+    required this.notificationsEnabled,
+    required this.onSettingsChanged,
+  });
+
+  @override
+  State<_DoctorSettingsScreen> createState() => _DoctorSettingsScreenState();
+}
+
+class _DoctorSettingsScreenState extends State<_DoctorSettingsScreen> {
+  late bool _notifications;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifications = widget.notificationsEnabled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: TranslatedText(
+          'Settings',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _settingsToggle(
+              context,
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              subtitle: 'Receive system alerts and updates',
+              color: colors.primary,
+              value: _notifications,
+              onChanged: (val) {
+                setState(() => _notifications = val);
+                widget.onSettingsChanged(_notifications);
+              },
+            ),
+            const SizedBox(height: 16),
+            _settingsToggle(
+              context,
+              icon: Icons.dark_mode_outlined,
+              title: 'Dark Mode',
+              subtitle: 'Switch to dark theme',
+              color: const Color(0xFF5B8CF5),
+              value: isDarkMode,
+              onChanged: (_) => themeProvider.toggleTheme(),
+            ),
+            const SizedBox(height: 16),
+            // ✅ LANGUAGE SETTINGS OPTION (same as Admin)
+            _settingsNavigationTile(
+              context,
+              icon: Icons.language_rounded,
+              title: 'Language',
+              subtitle: 'Choose your preferred language',
+              color: const Color(0xFF2BB6A3),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LanguageSelectionScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsToggle(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final colors = context.colors;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TranslatedText(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                TranslatedText(
+                  subtitle,
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: colors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsNavigationTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TranslatedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Doctor's Profile Tab (with Settings icon that opens DoctorSettingsScreen)
 // ─────────────────────────────────────────────────────
 class _DoctorProfileTab extends StatefulWidget {
   const _DoctorProfileTab();
@@ -267,6 +516,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   String _license = "";
   String _specialty = "";
   bool _isLoading = true;
+  bool _notificationsEnabled = true;
 
   @override
   void initState() {
@@ -302,7 +552,6 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               ? profileData.first
               : profileData;
           _license = profile['liscense_number'] ?? "Not Set";
-          // Ensure this key matches your DB column exactly (speciality vs specialty)
           _specialty = profile['speciality'] ?? "General Practitioner";
         }
         _isLoading = false;
@@ -318,13 +567,13 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Log Out'),
-        content: const Text('Are you sure to log out of your account?'),
+        title: const TranslatedText('Log Out'),
+        content: const TranslatedText('Are you sure to log out of your account?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
+            child: TranslatedText(
               'Cancel',
               style: TextStyle(color: colors.textSecondary),
             ),
@@ -353,7 +602,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Logout'),
+            child: const TranslatedText('Logout'),
           ),
         ],
       ),
@@ -362,8 +611,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
+
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: colors.primary));
+    }
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -372,13 +624,39 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text(
-              "Profile",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TranslatedText(
+                  "Profile",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: colors.textSecondary,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _DoctorSettingsScreen(
+                          notificationsEnabled: _notificationsEnabled,
+                          onSettingsChanged: (notifications) {
+                            setState(
+                              () => _notificationsEnabled = notifications,
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Center(
@@ -435,7 +713,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -447,18 +725,18 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               child: Column(
                 children: [
                   _infoRow(context, Icons.email_outlined, "Email", _email),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(context, Icons.phone_outlined, "Phone", _phone),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(context, Icons.badge_outlined, "License", _license),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(
                     context,
                     Icons.medical_services_outlined,
                     "Specialty",
                     _specialty,
                   ),
-                  const Divider(height: 16, color: Color(0xFFEEEEEE)),
+                  Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(
                     context,
                     Icons.location_on_outlined,
@@ -469,22 +747,8 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
               ),
             ),
 
-            // ========== DARK MODE TOGGLE ==========
             const SizedBox(height: 24),
-            SwitchListTile(
-              title: Text(
-                'Dark Mode',
-                style: TextStyle(color: colors.textPrimary),
-              ),
-              value: Theme.of(context).brightness == Brightness.dark,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeThumbColor: colors.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
-
-            // ========== END DARK MODE TOGGLE ==========
-            const SizedBox(height: 24),
-            Text(
+            TranslatedText(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
@@ -510,7 +774,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     "Log Out",
                     style: TextStyle(
                       color: colors.error,
@@ -541,7 +805,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         const SizedBox(width: 12),
         SizedBox(
           width: 70,
-          child: Text(
+          child: TranslatedText(
             label,
             style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
@@ -568,13 +832,13 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
+            child: TranslatedText(
               question,
               style: TextStyle(fontSize: 14, color: colors.textPrimary),
             ),
@@ -595,8 +859,8 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           email: _email,
           phone: _phone,
           address: _address,
-          specialty: _specialty, // Pass the local state variable
-          license: _license, // Pass the local state variable
+          specialty: _specialty,
+          license: _license,
         ),
       ),
     );
@@ -608,7 +872,6 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
       setState(() => _isLoading = true);
 
       try {
-        // 1. Update 'users' table
         await supabase
             .from('users')
             .update({
@@ -619,13 +882,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             })
             .eq('id', userId!);
 
-        // 2. Update 'doctor_profile' table
         await supabase
             .from('doctor_profile')
             .update({
               'speciality': result['speciality'],
-              'liscense_number':
-                  result['license_number'], // Matches your schema typo
+              'liscense_number': result['license_number'],
             })
             .eq('user_id', userId);
 
@@ -638,7 +899,6 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           ),
         );
 
-        // 3. Reload data to refresh UI
         await _loadProfileData();
       } catch (e) {
         debugPrint("Update error: $e");
@@ -649,8 +909,8 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green, // Optional: makes it look better
+            content: TranslatedText('Profile updated successfully!'),
+            backgroundColor: Colors.green,
           ),
         );
       }
