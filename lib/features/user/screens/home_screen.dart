@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
 import 'package:glucora_ai_companion/features/user/screens/iob_card.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-
-
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,12 +32,39 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _iobValue;
   bool _iobLoading = true;
 
+  // Battery
+  String? _batteryHealth;
+  bool _batteryLoading = true;
+
   @override
   void initState() {
     super.initState();
     _fetchCarePlanSummary();
     _fetchLatestGlucose();
     _fetchLatestIOB();
+    _fetchDeviceBattery();
+  }
+
+  // ════════════════════════════════════════════════════
+  // HELPER: GET PATIENT PROFILE ID
+  // ════════════════════════════════════════════════════
+  Future<int?> getPatientProfileId(String userId) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('patient_profile')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+      
+      if (response != null && response['id'] != null) {
+        return response['id'] as int;
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) print('Error getting patient profile ID: $e');
+      return null;
+    }
   }
 
   // ════════════════════════════════════════════════════
@@ -57,7 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await supabase
           .from('care_plans')
           .select(
-            'target_glucose_min, target_glucose_max, next_appointment, doctor_profile(full_name)',
+            'target_glucose_min, target_glucose_max, next_appointment, '
+            'doctor_profile!care_plans_doctor_id_fkey(user_id, users(full_name))',
           )
           .eq('patient_id', patientProfileId)
           .order('updated_at', ascending: false)
@@ -67,7 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response == null) return;
 
       final doctorProfile = response['doctor_profile'];
-      final doctorName = doctorProfile?['full_name'] ?? 'Your Doctor';
+      final doctorUser = doctorProfile?['users'];
+      final doctorName = doctorUser?['full_name'] ?? 'Your Doctor';
       final min = response['target_glucose_min'];
       final max = response['target_glucose_max'];
       final appt = response['next_appointment'];
@@ -86,41 +113,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // FETCH: LATEST GLUCOSE
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestGlucose() async {
-  try {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      setState(() => _glucoseLoading = false); // ✅ reset even if no user
-      return;
-    }
-
-    final patientId = await getPatientProfileId(userId);
-    if (patientId == null) {
-      setState(() => _glucoseLoading = false); // ✅ reset even if no profile
-      return;
-    }
-
-    final response = await supabase
-        .from('glucose_readings')
-        .select('value_mg_dl, trend, recorded_at')
-        .eq('patient_id', patientId)
-        .order('recorded_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
-
-    setState(() {
-      if (response != null) {
-        _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
-        _glucoseTrend = response['trend'] ?? 'stable';
-        _glucoseUpdatedAt = DateTime.tryParse(response['recorded_at']);
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() => _glucoseLoading = false);
+        return;
       }
-      _glucoseLoading = false; // ✅ always set false, even if response is null
-    });
-  } catch (e) {
-    if (kDebugMode) print('Failed to fetch glucose: $e');
-    setState(() => _glucoseLoading = false);
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) {
+        setState(() => _glucoseLoading = false);
+        return;
+      }
+
+      final response = await supabase
+          .from('glucose_readings')
+          .select('value_mg_dl, trend, recorded_at')
+          .eq('patient_id', patientId)
+          .order('recorded_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      setState(() {
+        if (response != null) {
+          _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
+          _glucoseTrend = response['trend'] ?? 'stable';
+          _glucoseUpdatedAt = DateTime.tryParse(response['recorded_at']);
+        }
+        _glucoseLoading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) print('Failed to fetch glucose: $e');
+      setState(() => _glucoseLoading = false);
+    }
   }
-}
+
   // ════════════════════════════════════════════════════
   // FETCH: LATEST IOB
   // ════════════════════════════════════════════════════
@@ -154,6 +182,116 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ════════════════════════════════════════════════════
+  // FETCH: DEVICE BATTERY - FIXED VERSION
+  // ════════════════════════════════════════════════════
+  Future<void> _fetchDeviceBattery() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      
+      if (userId == null) {
+        setState(() => _batteryLoading = false);
+        return;
+      }
+
+      // Try multiple approaches to get battery health
+      String? batteryValue;
+      
+      // Approach 1: Get active device first
+      final activeDevice = await supabase
+          .from('devices')
+          .select('battery_health, last_sync_at')
+          .eq('patient_id', userId)
+          .eq('is_active', true)
+          .order('last_sync_at', ascending: false)
+          .maybeSingle();
+      
+      if (activeDevice != null && activeDevice['battery_health'] != null) {
+        batteryValue = activeDevice['battery_health'].toString();
+      } else {
+        // Approach 2: Get any device (most recent)
+        final device = await supabase
+            .from('devices')
+            .select('battery_health, last_sync_at')
+            .eq('patient_id', userId)
+            .order('last_sync_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        
+        if (device != null && device['battery_health'] != null) {
+          batteryValue = device['battery_health'].toString();
+        }
+      }
+      
+      // If still no battery, try to see if there are any devices at all
+      if (batteryValue == null) {
+        final devices = await supabase
+            .from('devices')
+            .select('id')
+            .eq('patient_id', userId);
+        
+        if (kDebugMode) {
+          print('Device count for user $userId: ${devices.length}');
+        }
+      }
+      
+      setState(() {
+        _batteryHealth = batteryValue;
+        _batteryLoading = false;
+      });
+      
+      if (kDebugMode) {
+        print('Battery fetched successfully: $_batteryHealth');
+      }
+      
+      // If no battery found after first attempt, try again in 2 seconds
+      // (in case device data is still syncing)
+      if (batteryValue == null && mounted) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            _retryFetchBattery();
+          }
+        });
+      }
+      
+    } catch (e) {
+      if (kDebugMode) print('Failed to fetch battery: $e');
+      setState(() => _batteryLoading = false);
+    }
+  }
+
+  // Retry function for battery fetch
+  Future<void> _retryFetchBattery() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      
+      if (userId == null) return;
+      
+      final response = await supabase
+          .from('devices')
+          .select('battery_health')
+          .eq('patient_id', userId)
+          .not('battery_health', 'is', null)
+          .order('last_sync_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      
+      if (response != null && response['battery_health'] != null && mounted) {
+        setState(() {
+          _batteryHealth = response['battery_health'].toString();
+        });
+        
+        if (kDebugMode) {
+          print('Battery fetched on retry: $_batteryHealth');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Retry battery fetch failed: $e');
+    }
+  }
+
+  // ════════════════════════════════════════════════════
   // HELPERS
   // ════════════════════════════════════════════════════
   String _timeAgo(DateTime? dt) {
@@ -170,6 +308,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_glucoseValue! < 70) return const Color(0xFFEFDD16);
     if (_glucoseValue! > 180) return colors.error;
     return colors.primary;
+  }
+
+  /// Parses battery_health string into a 0.0–1.0 fraction.
+  /// Handles formats like "95%", "95", or falls back to null.
+  double? _parseBatteryPercent(String? raw) {
+    if (raw == null) return null;
+    final cleaned = raw.replaceAll('%', '').trim();
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null) return null;
+    return (parsed.clamp(0, 100)) / 100.0;
   }
 
   // ════════════════════════════════════════════════════
@@ -207,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                TranslatedText(
                   "Welcome Back, $userName!",
                   style: TextStyle(
                     fontSize: 22,
@@ -368,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       "Current Glucose Level:",
                       style: TextStyle(
                         fontSize: 13,
@@ -381,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text(
+                        TranslatedText(
                           _glucoseLoading
                               ? '– mg/dL'
                               : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL',
@@ -393,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text(
+                          child: TranslatedText(
                             'Last updated: ${_timeAgo(_glucoseUpdatedAt)}',
                             style: TextStyle(
                               fontSize: 10,
@@ -439,13 +587,13 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(color: c, shape: BoxShape.circle),
           ),
           const SizedBox(width: 5),
-          Text(label,
+          TranslatedText(label,
               style: TextStyle(fontSize: 12, color: colors.textSecondary)),
         ],
       );
 
   // ════════════════════════════════════════════════════
-  // IOB + BATTERY ROW — IOB is live
+  // IOB + BATTERY ROW — both live
   // ════════════════════════════════════════════════════
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
@@ -453,15 +601,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final String iobDisplay =
         _iobLoading ? '–' : (_iobValue?.toStringAsFixed(1) ?? '–');
 
-    // Battery — still static until you have a devices table query
-    const double batteryPercent = 0.80;
-    const int batteryDisplay = 80;
+    // Battery - parse the percentage
+    final double? batteryPercent = _parseBatteryPercent(_batteryHealth);
+    
+    // Display: use numeric value if parseable, otherwise show the raw string
+    final String batteryDisplay = batteryPercent != null
+        ? '${(batteryPercent * 100).toInt()}'
+        : (_batteryLoading ? '–' : (_batteryHealth ?? '–'));
 
-    final Color batteryColor = batteryPercent > 0.5
-        ? const Color(0xFF4CAF50)
-        : batteryPercent > 0.2
-            ? const Color(0xFFFFB300)
-            : const Color(0xFFEF1616);
+    final Color batteryColor = batteryPercent == null
+        ? const Color(0xFF4CAF50) // default to green when unknown
+        : batteryPercent > 0.5
+            ? const Color(0xFF4CAF50)
+            : batteryPercent > 0.2
+                ? const Color(0xFFFFB300)
+                : const Color(0xFFEF1616);
 
     return Row(
       children: [
@@ -502,59 +656,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                child: GestureDetector(
-                  onTap: () => showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => const IobDetailSheet(),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "IOB",
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: colors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            iobDisplay,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary,
-                            ),
+                  child: GestureDetector(
+                    onTap: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const IobDetailSheet(),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TranslatedText(
+                          "IOB",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(width: 3),
-                          Text(
-                            " U",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Insulin on board",
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          color: colors.textSecondary,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            TranslatedText(
+                              iobDisplay,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            TranslatedText(
+                              " U",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        TranslatedText(
+                          "Insulin on board",
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: colors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 ),
               ],
             ),
@@ -589,20 +743,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: batteryColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    batteryPercent > 0.2
-                        ? Icons.battery_charging_full_rounded
-                        : Icons.battery_alert_rounded,
-                    size: 19,
-                    color: batteryColor,
-                  ),
+                  child: _batteryLoading
+                      ? Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: batteryColor),
+                        )
+                      : Icon(
+                          batteryPercent != null && batteryPercent <= 0.2
+                              ? Icons.battery_alert_rounded
+                              : Icons.battery_charging_full_rounded,
+                          size: 19,
+                          color: batteryColor,
+                        ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         "Sensor Battery",
                         style: TextStyle(
                           fontSize: 11,
@@ -615,34 +775,56 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(
-                            "$batteryDisplay",
+                          TranslatedText(
+                            batteryDisplay,
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: colors.textPrimary,
                             ),
                           ),
-                          Text(
-                            " %",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colors.textSecondary,
+                          if (batteryPercent != null) ...[
+                            TranslatedText(
+                              " %",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colors.textSecondary,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 5),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: batteryPercent,
-                          minHeight: 5,
-                          backgroundColor:
-                              colors.textSecondary.withValues(alpha: 0.15),
-                          valueColor: AlwaysStoppedAnimation(batteryColor),
+                      // Show progress bar only when we have a numeric value
+                      if (batteryPercent != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: batteryPercent,
+                            minHeight: 5,
+                            backgroundColor:
+                                colors.textSecondary.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation(batteryColor),
+                          ),
+                        )
+                      else if (!_batteryLoading && _batteryHealth == null)
+                        TranslatedText(
+                          'No device paired',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: colors.textSecondary,
+                          ),
+                        )
+                      else if (_batteryLoading)
+                        const SizedBox.shrink()
+                      else
+                        TranslatedText(
+                          _batteryHealth ?? 'Unknown',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: colors.textSecondary,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -679,12 +861,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("AI Prediction",
+              TranslatedText("AI Prediction",
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: colors.textPrimary)),
-              Text("View details",
+              TranslatedText("View details",
                   style: TextStyle(
                       fontSize: 13,
                       color: colors.primary,
@@ -696,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text("135",
+              TranslatedText("135",
                   style: TextStyle(
                       fontSize: 46,
                       fontWeight: FontWeight.bold,
@@ -704,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(" mg/dL",
+                child: TranslatedText(" mg/dL",
                     style: TextStyle(
                         fontSize: 18, color: colors.textSecondary)),
               ),
@@ -716,19 +898,19 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
-              Text("22.73%",
+              TranslatedText("22.73%",
                   style: TextStyle(
                       fontSize: 13,
                       color: colors.error,
                       fontWeight: FontWeight.w600)),
               const SizedBox(width: 6),
-              Text("Expected glucose in 30 minutes",
+              TranslatedText("Expected glucose in 30 minutes",
                   style:
                       TextStyle(fontSize: 12, color: colors.textSecondary)),
             ],
           ),
           const SizedBox(height: 4),
-          Text("Glucose from 10:21pm 15 Jan, 2026",
+          TranslatedText("Glucose from 10:21pm 15 Jan, 2026",
               style: TextStyle(fontSize: 11, color: colors.textSecondary)),
           const SizedBox(height: 14),
           SizedBox(
@@ -743,13 +925,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              Text("Next 60 minutes",
+              TranslatedText("Next 60 minutes",
                   style:
                       TextStyle(fontSize: 11, color: colors.textSecondary)),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              Text("Last Hour",
+              TranslatedText("Last Hour",
                   style:
                       TextStyle(fontSize: 11, color: colors.textSecondary)),
             ],
@@ -805,7 +987,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Recommendations",
+                  TranslatedText("Recommendations",
                       style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -815,7 +997,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) => const RecommendationsScreen())),
-                    child: Text("View details",
+                    child: TranslatedText("View details",
                         style: TextStyle(
                             fontSize: 13,
                             color: colors.primary,
@@ -839,7 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
+                    child: TranslatedText(
                       "Recommendations are supportive and not a medical diagnosis.",
                       style: TextStyle(
                           fontSize: 10, color: colors.textSecondary),
@@ -895,7 +1077,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(
+            child: TranslatedText(
               recText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -949,7 +1131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             size: 18, color: colors.primary),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('My Care Plan',
+                          child: TranslatedText('My Care Plan',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -960,7 +1142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text('$_doctorName  ·  Target: $_targetRange',
+                    TranslatedText('$_doctorName  ·  Target: $_targetRange',
                         style: TextStyle(
                             fontSize: 12, color: colors.textSecondary)),
                     const SizedBox(height: 10),
@@ -969,7 +1151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(Icons.calendar_today_outlined,
                             size: 12, color: colors.textSecondary),
                         const SizedBox(width: 4),
-                        Text('Next appointment: $_nextAppointment',
+                        TranslatedText('Next appointment: $_nextAppointment',
                             style: TextStyle(
                                 fontSize: 11, color: colors.textSecondary)),
                       ],

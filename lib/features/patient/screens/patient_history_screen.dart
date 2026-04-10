@@ -4,6 +4,7 @@ import 'history_detail_screen.dart';
 import 'csv_export_sheet.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 // ── Graph filter enums ────────────────────────────────────────────────────
 
@@ -283,7 +284,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
-                      child: Text(
+                      child: TranslatedText(
                         'No entries for this filter.',
                         style: TextStyle(color: colors.textSecondary, fontSize: 15),
                       ),
@@ -359,7 +360,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TranslatedText(
                 'My History',
                 style: TextStyle(
                   fontSize: 26,
@@ -369,7 +370,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              TranslatedText(
                 '${patientLogEntries.length} total events recorded',
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
@@ -464,7 +465,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 color: isActive ? Colors.white : colors.textSecondary,
               ),
               const SizedBox(width: 4),
-              Text(
+              TranslatedText(
                 label,
                 style: TextStyle(
                   fontSize: 11,
@@ -508,7 +509,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               color: isActive ? activeColor : colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
-          child: Text(
+          child: TranslatedText(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -568,7 +569,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         children: [
           Icon(Icons.bar_chart_rounded, size: 40, color: colors.textSecondary),
           const SizedBox(height: 8),
-          Text(
+          TranslatedText(
             message,
             style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
@@ -646,7 +647,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             ),
           ),
         const SizedBox(width: 5),
-        Text(
+        TranslatedText(
           label,
           style: const TextStyle(fontSize: 10, color: Color(0xFF888888)),
         ),
@@ -698,7 +699,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         ),
         child: Column(
           children: [
-            Text(
+            TranslatedText(
               '$count',
               style: TextStyle(
                 fontSize: 18,
@@ -707,7 +708,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
+            TranslatedText(
               label,
               style: const TextStyle(fontSize: 10, color: Colors.grey),
             ),
@@ -765,7 +766,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             ),
           ],
         ),
-        child: Text(
+        child: TranslatedText(
           filter,
           style: TextStyle(
             fontSize: 12,
@@ -786,7 +787,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          TranslatedText(
             'Events',
             style: TextStyle(
               fontSize: 18,
@@ -794,7 +795,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               color: colors.textPrimary,
             ),
           ),
-          Text(
+          TranslatedText(
             '$shownCount shown',
             style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
@@ -847,7 +848,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           children: [
             Icon(icon, size: 24, color: colors.textSecondary),
             const SizedBox(height: 3),
-            Text(
+            TranslatedText(
               label,
               style: TextStyle(
                 fontSize: 11,
@@ -933,7 +934,7 @@ class _HistoryCard extends StatelessWidget {
                         children: [
                           _typeBadge(typeLabel, color),
                           const Spacer(),
-                          Text(
+                          TranslatedText(
                             entry.timeLabel,
                             style: TextStyle(
                               fontSize: 10,
@@ -966,7 +967,7 @@ class _HistoryCard extends StatelessWidget {
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
+      child: TranslatedText(
         label,
         style: TextStyle(
           fontSize: 10,
@@ -984,7 +985,7 @@ class _HistoryCard extends StatelessWidget {
       case HistoryEntryType.manualGlucoseLog:
         return Row(
           children: [
-            Text(
+            TranslatedText(
               '${entry.glucoseValue} mg/dL',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
@@ -995,7 +996,7 @@ class _HistoryCard extends StatelessWidget {
             if (entry.type == HistoryEntryType.manualGlucoseLog &&
                 entry.logMethod != null) ...[
               const SizedBox(width: 6),
-              Text(
+              TranslatedText(
                 '• ${entry.logMethod}',
                 style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
@@ -1007,7 +1008,7 @@ class _HistoryCard extends StatelessWidget {
         return Row(
           children: [
             Expanded(
-              child: Text(
+              child: TranslatedText(
                 '${entry.insulinUnits} U  •  ${entry.deliveryType}',
                 style: const TextStyle(
                   fontSize: 14,
@@ -1025,7 +1026,7 @@ class _HistoryCard extends StatelessWidget {
                       : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
+                child: TranslatedText(
                   entry.deliverySource!,
                   style: TextStyle(
                     fontSize: 10,
@@ -1048,7 +1049,7 @@ class _HistoryCard extends StatelessWidget {
         return Row(
           children: [
             Expanded(
-              child: Text(
+              child: TranslatedText(
                 kind ?? 'Unknown failure',
                 style: const TextStyle(
                   fontSize: 14,
@@ -1067,7 +1068,7 @@ class _HistoryCard extends StatelessWidget {
                       : colors.error.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
+                child: TranslatedText(
                   resolved ? 'Resolved' : 'Ongoing',
                   style: TextStyle(
                     fontSize: 10,

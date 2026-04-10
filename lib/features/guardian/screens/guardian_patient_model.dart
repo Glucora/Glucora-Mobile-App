@@ -1,4 +1,5 @@
 /// Shared model used across all guardian screens
+library;
 
 class GuardianPatient {
   final int? profileId;

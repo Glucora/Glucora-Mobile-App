@@ -3,6 +3,8 @@ import 'package:glucora_ai_companion/features/doctor/screens/care_plan.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 
 class PatientCarePlanScreen extends StatefulWidget {
   const PatientCarePlanScreen({super.key});
@@ -129,7 +131,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
     if (_error != null || _plan == null) {
       return Scaffold(
         backgroundColor: colors.background,
-        body: Center(child: Text(_error ?? 'No care plan found.')),
+        body: Center(child: TranslatedText(_error ?? 'No care plan found.')),
       );
     }
 
@@ -143,7 +145,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TranslatedText(
               'My Care Plan',
               style: TextStyle(
                 fontSize: 17,
@@ -151,7 +153,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                 letterSpacing: 0.2,
               ),
             ),
-            Text(
+            TranslatedText(
               'Set by $_doctorName',
               style: const TextStyle(
                 fontSize: 11,
@@ -234,7 +236,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
         children: [
           Icon(Icons.lock_outline, color: Color(0xFF199A8E), size: 15),
           SizedBox(width: 8),
-          Text(
+          TranslatedText(
             'Read-only — managed by your doctor',
             style: TextStyle(
               color: Color(0xFF199A8E),
@@ -253,7 +255,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
       children: [
         Icon(icon, size: 18, color: colors.primary),
         const SizedBox(width: 8),
-        Text(
+        TranslatedText(
           title,
           style: TextStyle(
             fontSize: 17,
@@ -307,7 +309,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                 Icon(Icons.info_outline, size: 14, color: colors.accent),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: TranslatedText(
                     'Recommended range: 70–180 mg/dL for most Type 1 patients.',
                     style: TextStyle(
                       fontSize: 11,
@@ -342,7 +344,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TranslatedText(
               label,
               style: TextStyle(
                 fontSize: 11,
@@ -351,7 +353,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
+            TranslatedText(
               value,
               style: TextStyle(
                 fontSize: 15,
@@ -374,7 +376,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
         children: [
           Row(
             children: [
-              Text(
+              TranslatedText(
                 'Insulin Type',
                 style: TextStyle(
                   fontSize: 12,
@@ -407,7 +409,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          Text(
+          TranslatedText(
             'Basal Program',
             style: TextStyle(
               fontSize: 12,
@@ -458,7 +460,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(
+                  child: TranslatedText(
                     '${index + 1}',
                     style: TextStyle(
                       fontSize: 12,
@@ -470,7 +472,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
+                child: TranslatedText(
                   '${_fmtHour(seg.startHour)} – ${_fmtHour(seg.endHour)}',
                   style: TextStyle(
                     fontSize: 14,
@@ -488,7 +490,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                   color: colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
+                child: TranslatedText(
                   '${seg.rate.toStringAsFixed(2)} U/h',
                   style: TextStyle(
                     fontSize: 13,
@@ -570,7 +572,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
               Icon(icon, size: 16, color: iconColor),
               const SizedBox(width: 6),
               Flexible(
-                child: Text(
+                child: TranslatedText(
                   title,
                   style: TextStyle(
                     fontSize: 11,
@@ -583,7 +585,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
+          TranslatedText(
             value,
             style: TextStyle(
               fontSize: 28,
@@ -592,12 +594,12 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
               height: 1,
             ),
           ),
-          Text(
+          TranslatedText(
             unit,
             style: TextStyle(fontSize: 10, color: colors.textSecondary),
           ),
           const SizedBox(height: 8),
-          Text(
+          TranslatedText(
             subtitle,
             style: TextStyle(
               fontSize: 10,
@@ -623,7 +625,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       'Maximum Auto-Bolus',
                       style: TextStyle(
                         fontSize: 12,
@@ -636,7 +638,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text(
+                        TranslatedText(
                           plan.maxAutoBolus.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 36,
@@ -646,7 +648,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Text(
+                        TranslatedText(
                           'U / event',
                           style: TextStyle(
                             fontSize: 13,
@@ -689,7 +691,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: TranslatedText(
                     'The AID system will never deliver more than this in a single automated correction.',
                     style: TextStyle(
                       fontSize: 11,
@@ -734,7 +736,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TranslatedText(
                   formatted,
                   style: TextStyle(
                     fontSize: 18,
@@ -743,7 +745,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                   ),
                 ),
                 if (daysUntil != null)
-                  Text(
+                  TranslatedText(
                     daysUntil > 0
                         ? 'In $daysUntil day${daysUntil == 1 ? '' : 's'}'
                         : daysUntil == 0
@@ -768,7 +770,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
     if (plan.doctorNotes.trim().isEmpty) {
       return _card(
         context,
-        child: Text(
+        child: TranslatedText(
           'No notes from your doctor.',
           style: TextStyle(
             fontSize: 13,
@@ -790,7 +792,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
             color: colors.textSecondary.withValues(alpha: 0.2),
           ),
         ),
-        child: Text(
+        child: TranslatedText(
           plan.doctorNotes,
           style: TextStyle(
             fontSize: 13,
@@ -806,7 +808,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
   Widget _lastUpdatedFooter(BuildContext context) {
     final colors = context.colors;
     return Center(
-      child: Text(
+      child: TranslatedText(
         'Last updated $_lastUpdated · $_doctorName',
         style: TextStyle(fontSize: 11, color: colors.textSecondary),
       ),
@@ -883,27 +885,27 @@ class _GlucoseRangeBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            TranslatedText(
               '40',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               '54',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               '70',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               '180',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               '250',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               '400',
               style: TextStyle(fontSize: 9, color: colors.textSecondary),
             ),
@@ -913,23 +915,23 @@ class _GlucoseRangeBar extends StatelessWidget {
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            TranslatedText(
               'Very Low',
               style: TextStyle(fontSize: 8, color: Color(0xFFB71C1C)),
             ),
-            Text(
+            TranslatedText(
               'Low',
               style: TextStyle(fontSize: 8, color: Color(0xFFFBC02D)),
             ),
-            Text(
+            TranslatedText(
               'In Range',
               style: TextStyle(fontSize: 8, color: Color(0xFF2BB6A3)),
             ),
-            Text(
+            TranslatedText(
               'High',
               style: TextStyle(fontSize: 8, color: Color(0xFFFF9F40)),
             ),
-            Text(
+            TranslatedText(
               'Very High',
               style: TextStyle(fontSize: 8, color: Color(0xFFD32F2F)),
             ),

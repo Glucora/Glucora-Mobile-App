@@ -7,7 +7,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-
 class LocationService {
   static Future<void> initializeService() async {
      if (kIsWeb) {

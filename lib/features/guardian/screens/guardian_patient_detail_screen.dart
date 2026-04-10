@@ -72,7 +72,7 @@ class _GuardianPatientDetailScreenState
 
   void _call() async {
     final phone = widget.patient.phoneNumber;
-    if (phone == null || phone.isEmpty) {
+    if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No phone number available')),
       );
@@ -86,7 +86,7 @@ class _GuardianPatientDetailScreenState
 
   void _sms() async {
     final phone = widget.patient.phoneNumber;
-    if (phone == null || phone.isEmpty) {
+    if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No phone number available')),
       );

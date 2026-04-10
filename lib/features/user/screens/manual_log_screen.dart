@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 
 class ApiService {
   static final supabase = Supabase.instance.client;
@@ -127,13 +129,13 @@ Future<void> _save() async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text("Manual Log",
+            TranslatedText("Manual Log",
                 style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: colors.textPrimary)),
             const SizedBox(height: 4),
-            Text("Log your glucose reading manually",
+            TranslatedText("Log your glucose reading manually",
                 style: TextStyle(fontSize: 13, color: colors.textSecondary)),
             const SizedBox(height: 20),
 
@@ -155,7 +157,7 @@ Future<void> _save() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("New Reading",
+                  TranslatedText("New Reading",
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -186,7 +188,7 @@ Future<void> _save() async {
                               fontWeight: FontWeight.w500),
                           items: ["mg/dL", "mmol/L"]
                               .map((u) =>
-                                  DropdownMenuItem(value: u, child: Text(u)))
+                                  DropdownMenuItem(value: u, child: TranslatedText(u)))
                               .toList(),
                           onChanged: (v) => setState(() => _unit = v!),
                         ),
@@ -195,7 +197,7 @@ Future<void> _save() async {
                   ]),
 
                   const SizedBox(height: 12),
-                  Text("Meal time",
+                  TranslatedText("Meal time",
                       style:
                           TextStyle(fontSize: 12, color: colors.textSecondary)),
                   const SizedBox(height: 8),
@@ -215,7 +217,7 @@ Future<void> _save() async {
                                       : colors.background,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: Text(mt,
+                                child: TranslatedText(mt,
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
@@ -235,7 +237,7 @@ Future<void> _save() async {
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(_error!,
+                      child: TranslatedText(_error!,
                           style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
 
@@ -256,7 +258,7 @@ Future<void> _save() async {
                               height: 20,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2))
-                          : const Text("Save Reading",
+                          : const TranslatedText("Save Reading",
                               style: TextStyle(
                                   fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
@@ -270,12 +272,12 @@ Future<void> _save() async {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Recent Logs",
+                TranslatedText("Recent Logs",
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary)),
-                Text("${_logs.length} entries",
+                TranslatedText("${_logs.length} entries",
                     style: TextStyle(
                         fontSize: 12, color: colors.textSecondary)),
               ],
@@ -285,10 +287,10 @@ Future<void> _save() async {
               const Center(child: CircularProgressIndicator())
             else if (_error != null)
               Center(
-                  child: Text(_error!,
+                  child: TranslatedText(_error!,
                       style: const TextStyle(color: Colors.red)))
             else if (_logs.isEmpty)
-              const Text("No logs yet")
+              const TranslatedText("No logs yet")
             else
               ..._logs.map((log) => _logTile(context, log)),
             const SizedBox(height: 30),
@@ -365,7 +367,7 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  TranslatedText(
                     "${log.value} mg/dL",
                     style: TextStyle(
                         fontSize: 15,
@@ -387,7 +389,7 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
                         color: colors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
+                      child: TranslatedText(
                         log.mealTime!,
                         style: TextStyle(
                             fontSize: 11,
@@ -397,7 +399,7 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
+                  TranslatedText(
                     log.source,
                     style: TextStyle(
                         fontSize: 12, color: colors.textSecondary),
@@ -405,7 +407,7 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
+              TranslatedText(
                 _formatDate(log.recordedAt),
                 style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
@@ -419,7 +421,7 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
                         size: 13, color: colors.textSecondary),
                     const SizedBox(width: 4),
                     Expanded(
-                      child: Text(
+                      child: TranslatedText(
                         log.notes!,
                         style: TextStyle(
                             fontSize: 12,

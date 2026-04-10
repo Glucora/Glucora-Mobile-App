@@ -3,6 +3,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../services/ai_service.dart';
 import '../../../services/supabase_service.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 final _db = Supabase.instance.client;
 
@@ -226,7 +227,7 @@ Future<void> _loadSaved() async {
           onTap: () => Navigator.pop(context),
           child: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary, size: 20),
         ),
-        title: Text('Recommendations',
+        title: TranslatedText('Recommendations',
             style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         actions: [
@@ -258,7 +259,7 @@ Future<void> _loadSaved() async {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           CircularProgressIndicator(color: colors.primary),
           const SizedBox(height: 16),
-          Text('Loading your recommendations...',
+          TranslatedText('Loading your recommendations...',
               style: TextStyle(fontSize: 13, color: colors.textSecondary)),
         ]),
       );
@@ -299,13 +300,13 @@ Future<void> _loadSaved() async {
           const Icon(Icons.error_outline, color: Colors.red, size: 16),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red, height: 1.4)),
+            child: TranslatedText(_error!, style: const TextStyle(fontSize: 12, color: Colors.red, height: 1.4)),
           ),
         ]),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: _refreshFromAPI,
-          child: Text('Tap to retry', style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w600)),
+          child: TranslatedText('Tap to retry', style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w600)),
         ),
       ]),
     );
@@ -317,10 +318,10 @@ Future<void> _loadSaved() async {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.lightbulb_outline_rounded, size: 52, color: colors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
-        Text('No recommendations yet',
+        TranslatedText('No recommendations yet',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
         const SizedBox(height: 8),
-        Text(
+        TranslatedText(
           'Tap the refresh button to get AI-generated recommendations.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5),
@@ -357,10 +358,10 @@ Future<void> _loadSaved() async {
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(card.title,
+              TranslatedText(card.title,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: colors.textPrimary)),
               const SizedBox(height: 6),
-              Text(card.message,
+              TranslatedText(card.message,
                   style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5)),
             ]),
           ),

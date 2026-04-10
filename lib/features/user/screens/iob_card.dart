@@ -3,6 +3,7 @@ import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 class IobDetailSheet extends StatefulWidget {
   const IobDetailSheet({super.key});
@@ -122,12 +123,12 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Insulin On Board',
+                  TranslatedText('Insulin On Board',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: colors.textPrimary)),
-                  Text(
+                  TranslatedText(
                     _iob != null
                         ? 'Updated ${_timeAgo(_iob!['calculated_at'])}'
                         : '–',
@@ -145,11 +146,11 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
             const Center(child: CircularProgressIndicator())
           else if (_error != null)
             Center(
-                child: Text(_error!,
+                child: TranslatedText(_error!,
                     style: const TextStyle(color: Colors.red)))
           else if (_iob == null)
             Center(
-                child: Text('No IOB data available',
+                child: TranslatedText('No IOB data available',
                     style:
                         TextStyle(color: colors.textSecondary)))
           else ...[
@@ -165,7 +166,7 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
               ),
               child: Column(
                 children: [
-                  Text('Total IOB',
+                  TranslatedText('Total IOB',
                       style: TextStyle(
                           fontSize: 13,
                           color: colors.textSecondary,
@@ -176,7 +177,7 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text(
+                      TranslatedText(
                         _safeDouble(_iob!['total_iob_units'])
                             .toStringAsFixed(2),
                         style: TextStyle(
@@ -185,7 +186,7 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
                             color: colors.primary),
                       ),
                       const SizedBox(width: 6),
-                      Text('U',
+                      TranslatedText('U',
                           style: TextStyle(
                               fontSize: 20,
                               color: colors.textSecondary)),
@@ -316,13 +317,13 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(height: 8),
-          Text(value,
+          TranslatedText(value,
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: colors.textPrimary)),
           const SizedBox(height: 2),
-          Text(label,
+          TranslatedText(label,
               style:
                   TextStyle(fontSize: 10, color: colors.textSecondary)),
         ],
@@ -337,10 +338,10 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          TranslatedText(label,
               style:
                   TextStyle(fontSize: 13, color: colors.textSecondary)),
-          Text(value,
+          TranslatedText(value,
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
