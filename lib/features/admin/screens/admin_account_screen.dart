@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
+
+
 
 class AdminAccountScreen extends StatefulWidget {
   const AdminAccountScreen({super.key});
@@ -91,13 +95,13 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Log Out'),
-        content: const Text('Are you sure to log out of your account?'),
+        title: const TranslatedText('Log Out'),
+        content: const TranslatedText('Are you sure to log out of your account?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
+            child: TranslatedText(
               'Cancel',
               style: TextStyle(color: colors.textSecondary),
             ),
@@ -126,7 +130,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Logout'),
+            child: const TranslatedText('Logout'),
           ),
         ],
       ),
@@ -159,13 +163,19 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated'), backgroundColor: Colors.green),
+          SnackBar(
+            content: const TranslatedText('Profile updated'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: TranslatedText('Failed to update: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -188,9 +198,15 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load profile', style: TextStyle(color: colors.error)),
+              TranslatedText(
+                'Failed to load profile',
+                style: TextStyle(color: colors.error),
+              ),
               const SizedBox(height: 8),
-              ElevatedButton(onPressed: _fetchUserData, child: const Text('Retry')),
+              ElevatedButton(
+                onPressed: _fetchUserData,
+                child: const TranslatedText('Retry'),
+              ),
             ],
           ),
         ),
@@ -207,7 +223,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                TranslatedText(
                   "My Account",
                   style: TextStyle(
                     fontSize: 22,
@@ -293,7 +309,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                       color: colors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
+                    child: TranslatedText(
                       "Administrator",
                       style: TextStyle(
                         fontSize: 12,
@@ -337,19 +353,9 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                 ],
               ),
             ),
+            
             const SizedBox(height: 24),
-            SwitchListTile(
-              title: Text(
-                'Dark Mode',
-                style: TextStyle(color: colors.textPrimary),
-              ),
-              value: Theme.of(context).brightness == Brightness.dark,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeThumbColor: colors.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 24),
-            Text(
+            TranslatedText(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
@@ -373,7 +379,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     "Log Out",
                     style: TextStyle(
                       color: colors.error,
@@ -404,7 +410,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         const SizedBox(width: 12),
         SizedBox(
           width: 70,
-          child: Text(
+          child: TranslatedText(
             label,
             style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
@@ -454,7 +460,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
+                  child: TranslatedText(
                     question,
                     style: TextStyle(fontSize: 14, color: colors.textPrimary),
                   ),
@@ -471,7 +477,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             ),
             if (isExpanded) ...[
               const SizedBox(height: 10),
-              Text(
+              TranslatedText(
                 answer,
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
@@ -562,7 +568,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: TranslatedText(
           'Edit Profile',
           style: TextStyle(
             color: colors.textPrimary,
@@ -573,7 +579,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
         actions: [
           TextButton(
             onPressed: _save,
-            child: Text(
+            child: TranslatedText(
               'Save',
               style: TextStyle(
                 color: colors.primary,
@@ -701,7 +707,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────
-// Admin Settings Screen
+// Admin Settings Screen (UPDATED with Language option)
 // ─────────────────────────────────────────────────────
 class _AdminSettingsScreen extends StatefulWidget {
   final bool notificationsEnabled;
@@ -742,7 +748,7 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: TranslatedText(
           'Settings',
           style: TextStyle(
             color: colors.textPrimary,
@@ -776,6 +782,23 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
               color: const Color(0xFF5B8CF5),
               value: isDarkMode,
               onChanged: (_) => themeProvider.toggleTheme(),
+            ),
+            const SizedBox(height: 16),
+            // ✅ LANGUAGE SETTINGS OPTION
+            _settingsNavigationTile(
+              context,
+              icon: Icons.language_rounded,
+              title: 'Language',
+              subtitle: 'Choose your preferred language',
+              color: const Color(0xFF2BB6A3),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LanguageSelectionScreen(),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -824,7 +847,7 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TranslatedText(
                   title,
                   style: TextStyle(
                     fontSize: 16,
@@ -833,7 +856,7 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                TranslatedText(
                   subtitle,
                   style: TextStyle(fontSize: 13, color: colors.textSecondary),
                 ),
@@ -846,6 +869,75 @@ class _AdminSettingsScreenState extends State<_AdminSettingsScreen> {
             activeThumbColor: colors.primary,
           ),
         ],
+      ),
+    );
+  }
+
+  // ✅ NEW: Navigation tile for Language (similar to settings but with chevron)
+  Widget _settingsNavigationTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TranslatedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }
