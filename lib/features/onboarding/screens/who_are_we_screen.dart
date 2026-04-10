@@ -20,7 +20,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
   final List<Map<String, dynamic>> _pages = [
     {
       'tag': 'The problem',
-      'title': 'Managing Type 1\nDiabetes never stops.',
+      'title': 'Managing Type 1 Diabetes never stops.',
       'subtitle':
           'Checking glucose, calculating doses, reacting to highs and lows — every day, around the clock.',
       'accentColor': Color(0xFF2BB6A3),
