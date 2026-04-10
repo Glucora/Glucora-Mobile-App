@@ -1,8 +1,9 @@
-// main.dart
 import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as legacy_provider;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'features/auth/signup_screen.dart';
@@ -17,32 +18,44 @@ import 'features/onboarding/screens/landing_screen.dart';
 import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
+import 'package:glucora_ai_companion/services/notifications_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await dotenv.load(fileName: ".env");
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   await Supabase.initialize(
     url: "https://yzmkzfqgigsaqhnbsiyn.supabase.co",
-    anonKey:
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6bWt6ZnFnaWdzYXFobmJzaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NTY4NzAsImV4cCI6MjA4OTMzMjg3MH0.Z0xEWSa3qbd0KDHgFQfCFJ8Y7EoYfeiNxKRm0mQCsRE",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6bWt6ZnFnaWdzYXFobmJzaXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NTY4NzAsImV4cCI6MjA4OTMzMjg3MH0.Z0xEWSa3qbd0KDHgFQfCFJ8Y7EoYfeiNxKRm0mQCsRE",
     authOptions: FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
   );
 
-  final appLinks = AppLinks();
+  await NotificationService.initialize();
 
+  final appLinks = AppLinks();
   appLinks.uriLinkStream.listen((uri) {
     Supabase.instance.client.auth.getSessionFromUrl(uri);
   });
 
   await Permission.notification.request();
-  if (!kIsWeb) {
-  await LocationService.initializeService();
-}
 
-  runApp(const GlucoraApp());
+  if (!kIsWeb) {
+    await LocationService.initializeService();
+  }
+
+  runApp(
+    const ProviderScope(
+      child: GlucoraApp(),
+    ),
+  );
 }
 
 class GlucoraApp extends StatelessWidget {
@@ -50,9 +63,9 @@ class GlucoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    return legacy_provider.ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(
+      child: legacy_provider.Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -75,40 +88,6 @@ class GlucoraApp extends StatelessWidget {
     );
   }
 }
-/* 
-class _StartupGate extends StatelessWidget {
-  const _StartupGate();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      return const WhoWeAreScreen();
-    }
-
-    final userMetaRole = user.userMetadata?['role']?.toString();
-    final appMetaRole = user.appMetadata['role']?.toString();
-    final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
-        .trim()
-        .toLowerCase();
-
-    if (normalizedRole == 'patient') {
-      return const PatientNavigation();
-    }
-    if (normalizedRole == 'doctor') {
-      return const DoctorMainScreen();
-    }
-    if (normalizedRole == 'guardian') {
-      return const GuardianMainScreen();
-    }
-    if (normalizedRole == 'admin') {
-      return const AdminMainScreen();
-    }
-
-    return const RoleSelectionScreen();
-  }
-}
- */
 
 class _StartupGate extends StatefulWidget {
   const _StartupGate();
@@ -129,6 +108,8 @@ class _StartupGateState extends State<_StartupGate> {
   Future<void> _checkAndStartLocation() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+    
+    await NotificationService.saveTokenToSupabase();
 
     final userMetaRole = user.userMetadata?['role']?.toString();
     final appMetaRole = user.appMetadata['role']?.toString();
@@ -145,6 +126,7 @@ class _StartupGateState extends State<_StartupGate> {
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return const WhoWeAreScreen();
+    
 
     final userMetaRole = user.userMetadata?['role']?.toString();
     final appMetaRole = user.appMetadata['role']?.toString();

@@ -9,6 +9,8 @@ import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
 import 'signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
+import 'package:glucora_ai_companion/services/notifications_service.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -84,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       _didNavigateAfterAuth = true;
+
+      await NotificationService.saveTokenToSupabase();
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => targetScreen ?? const SignUpScreen()),

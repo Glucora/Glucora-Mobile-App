@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "492341470431",
+    "project_id": "glucora-90bf4",
+    "storage_bucket": "glucora-90bf4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492341470431:android:5f7fc52e6469ec2b78356a",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiZBMjP8EQEBUJveR5_5J7VVAnFi4hxhY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
