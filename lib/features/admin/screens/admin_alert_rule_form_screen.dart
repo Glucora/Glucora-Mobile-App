@@ -135,7 +135,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
               initialValue: _conditionType,
               decoration: _inputDecoration(context, 'Select condition'),
               items: _conditionTypes
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                  .map((t) => DropdownMenuItem(value: t, child: TranslatedText(t)))
                   .toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _conditionType = v);
@@ -178,7 +178,7 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
                 'Critical',
                 'Warning',
                 'Info',
-              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              ].map((s) => DropdownMenuItem(value: s, child: TranslatedText(s))).toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _severity = v);
               },

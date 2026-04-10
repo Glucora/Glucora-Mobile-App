@@ -3,7 +3,7 @@
 // Changes:
 //  1. Added LocalizationService provider to the widget tree
 //  2. Added Language option in _SettingsScreen
-//  3. All Text() in navigation/settings wrapped in TranslatedText()
+//  3. All Text in navigation/settings wrapped in TranslatedText()
 //  4. LocalizedDirectionality wrapper for RTL support
 // ============================================================
 
@@ -291,7 +291,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       setState(() => _globalLocationSharing = !value);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e'), backgroundColor: context.colors.error),
+          SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: context.colors.error),
         );
       }
     }
@@ -309,7 +309,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       setState(() => _sharingMap[connectionId] = !value);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: context.colors.error),
+          SnackBar(content: TranslatedText('Failed: $e'), backgroundColor: context.colors.error),
         );
       }
     }
@@ -332,13 +332,13 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${person['name']} removed.'), backgroundColor: context.colors.error),
+          SnackBar(content: TranslatedText('${person['name']} removed.'), backgroundColor: context.colors.error),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove: $e'), backgroundColor: context.colors.error),
+          SnackBar(content: TranslatedText('Failed to remove: $e'), backgroundColor: context.colors.error),
         );
       }
     }
@@ -488,7 +488,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-              child: Text('${people.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary)),
+              child: TranslatedText('${people.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary)),
             ),
           ],
         ),
@@ -540,14 +540,14 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: colors.primary.withValues(alpha: 0.12),
-                  child: Text(initials, style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 14)),
+                  child: TranslatedText(initials, style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                      TranslatedText(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                       const SizedBox(height: 2),
                       TranslatedText(
                         person['role'] == 'Guardian' && (person['relationship'] as String).isNotEmpty
@@ -614,14 +614,14 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       onLongPress: () {
         Clipboard.setData(ClipboardData(text: text));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Copied: $text'), duration: const Duration(seconds: 1), backgroundColor: Colors.green),
+          SnackBar(content: TranslatedText('Copied: $text'), duration: const Duration(seconds: 1), backgroundColor: Colors.green),
         );
       },
       child: Row(
         children: [
           Icon(icon, size: 13, color: colors.textSecondary),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: colors.textPrimary), overflow: TextOverflow.ellipsis)),
+          Expanded(child: TranslatedText(text, style: TextStyle(fontSize: 13, color: colors.textPrimary), overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -771,9 +771,9 @@ class _SettingsScreen extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(current.flag, style: const TextStyle(fontSize: 14)),
+                  TranslatedText(current.flag, style: const TextStyle(fontSize: 14)),
                   const SizedBox(width: 4),
-                  Text(current.code.toUpperCase(),
+                  TranslatedText(current.code.toUpperCase(),
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.primary)),
                 ],
               ),
@@ -878,7 +878,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                TranslatedText(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                 TranslatedText(status, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               ],
             ),
@@ -892,7 +892,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
           else
             TextButton(
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Pairing with $name...'), duration: const Duration(seconds: 1))),
+                  SnackBar(content: TranslatedText('Pairing with $name...'), duration: const Duration(seconds: 1))),
               style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
               child: TranslatedText('Pair', style: TextStyle(color: colors.primary)),
             ),
@@ -1007,11 +1007,11 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
       await supabase.from('users').update({'full_name': newName, 'email': newEmail, 'phone_no': newPhone, 'age': ageValue}).eq('id', user.id);
       await supabase.from('patient_profile').update({'weight_kg': weightValue, 'height_cm': heightValue}).eq('user_id', user.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: TranslatedText('Profile updated successfully!'), backgroundColor: Colors.green));
         Navigator.pop(context, {'name': newName, 'email': newEmail, 'phone': newPhone, 'age': ageValue, 'height': "${heightValue.toInt()} cm", 'weight': "${weightValue.toInt()} kgs"});
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating profile: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Error updating profile: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -1111,7 +1111,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+                      TranslatedText(_name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary)),
                       const SizedBox(width: 8),
                       GestureDetector(onTap: _editProfile, child: Icon(Icons.edit, size: 18, color: colors.primary)),
                     ],
@@ -1186,7 +1186,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const GuardianMainScreen()), (route) => false);
                   } catch (e) {
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to switch: $e'), backgroundColor: Colors.red));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Failed to switch: $e'), backgroundColor: Colors.red));
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: colors.primary, foregroundColor: Colors.white, minimumSize: const Size(200, 45), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -1216,7 +1216,7 @@ class _ProfileTabState extends State<_ProfileTab> {
     return Column(children: [
       TranslatedText(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
       const SizedBox(height: 4),
-      Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+      TranslatedText(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary)),
     ]);
   }
 

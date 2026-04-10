@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -239,7 +240,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    TranslatedText(
                                       'Hi, Doctor $_doctorName 👋',
                                       style: TextStyle(
                                         fontSize: 24,
@@ -247,7 +248,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                         color: colors.textPrimary,
                                       ),
                                     ),
-                                    Text(
+                                    TranslatedText(
                                       'Here is your patients overview',
                                       style: TextStyle(
                                         fontSize: 13,
@@ -267,7 +268,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              TranslatedText(
                                 'Hi, Dr. $_doctorName 👋',
                                 style: TextStyle(
                                   fontSize: 24,
@@ -276,7 +277,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
+                              TranslatedText(
                                 'Here is your patients overview',
                                 style: TextStyle(
                                   fontSize: 14,
@@ -314,7 +315,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
+                        TranslatedText(
                           'Your Patients',
                           style: TextStyle(
                             fontSize: 18,
@@ -322,7 +323,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                             color: colors.textPrimary,
                           ),
                         ),
-                        Text(
+                        TranslatedText(
                           '${filtered.length} shown',
                           style: TextStyle(
                             fontSize: 13,
@@ -337,7 +338,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
-                      child: Text(
+                      child: TranslatedText(
                         'No patients found.',
                         style: TextStyle(color: colors.textSecondary),
                       ),
@@ -451,7 +452,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
         ),
         child: Column(
           children: [
-            Text(
+            TranslatedText(
               count,
               style: TextStyle(
                 fontSize: 20,
@@ -460,7 +461,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
+            TranslatedText(
               label,
               style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
@@ -554,7 +555,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Text(
+                      child: TranslatedText(
                         '${[_filterStatus, _filterTrend, _filterRange].where((f) => f != null).length}',
                         style: const TextStyle(
                           color: Colors.white,
@@ -635,7 +636,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           ),
           Row(
             children: [
-              Text(
+              TranslatedText(
                 'Filter Patients',
                 style: TextStyle(
                   fontSize: 18,
@@ -653,7 +654,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       _range = null;
                     });
                   },
-                  child: Text(
+                  child: TranslatedText(
                     'Clear all',
                     style: TextStyle(
                       color: colors.error,
@@ -741,7 +742,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: Text(
+              child: TranslatedText(
                 _hasAny ? 'Apply Filters' : 'Show All Patients',
                 style: const TextStyle(
                   color: Colors.white,
@@ -773,7 +774,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
           children: [
             Icon(icon, size: 15, color: colors.textSecondary),
             const SizedBox(width: 6),
-            Text(
+            TranslatedText(
               title,
               style: TextStyle(
                 fontSize: 13,
@@ -821,7 +822,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             size: 16,
                           ),
                         const SizedBox(height: 4),
-                        Text(
+                        TranslatedText(
                           opt,
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -902,7 +903,7 @@ class _PatientCard extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: colors.accent.withValues(alpha: 0.15),
-              child: Text(
+              child: TranslatedText(
                 patient.initials,
                 style: TextStyle(
                   color: colors.primaryDark,
@@ -918,7 +919,7 @@ class _PatientCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TranslatedText(
                     patient.name,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -931,7 +932,7 @@ class _PatientCard extends StatelessWidget {
                     children: [
                       _trendIcon(),
                       const SizedBox(width: 4),
-                      Text(
+                      TranslatedText(
                         patient.lastReading,
                         style: TextStyle(
                           color: colors.textPrimary,
@@ -940,7 +941,7 @@ class _PatientCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
+                      TranslatedText(
                         '• ${patient.lastReadingTime}',
                         style: TextStyle(
                           color: colors.textSecondary,
@@ -959,7 +960,7 @@ class _PatientCard extends StatelessWidget {
                 color: _statusColor().withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
+              child: TranslatedText(
                 patient.status,
                 style: TextStyle(
                   color: _statusColor(),

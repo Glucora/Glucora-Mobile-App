@@ -189,7 +189,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 items: ['patient', 'doctor', 'guardian', 'admin']
-                    .map((r) => DropdownMenuItem(value: r, child: Text(_roleLabel(r))))
+                    .map((r) => DropdownMenuItem(value: r, child: TranslatedText(_roleLabel(r))))
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setDialogState(() => selectedRole = v);
@@ -340,7 +340,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                           children: [
                             TranslatedText('Failed to load users', style: TextStyle(color: colors.error)),
                             const SizedBox(height: 8),
-                            ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+                            ElevatedButton(onPressed: _fetchUsers, child: const TranslatedText('Retry')),
                           ],
                         ),
                       )

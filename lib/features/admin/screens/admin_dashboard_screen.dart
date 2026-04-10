@@ -99,7 +99,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               TranslatedText('Failed to load data', style: TextStyle(color: colors.error)),
               const SizedBox(height: 8),
-              ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+              ElevatedButton(onPressed: _fetchUsers, child: const TranslatedText('Retry')),
             ],
           ),
         ),

@@ -49,7 +49,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const TranslatedText('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -149,7 +149,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
           Expanded(
             child: filtered.isEmpty
                 ? Center(
-                    child: Text(
+                    child: TranslatedText(
                       'No devices found',
                       style: TextStyle(color: colors.textSecondary),
                     ),

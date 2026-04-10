@@ -275,7 +275,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      TranslatedText(
                         _name,
                         style: TextStyle(
                           fontSize: 20,
@@ -295,7 +295,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  TranslatedText(
                     _age > 0 ? "$_age years" : "Age not set",
                     style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
@@ -416,7 +416,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           ),
         ),
         Expanded(
-          child: Text(
+          child: TranslatedText(
             value,
             style: TextStyle(
               fontSize: 14,

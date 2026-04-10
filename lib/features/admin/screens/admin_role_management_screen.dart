@@ -84,7 +84,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: const TranslatedText('Cancel'),
             ),
             TextButton(
               onPressed: () async {
@@ -236,7 +236,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
                           children: [
                             TranslatedText('Failed to load users', style: TextStyle(color: colors.error)),
                             const SizedBox(height: 8),
-                            ElevatedButton(onPressed: _fetchUsers, child: const Text('Retry')),
+                            ElevatedButton(onPressed: _fetchUsers, child: const TranslatedText('Retry')),
                           ],
                         ),
                       )

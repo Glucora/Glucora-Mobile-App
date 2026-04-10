@@ -5,6 +5,7 @@ import 'patient_details_screen.dart';
 import 'care_plan_editor_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 // ─── ENUMS & MODELS ──────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
     setState(() => alert.isDismissed = true);
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Alert dismissed', style: TextStyle(fontWeight: FontWeight.w600)),
+      content: const TranslatedText('Alert dismissed', style: TextStyle(fontWeight: FontWeight.w600)),
       backgroundColor: Colors.grey.shade700,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -207,11 +208,11 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary))),
+            Expanded(child: TranslatedText('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: colors.textPrimary))),
             if (_unreadCount > 0)
               TextButton(
                 onPressed: _markAllRead,
-                child: Text('Mark all read', style: TextStyle(color: colors.accent, fontWeight: FontWeight.w600, fontSize: 13)),
+                child: TranslatedText('Mark all read', style: TextStyle(color: colors.accent, fontWeight: FontWeight.w600, fontSize: 13)),
               ),
           ],
         ),
@@ -222,7 +223,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text('$_unreadCount unread', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
+                child: TranslatedText('$_unreadCount unread', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
               ),
               const SizedBox(width: 8),
             ],
@@ -235,7 +236,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
                   children: [
                     Icon(Icons.warning_rounded, color: colors.error, size: 12),
                     const SizedBox(width: 4),
-                    Text('$_criticalCount critical', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
+                    TranslatedText('$_criticalCount critical', style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)),
                   ],
                 ),
               ),
@@ -280,7 +281,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
         ),
-        child: Text(filter, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isActive ? Colors.white : colors.textSecondary)),
+        child: TranslatedText(filter, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isActive ? Colors.white : colors.textSecondary)),
       ),
     );
   }
@@ -293,7 +294,7 @@ class _DoctorAlertsScreenState extends State<DoctorAlertsScreen> {
         children: [
           Icon(Icons.notifications_off_outlined, size: 56, color: colors.textSecondary),
           const SizedBox(height: 12),
-          Text('No alerts in this category', style: TextStyle(color: colors.textSecondary, fontSize: 15)),
+          TranslatedText('No alerts in this category', style: TextStyle(color: colors.textSecondary, fontSize: 15)),
         ],
       ),
     );
@@ -375,18 +376,18 @@ Color _severityColor(GlucoraColors colors) {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: severityColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(_severityLabel, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: severityColor, letterSpacing: 0.8)),
+                            child: TranslatedText(_severityLabel, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: severityColor, letterSpacing: 0.8)),
                           ),
                           if (alert.type == AlertType.incident) ...[
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                              child: const Text('INCIDENT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.purple, letterSpacing: 0.8)),
+                              child: const TranslatedText('INCIDENT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.purple, letterSpacing: 0.8)),
                             ),
                           ],
                           const Spacer(),
-                          Text(alert.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                          TranslatedText(alert.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
                           if (!alert.isRead) ...[
                             const SizedBox(width: 6),
                             Container(width: 8, height: 8, decoration: BoxDecoration(color: severityColor, shape: BoxShape.circle)),
@@ -394,9 +395,9 @@ Color _severityColor(GlucoraColors colors) {
                         ],
                       ),
                       const SizedBox(height: 5),
-                      Text(alert.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: alert.isRead ? colors.textSecondary : colors.textPrimary)),
+                      TranslatedText(alert.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: alert.isRead ? colors.textSecondary : colors.textPrimary)),
                       const SizedBox(height: 4),
-                      Text(alert.description, style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.4)),
+                      TranslatedText(alert.description, style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.4)),
                     ],
                   ),
                 ),
@@ -412,10 +413,10 @@ Color _severityColor(GlucoraColors colors) {
                 CircleAvatar(
                   radius: 12,
                   backgroundColor: colors.accent.withValues(alpha: 0.15),
-                  child: Text(alert.patientInitials, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colors.primaryDark)),
+                  child: TranslatedText(alert.patientInitials, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colors.primaryDark)),
                 ),
                 const SizedBox(width: 8),
-                Text(alert.patientName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                TranslatedText(alert.patientName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textPrimary)),
               ],
             ),
           ),
@@ -449,7 +450,7 @@ Color _severityColor(GlucoraColors colors) {
           children: [
             Icon(icon, size: 13, color: color),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+            TranslatedText(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
           ],
         ),
       ),

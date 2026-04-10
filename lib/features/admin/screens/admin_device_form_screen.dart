@@ -122,8 +122,8 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
               initialValue: _deviceType,
               decoration: _inputDecoration(context, 'Select type'),
               items: const [
-                DropdownMenuItem(value: 'CGM', child: Text('CGM')),
-                DropdownMenuItem(value: 'Micropump', child: Text('Micropump')),
+                DropdownMenuItem(value: 'CGM', child: TranslatedText('CGM')),
+                DropdownMenuItem(value: 'Micropump', child: TranslatedText('Micropump')),
               ],
               onChanged: (v) {
                 if (v != null) setState(() => _deviceType = v);

@@ -679,7 +679,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      TranslatedText(
                         _name,
                         style: TextStyle(
                           fontSize: 20,
@@ -699,7 +699,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  TranslatedText(
                     "$_age years",
                     style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
@@ -811,7 +811,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
           ),
         ),
         Expanded(
-          child: Text(
+          child: TranslatedText(
             value,
             style: TextStyle(
               fontSize: 14,

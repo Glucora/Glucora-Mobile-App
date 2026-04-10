@@ -6,6 +6,7 @@ import 'care_plan_editor_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/location_view.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -256,7 +257,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             widget.patientName,
             style: const TextStyle(
               fontSize: 17,
@@ -264,7 +265,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               letterSpacing: 0.2,
             ),
           ),
-          Text(
+          TranslatedText(
             'Patient ID: $formattedId',
             style: const TextStyle(
               fontSize: 11,
@@ -299,7 +300,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           appBar: AppBar(
             backgroundColor: context.colors.primaryDark,
             foregroundColor: Colors.white,
-            title: Text('${widget.patientName} — Location'),
+            title: TranslatedText('${widget.patientName} — Location'),
           ),
           body: OrientationBuilder(
             builder: (ctx, orientation) => LocationView(
@@ -351,7 +352,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: Text(
+            child: TranslatedText(
               initials,
               style: const TextStyle(
                 color: Colors.white,
@@ -365,7 +366,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TranslatedText(
                   'Age $age • $gender • Type 1 Diabetes',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
@@ -399,7 +400,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       children: [
         Icon(icon, size: 11, color: color),
         const SizedBox(width: 4),
-        Text(
+        TranslatedText(
           label,
           style: TextStyle(
             color: color,
@@ -424,7 +425,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
+              TranslatedText(
                 value,
                 style: const TextStyle(
                   color: Colors.white,
@@ -437,7 +438,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(trendIcon, color: Colors.greenAccent, size: 14),
-                  const Text(
+                  const TranslatedText(
                     'mg/dL',
                     style: TextStyle(color: Colors.white70, fontSize: 9),
                   ),
@@ -445,7 +446,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               ),
             ],
           ),
-          const Text(
+          const TranslatedText(
             'LIVE',
             style: TextStyle(
               color: Colors.greenAccent,
@@ -536,7 +537,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
         ),
         icon: const Icon(Icons.person_remove_outlined, size: 18),
-        label: const Text(
+        label: const TranslatedText(
           'Remove Patient',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
         ),
@@ -554,7 +555,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           children: [
             Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
             const SizedBox(width: 8),
-            const Text(
+            const TranslatedText(
               'Remove Patient',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
@@ -598,7 +599,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: const TranslatedText(
                       'Cancel',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -628,7 +629,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text(
+                              content: const TranslatedText(
                                 'Failed to remove patient. Please try again.',
                               ),
                               backgroundColor: context.colors.error,
@@ -646,7 +647,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
+                    child: const TranslatedText(
                       'Remove',
                       style: TextStyle(
                         color: Colors.white,
@@ -759,7 +760,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       ),
       child: Column(
         children: [
-          Text(
+          TranslatedText(
             value,
             style: TextStyle(
               fontSize: 24,
@@ -768,7 +769,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          TranslatedText(
             unit,
             style: TextStyle(
               fontSize: 10,
@@ -777,7 +778,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
           ),
           const SizedBox(height: 6),
-          Text(
+          TranslatedText(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -870,7 +871,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        TranslatedText(
                           '$inRange%',
                           style: const TextStyle(
                             fontSize: 16,
@@ -878,7 +879,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                             color: Color(0xFF2BB6A3),
                           ),
                         ),
-                        const Text(
+                        const TranslatedText(
                           'TIR',
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
@@ -917,12 +918,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(
+          child: TranslatedText(
             label,
             style: const TextStyle(fontSize: 11, color: Colors.black87),
           ),
         ),
-        Text(
+        TranslatedText(
           '$percent%',
           style: TextStyle(
             fontSize: 12,
@@ -978,7 +979,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       deviceName,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
@@ -986,7 +987,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         color: colors.textPrimary,
                       ),
                     ),
-                    Text(
+                    TranslatedText(
                       'Last sync: $lastSyncDisplay',
                       style: TextStyle(
                         color: colors.textSecondary,
@@ -1076,7 +1077,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        TranslatedText(
           value,
           style: TextStyle(
             fontSize: 16,
@@ -1085,7 +1086,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
         ),
         const SizedBox(height: 2),
-        Text(
+        TranslatedText(
           label,
           style: const TextStyle(
             fontSize: 10,
@@ -1095,7 +1096,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
         ),
         const SizedBox(height: 1),
-        Text(sub, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        TranslatedText(sub, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
     );
   }
@@ -1169,14 +1170,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    const TranslatedText(
                       'AI-Powered AID System',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),
                     ),
-                    Text(
+                    TranslatedText(
                       'Model: $modelVersion • ${aidEnabled ? 'Adaptive mode' : 'Manual mode'}',
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
@@ -1244,7 +1245,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    child: TranslatedText(
                       riskLevel == 'low'
                           ? 'AID system is performing well. Risk level is low.'
                           : 'Risk level is ${riskLevel.toUpperCase()}. Monitor closely.',
@@ -1268,13 +1269,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           Icon(icon, size: 15, color: Colors.grey),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               label,
               style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ),
           const SizedBox(width: 8),
-          Text(
+          TranslatedText(
             value,
             style: TextStyle(
               fontSize: 12,
@@ -1293,7 +1294,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         padding: const EdgeInsets.all(20),
         decoration: _cardDecoration(context),
         child: const Center(
-          child: Text('No recent alerts', style: TextStyle(color: Colors.grey)),
+          child: TranslatedText('No recent alerts', style: TextStyle(color: Colors.grey)),
         ),
       );
     }
@@ -1369,7 +1370,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
+                    child: TranslatedText(
                       tag,
                       style: TextStyle(
                         fontSize: 10,
@@ -1379,14 +1380,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                     ),
                   ),
                   const Spacer(),
-                  Text(
+                  TranslatedText(
                     time,
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
+              TranslatedText(
                 message,
                 style: const TextStyle(
                   fontSize: 12,
@@ -1480,7 +1481,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 size: 16,
                 color: Colors.white,
               ),
-              label: const Text(
+              label: const TranslatedText(
                 'Edit Care Plan',
                 style: TextStyle(
                   color: Colors.white,
@@ -1503,7 +1504,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           SizedBox(
             width: 130,
-            child: Text(
+            child: TranslatedText(
               label,
               style: TextStyle(
                 fontSize: 12,
@@ -1513,7 +1514,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             ),
           ),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               value,
               style: TextStyle(
                 fontSize: 12,
@@ -1557,7 +1558,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   height: 220,
                   child: glucoseHistory.length < 2
                       ? const Center(
-                          child: Text(
+                          child: TranslatedText(
                             'Not enough data',
                             style: TextStyle(color: Colors.grey),
                           ),
@@ -1574,7 +1575,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: ['12am', '6am', '12pm', '6pm', '12am']
                       .map(
-                        (t) => Text(
+                        (t) => TranslatedText(
                           t,
                           style: TextStyle(
                             fontSize: 10,
@@ -1629,7 +1630,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 ? const Padding(
                     padding: EdgeInsets.all(20),
                     child: Center(
-                      child: Text(
+                      child: TranslatedText(
                         'No readings available',
                         style: TextStyle(color: Colors.grey),
                       ),
@@ -1686,7 +1687,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
-          child: Text(
+          child: TranslatedText(
             '${reading.value}',
             style: TextStyle(
               fontWeight: FontWeight.w800,
@@ -1696,7 +1697,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
         ),
       ),
-      title: Text(
+      title: TranslatedText(
         '${reading.time}  •  $status',
         style: TextStyle(
           fontSize: 13,
@@ -1709,17 +1710,17 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               children: [
                 const Icon(Icons.restaurant, size: 11, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text(
+                TranslatedText(
                   reading.mealTag!,
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
             )
-          : const Text(
+          : const TranslatedText(
               'CGM reading',
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
-      trailing: Text(
+      trailing: TranslatedText(
         'mg/dL',
         style: TextStyle(fontSize: 10, color: colors.textSecondary),
       ),
@@ -1735,13 +1736,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           SizedBox(
             width: 140,
-            child: Text(
+            child: TranslatedText(
               label,
               style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
           ),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               value,
               style: TextStyle(
                 fontSize: 12,
@@ -1764,7 +1765,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        TranslatedText(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
   }
@@ -1841,7 +1842,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 ? const Padding(
                     padding: EdgeInsets.all(20),
                     child: Center(
-                      child: Text(
+                      child: TranslatedText(
                         'No insulin doses recorded',
                         style: TextStyle(color: Colors.grey),
                       ),
@@ -1909,7 +1910,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         children: [
           Row(
             children: [
-              Text(
+              TranslatedText(
                 iobDisplay,
                 style: const TextStyle(
                   fontSize: 28,
@@ -1922,7 +1923,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       'Insulin on Board',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
@@ -1930,7 +1931,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                         color: colors.textPrimary,
                       ),
                     ),
-                    Text(
+                    TranslatedText(
                       'Based on $doseCountDisplay',
                       style: TextStyle(
                         color: colors.textSecondary,
@@ -1950,7 +1951,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                     color: const Color(0xFF5B8CF5).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     'DIA: $diaDisplay',
                     style: const TextStyle(
                       fontSize: 12,
@@ -1963,13 +1964,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
           if (expiresAt != null) ...[
             const SizedBox(height: 16),
-            Text(
+            TranslatedText(
               'IOB decays to 0 around $expiryDisplay. Model: $decayModel. AID will account for active insulin before issuing next auto-bolus.',
               style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
           ] else ...[
             const SizedBox(height: 16),
-            Text(
+            TranslatedText(
               'No active IOB data available.',
               style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
@@ -2013,7 +2014,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       ),
       title: Row(
         children: [
-          Text(
+          TranslatedText(
             '${dose.units} U  •  ${dose.type}',
             style: TextStyle(
               fontSize: 13,
@@ -2030,7 +2031,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   : const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(
+            child: TranslatedText(
               dose.source,
               style: TextStyle(
                 fontSize: 9,
@@ -2043,7 +2044,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
         ],
       ),
-      subtitle: Text(
+      subtitle: TranslatedText(
         '${dose.time}  •  ${dose.reason}',
         style: TextStyle(fontSize: 12, color: colors.textSecondary),
       ),
@@ -2052,7 +2053,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Widget _sectionTitle(BuildContext context, String title) {
     final colors = context.colors;
-    return Text(
+    return TranslatedText(
       title,
       style: TextStyle(
         fontSize: 17,

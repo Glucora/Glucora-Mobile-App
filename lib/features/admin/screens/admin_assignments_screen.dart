@@ -108,7 +108,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                   items: availablePatients
                       .map(
                         (p) =>
-                            DropdownMenuItem(value: p.id, child: Text(p.name)),
+                            DropdownMenuItem(value: p.id, child: TranslatedText(p.name)),
                       )
                       .toList(),
                   onChanged: (v) => setDialogState(() => selectedPatientId = v),
@@ -118,7 +118,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: const TranslatedText('Cancel'),
             ),
             TextButton(
               onPressed: selectedDoctorId != null && selectedPatientId != null

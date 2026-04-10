@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'care_plan.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+
 
 final supabase = Supabase.instance.client;
 
@@ -158,7 +160,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             children: [
               Icon(Icons.check_circle, color: Colors.white, size: 18),
               SizedBox(width: 8),
-              Text(
+              TranslatedText(
                 'Care plan saved successfully',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
@@ -180,7 +182,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save: $e'),
+          content: TranslatedText('Failed to save: $e'),
           backgroundColor: colors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -288,7 +290,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       title: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             'Care Plan Editor',
             style: TextStyle(
               fontSize: 17,
@@ -296,7 +298,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               letterSpacing: 0.2,
             ),
           ),
-          Text(
+          TranslatedText(
             'Tap any field to edit',
             style: TextStyle(
               fontSize: 11,
@@ -323,7 +325,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         children: [
           Icon(Icons.person_outline, color: colors.primaryDark, size: 16),
           const SizedBox(width: 8),
-          Text(
+          TranslatedText(
             'Editing plan for ${widget.patientName}',
             style: TextStyle(
               color: colors.primaryDark,
@@ -342,7 +344,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       children: [
         Icon(icon, size: 18, color: colors.primaryDark),
         const SizedBox(width: 8),
-        Text(
+        TranslatedText(
           title,
           style: TextStyle(
             fontSize: 17,
@@ -383,7 +385,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 18),
-                    Text(
+                    TranslatedText(
                       '—',
                       style: TextStyle(
                         fontSize: 20,
@@ -423,7 +425,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 Icon(Icons.info_outline, size: 14, color: colors.accent),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: TranslatedText(
                     'Recommended range: 70–180 mg/dL for most Type 1 patients.',
                     style: TextStyle(
                       fontSize: 11,
@@ -476,7 +478,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             .map(
               (t) => DropdownMenuItem(
                 value: t,
-                child: Text(t, style: const TextStyle(fontSize: 14)),
+                child: TranslatedText(t, style: const TextStyle(fontSize: 14)),
               ),
             )
             .toList(),
@@ -513,7 +515,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               children: [
                 Icon(Icons.add_circle_outline, color: colors.accent, size: 18),
                 const SizedBox(width: 6),
-                Text(
+                TranslatedText(
                   'Add Segment',
                   style: TextStyle(
                     color: colors.accent,
@@ -543,7 +545,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         children: [
           Row(
             children: [
-              Text(
+              TranslatedText(
                 'Segment ${index + 1}',
                 style: TextStyle(
                   fontSize: 12,
@@ -635,14 +637,14 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TranslatedText(
               label,
               style: TextStyle(fontSize: 10, color: colors.textSecondary),
             ),
             const SizedBox(height: 2),
             Row(
               children: [
-                Text(
+                TranslatedText(
                   '${hour.toString().padLeft(2, '0')}:00',
                   style: TextStyle(
                     fontSize: 14,
@@ -678,7 +680,8 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText
+          (
             label,
             style: TextStyle(fontSize: 10, color: colors.textSecondary),
           ),
@@ -698,7 +701,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
               isDense: true,
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,
-              suffix: Text(
+              suffix: TranslatedText(
                 unit,
                 style: TextStyle(fontSize: 10, color: colors.textSecondary),
               ),
@@ -784,7 +787,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                  child: TranslatedText(
                     'The AID system will never deliver more than this in a single automated correction.',
                     style: TextStyle(
                       fontSize: 11,
@@ -814,7 +817,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TranslatedText(
                   'Manual Insulin',
                   style: TextStyle(
                     fontSize: 14,
@@ -823,7 +826,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                TranslatedText(
                   'Allow manual insulin dosing',
                   style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
@@ -891,7 +894,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       'Next Appointment',
                       style: TextStyle(
                         fontSize: 12,
@@ -899,7 +902,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TranslatedText(
                       date != null
                           ? '${date.day}/${date.month}/${date.year}'
                           : 'Tap to select a date',
@@ -993,7 +996,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
                 children: [
                   Icon(Icons.save_outlined, color: Colors.white, size: 18),
                   SizedBox(width: 8),
-                  Text(
+                  TranslatedText(
                     'Save Care Plan',
                     style: TextStyle(
                       color: Colors.white,
