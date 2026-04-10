@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -23,8 +25,6 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
 
   final List<Widget> _screens = [
     const GuardianHomeScreen(),
-    /*     const GuardianAlertsScreen(),
- */
     const ConnectionRequestsScreen(role: 'guardian'),
     const _GuardianProfileTab(),
   ];
@@ -65,14 +65,6 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                   'Home',
                   colors,
                 ),
-              /*   _item(
-                  1,
-                  Icons.notifications_rounded,
-                  Icons.notifications_outlined,
-                  'Alerts',
-                  colors,
-                  badge: _unreadAlerts,
-                ), */
                 _item(
                   1,
                   Icons.people_rounded,
@@ -154,13 +146,249 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
               ],
             ),
             const SizedBox(height: 3),
-            Text(
+            TranslatedText(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                 color: sel ? colors.accent : colors.textSecondary,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Guardian Settings Screen (like Admin and Doctor)
+// ─────────────────────────────────────────────────────
+class _GuardianSettingsScreen extends StatefulWidget {
+  final bool notificationsEnabled;
+  final void Function(bool notifications) onSettingsChanged;
+
+  const _GuardianSettingsScreen({
+    required this.notificationsEnabled,
+    required this.onSettingsChanged,
+  });
+
+  @override
+  State<_GuardianSettingsScreen> createState() => _GuardianSettingsScreenState();
+}
+
+class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
+  late bool _notifications;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifications = widget.notificationsEnabled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: TranslatedText(
+          'Settings',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _settingsToggle(
+              context,
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              subtitle: 'Receive system alerts and updates',
+              color: colors.primary,
+              value: _notifications,
+              onChanged: (val) {
+                setState(() => _notifications = val);
+                widget.onSettingsChanged(_notifications);
+              },
+            ),
+            const SizedBox(height: 16),
+            _settingsToggle(
+              context,
+              icon: Icons.dark_mode_outlined,
+              title: 'Dark Mode',
+              subtitle: 'Switch to dark theme',
+              color: const Color(0xFF5B8CF5),
+              value: isDarkMode,
+              onChanged: (_) => themeProvider.toggleTheme(),
+            ),
+            const SizedBox(height: 16),
+            // ✅ LANGUAGE SETTINGS OPTION
+            _settingsNavigationTile(
+              context,
+              icon: Icons.language_rounded,
+              title: 'Language',
+              subtitle: 'Choose your preferred language',
+              color: const Color(0xFF2BB6A3),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LanguageSelectionScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsToggle(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final colors = context.colors;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TranslatedText(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                TranslatedText(
+                  subtitle,
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: colors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsNavigationTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TranslatedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colors.textSecondary,
             ),
           ],
         ),
@@ -220,7 +448,7 @@ class _EditGuardianProfileScreenState
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
+        title: TranslatedText(
           'Edit Profile',
           style: TextStyle(
             color: colors.textPrimary,
@@ -231,7 +459,7 @@ class _EditGuardianProfileScreenState
         actions: [
           TextButton(
             onPressed: _save,
-            child: Text(
+            child: TranslatedText(
               'Save',
               style: TextStyle(
                 color: colors.primary,
@@ -288,15 +516,31 @@ class _EditGuardianProfileScreenState
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(
+        color: colors.textPrimary,
+        fontSize: 14,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 13,
+        ),
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
         filled: true,
-        fillColor: const Color(0xFFF5F5F5),
+        fillColor: colors.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
@@ -313,7 +557,10 @@ class _EditGuardianProfileScreenState
 
     if (updatedName.isEmpty || updatedEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and Email are required')),
+        SnackBar(
+          content: const TranslatedText('Name and Email are required'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -337,7 +584,7 @@ class _EditGuardianProfileScreenState
 }
 
 // ─────────────────────────────────────────────────────
-// Guardian's Profile Tab (editable)
+// Guardian's Profile Tab (with Settings icon)
 // ─────────────────────────────────────────────────────
 class _GuardianProfileTab extends StatefulWidget {
   const _GuardianProfileTab();
@@ -352,6 +599,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   String _email = "";
   String _phone = "";
   bool _isLoading = true;
+  bool _notificationsEnabled = true;
 
   @override
   void initState() {
@@ -365,7 +613,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     if (user == null) return;
 
     try {
-      // 1. Fetch joined data: Users + Guardian Profile (Age)
       final data = await supabase
           .from('users')
           .select('full_name, email, phone_no, age')
@@ -408,7 +655,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
       setState(() => _isLoading = true);
 
       try {
-        // 1. Sync with Authentication Dashboard (raw_user_meta_data)
         await supabase.auth.updateUser(
           UserAttributes(
             email: result['email'],
@@ -416,7 +662,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           ),
         );
 
-        // 2. Update Public 'users' table
         await supabase
             .from('users')
             .update({
@@ -429,18 +674,20 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully!')),
+            const SnackBar(
+              content: TranslatedText('Profile updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
 
-        // 4. Refresh local UI data
         await _loadProfileData();
       } catch (e) {
         debugPrint("Update error: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Update failed: $e'),
+              content: TranslatedText('Update failed: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -455,13 +702,13 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Log Out'),
-        content: const Text('Are you sure to log out of your account?'),
+        title: const TranslatedText('Log Out'),
+        content: const TranslatedText('Are you sure to log out of your account?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
+            child: TranslatedText(
               'Cancel',
               style: TextStyle(color: colors.textSecondary),
             ),
@@ -490,7 +737,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Logout'),
+            child: const TranslatedText('Logout'),
           ),
         ],
       ),
@@ -502,6 +749,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
 
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: colors.primary));
+    }
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -509,13 +760,39 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            Text(
-              "Profile",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TranslatedText(
+                  "Profile",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: colors.textSecondary,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _GuardianSettingsScreen(
+                          notificationsEnabled: _notificationsEnabled,
+                          onSettingsChanged: (notifications) {
+                            setState(
+                              () => _notificationsEnabled = notifications,
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Center(
@@ -571,7 +848,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -587,7 +864,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   Container(
                     height: 30,
                     width: 1,
-                    color: const Color(0xFFEEEEEE),
+                    color: colors.textSecondary.withValues(alpha: 0.3),
                   ),
                   _infoColumn(context, "Phone", _phone),
                 ],
@@ -595,19 +872,11 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             ),
 
             const SizedBox(height: 24),
-            SwitchListTile(
-              title: Text(
-                'Dark Mode',
-                style: TextStyle(color: colors.textPrimary),
-              ),
-              value: Theme.of(context).brightness == Brightness.dark,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeThumbColor: colors.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
+            // Dark Mode is now inside Settings screen, so remove it from here
+            // (keeping UI clean like Admin and Doctor)
 
             const SizedBox(height: 24),
-            Text(
+            TranslatedText(
               "FAQs",
               style: TextStyle(
                 fontSize: 18,
@@ -643,7 +912,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   } catch (e) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to switch: $e'), backgroundColor: Colors.red),
+                      SnackBar(
+                        content: TranslatedText('Failed to switch: $e'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   }
                 },
@@ -655,7 +927,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Switch to Patient View'),
+                child: const TranslatedText('Switch to Patient View'),
               ),
             ),
 
@@ -672,7 +944,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     "Log Out",
                     style: TextStyle(
                       color: colors.error,
@@ -694,7 +966,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     final colors = context.colors;
     return Column(
       children: [
-        Text(
+        TranslatedText(
           label,
           style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
@@ -719,13 +991,13 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
+            child: TranslatedText(
               question,
               style: TextStyle(fontSize: 14, color: colors.textPrimary),
             ),
