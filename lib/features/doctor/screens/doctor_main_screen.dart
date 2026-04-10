@@ -6,7 +6,6 @@ import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'doctor_patients_screen.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
-import 'doctor_alerts_screen.dart';
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({super.key});
@@ -21,7 +20,6 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
   final List<Widget> _screens = [
     const DoctorPatientsScreen(),
     const ConnectionRequestsScreen(role: 'doctor'),
-    const DoctorAlertsScreen(),
     const _DoctorProfileTab(),
   ];
 
@@ -48,10 +46,6 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person_add_alt_1_outlined),
             label: 'Requests',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            label: 'Alerts',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
