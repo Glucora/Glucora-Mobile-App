@@ -6,6 +6,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 
 // Modular model used by both screens
 class LocationPatientInfo {
@@ -222,7 +224,7 @@ class _LocationViewState extends State<LocationView> {
             color: colors.textSecondary,
           ),
           const SizedBox(height: 12),
-          Text(
+          TranslatedText(
             !_isSharing ? 'Sharing is disabled' : 'Location not available',
             style: TextStyle(color: colors.textSecondary, fontSize: 15),
           ),
@@ -276,7 +278,7 @@ class _LocationViewState extends State<LocationView> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
+              child: TranslatedText(
                 'Updated $_lastSeen',
                 style: TextStyle(
                   fontSize: 12,
@@ -302,7 +304,7 @@ class _LocationViewState extends State<LocationView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             'LIVE LOCATION',
             style: TextStyle(
               fontSize: 11,
@@ -311,7 +313,7 @@ class _LocationViewState extends State<LocationView> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
+          TranslatedText(
             '${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}',
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
@@ -321,7 +323,7 @@ class _LocationViewState extends State<LocationView> {
             child: ElevatedButton.icon(
               onPressed: _openInMaps,
               icon: const Icon(Icons.navigation_rounded, size: 16),
-              label: const Text('Get Directions'),
+              label: const TranslatedText('Get Directions'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accent,
                 foregroundColor: Colors.white,

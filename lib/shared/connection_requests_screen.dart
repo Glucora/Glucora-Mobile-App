@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 
 final supabase = Supabase.instance.client;
 
@@ -250,7 +252,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
+        content: TranslatedText(message, style: const TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: colors.accent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -269,7 +271,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.person_search_rounded),
-        label: Text(
+        label: TranslatedText(
           widget.role == 'patient' ? 'Add Doctor/Guardian' : 'Add Patient',
           style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
         ),
@@ -308,12 +310,12 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             'Connection Requests',
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: colors.textPrimary, letterSpacing: -0.5),
           ),
           const SizedBox(height: 6),
-          Text(
+          TranslatedText(
             'Manage your clinical and care connections',
             style: TextStyle(fontSize: 15, color: colors.textSecondary, fontWeight: FontWeight.w500),
           ),
@@ -349,7 +351,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         children: [
           Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 8),
-          Text('$count $label', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+          TranslatedText('$count $label', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
         ],
       ),
     );
@@ -368,8 +370,11 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         indicator: BoxDecoration(color: colors.accent, borderRadius: BorderRadius.circular(10)),
         dividerColor: Colors.transparent,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        tabs: const [Tab(text: 'Incoming'), Tab(text: 'Sent'), Tab(text: 'Declined')],
-      ),
+ tabs: [
+        Tab(child: TranslatedText('Incoming')),  // Changed
+        Tab(child: TranslatedText('Sent')),      // Changed
+        Tab(child: TranslatedText('Declined')),  // Changed
+      ],      ),
     );
   }
 
@@ -382,7 +387,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
           children: [
             Icon(Icons. people_outline_rounded, size: 64, color: colors.textSecondary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
-            Text('No $tabType requests found', style: TextStyle(color: colors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
+            TranslatedText('No $tabType requests found', style: TextStyle(color: colors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
           ],
         ),
       );
@@ -436,20 +441,20 @@ class _RequestCard extends StatelessWidget {
               CircleAvatar(
                 radius: 26,
                 backgroundColor: colors.accent.withValues(alpha: 0.12),
-                child: Text(request.avatarInitials, style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.w900, fontSize: 15)),
+                child: TranslatedText(request.avatarInitials, style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.w900, fontSize: 15)),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(request.personName, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: colors.textPrimary)),
+                    TranslatedText(request.personName, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: colors.textPrimary)),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(Icons.access_time_rounded, size: 12, color: colors.textSecondary),
                         const SizedBox(width: 4),
-                        Text(request.sentAgo, style: TextStyle(fontSize: 12, color: colors.textSecondary, fontWeight: FontWeight.w500)),
+                        TranslatedText(request.sentAgo, style: TextStyle(fontSize: 12, color: colors.textSecondary, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ],
@@ -461,15 +466,15 @@ class _RequestCard extends StatelessWidget {
           if (tabType == 'incoming')
             Row(
               children: [
-                Expanded(child: OutlinedButton(onPressed: onDecline, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.5)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(child: OutlinedButton(onPressed: onDecline, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.5)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Decline', style: TextStyle(fontWeight: FontWeight.bold)))),
                 const SizedBox(width: 12),
-                Expanded(child: ElevatedButton(onPressed: onAccept, style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(child: ElevatedButton(onPressed: onAccept, style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Accept', style: TextStyle(fontWeight: FontWeight.bold)))),
               ],
             )
           else if (tabType == 'sent')
-            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: onWithdraw, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Withdraw Request', style: TextStyle(fontWeight: FontWeight.bold))))
+            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: onWithdraw, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Withdraw Request', style: TextStyle(fontWeight: FontWeight.bold))))
           else
-            Align(alignment: Alignment.centerRight, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Text('Declined', style: TextStyle(color: colors.error, fontWeight: FontWeight.w800, fontSize: 12)))),
+            Align(alignment: Alignment.centerRight, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: TranslatedText('Declined', style: TextStyle(color: colors.error, fontWeight: FontWeight.w800, fontSize: 12)))),
         ],
       ),
     );
@@ -597,7 +602,7 @@ class _SearchSheetState extends State<_SearchSheet> {
         children: [
           Center(child: Container(width: 45, height: 5, decoration: BoxDecoration(color: colors.textSecondary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)))),
           const SizedBox(height: 25),
-          Text('Search Connections', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.textPrimary)),
+          TranslatedText('Search Connections', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.textPrimary)),
           const SizedBox(height: 20),
           TextField(
             controller: _phoneController,
@@ -613,7 +618,7 @@ class _SearchSheetState extends State<_SearchSheet> {
             onSubmitted: (_) => _search(),
           ),
           if (_isLoading) const Padding(padding: EdgeInsets.only(top: 20), child: Center(child: CircularProgressIndicator())),
-          if (_errorMessage != null) Padding(padding: const EdgeInsets.only(top: 15), child: Text(_errorMessage!, style: TextStyle(color: colors.error, fontWeight: FontWeight.w600))),
+          if (_errorMessage != null) Padding(padding: const EdgeInsets.only(top: 15), child: TranslatedText(_errorMessage!, style: TextStyle(color: colors.error, fontWeight: FontWeight.w600))),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 25),
             ..._results.map((p) => _buildResultRow(p)),
@@ -631,13 +636,13 @@ class _SearchSheetState extends State<_SearchSheet> {
       decoration: BoxDecoration(color: colors.background, borderRadius: BorderRadius.circular(15)),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: colors.accent.withValues(alpha: 0.1), child: Text(p['full_name'][0], style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.bold))),
+          CircleAvatar(backgroundColor: colors.accent.withValues(alpha: 0.1), child: TranslatedText(p['full_name'][0], style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.bold))),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(p['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)), Text(p['phone_no'], style: TextStyle(fontSize: 12, color: colors.textSecondary))])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [TranslatedText(p['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)), TranslatedText(p['phone_no'], style: TextStyle(fontSize: 12, color: colors.textSecondary))])),
           if (p['status'] == 'none')
-            ElevatedButton(onPressed: () => _send(p), style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Add'))
+            ElevatedButton(onPressed: () => _send(p), style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const TranslatedText('Add'))
           else
-            Text(p['status'].toString().toUpperCase(), style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.w800, fontSize: 11)),
+            TranslatedText(p['status'].toString().toUpperCase(), style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.w800, fontSize: 11)),
         ],
       ),
     );
