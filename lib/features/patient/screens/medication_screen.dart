@@ -398,7 +398,7 @@ Future<void> _deleteMedication(int medId) async {
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14))),
-                    child: const Text('Save Medication',
+                    child: const TranslatedText('Save Medication',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w600)),
                   ),
@@ -536,7 +536,7 @@ Future<void> _deleteMedication(int medId) async {
   // ════════════════════════════════════════════════════
   // WIDGETS
   // ════════════════════════════════════════════════════
-  Widget _sectionLabel(String label, GlucoraColors colors) => Text(
+  Widget _sectionLabel(String label, GlucoraColors colors) => TranslatedText(
         label,
         style: TextStyle(
             fontSize: 13,

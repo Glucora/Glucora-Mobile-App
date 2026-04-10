@@ -397,7 +397,7 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
                     color: const Color(0xFF9B59B6).withValues(alpha: 0.3),
                   ),
                 ),
-                child: Text(
+                child: TranslatedText(
                   plan.insulinType,
                   style: const TextStyle(
                     fontSize: 13,
