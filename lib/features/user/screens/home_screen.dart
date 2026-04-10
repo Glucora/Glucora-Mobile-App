@@ -9,6 +9,7 @@ import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -56,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .select('id')
           .eq('user_id', userId)
           .maybeSingle();
-      
+
       if (response != null && response['id'] != null) {
         return response['id'] as int;
       }
@@ -101,7 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _doctorName = doctorName;
-        _targetRange = (min != null && max != null) ? '$min–$max mg/dL' : '– mg/dL';
+        _targetRange = (min != null && max != null)
+            ? '$min–$max mg/dL'
+            : '– mg/dL';
         _nextAppointment = appt ?? '–';
       });
     } catch (e) {
@@ -188,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
-      
+
       if (userId == null) {
         setState(() => _batteryLoading = false);
         return;
@@ -196,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Try multiple approaches to get battery health
       String? batteryValue;
-      
+
       // Approach 1: Get active device first
       final activeDevice = await supabase
           .from('devices')
@@ -205,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .eq('is_active', true)
           .order('last_sync_at', ascending: false)
           .maybeSingle();
-      
+
       if (activeDevice != null && activeDevice['battery_health'] != null) {
         batteryValue = activeDevice['battery_health'].toString();
       } else {
@@ -217,33 +220,33 @@ class _HomeScreenState extends State<HomeScreen> {
             .order('last_sync_at', ascending: false)
             .limit(1)
             .maybeSingle();
-        
+
         if (device != null && device['battery_health'] != null) {
           batteryValue = device['battery_health'].toString();
         }
       }
-      
+
       // If still no battery, try to see if there are any devices at all
       if (batteryValue == null) {
         final devices = await supabase
             .from('devices')
             .select('id')
             .eq('patient_id', userId);
-        
+
         if (kDebugMode) {
           print('Device count for user $userId: ${devices.length}');
         }
       }
-      
+
       setState(() {
         _batteryHealth = batteryValue;
         _batteryLoading = false;
       });
-      
+
       if (kDebugMode) {
         print('Battery fetched successfully: $_batteryHealth');
       }
-      
+
       // If no battery found after first attempt, try again in 2 seconds
       // (in case device data is still syncing)
       if (batteryValue == null && mounted) {
@@ -253,7 +256,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       }
-      
     } catch (e) {
       if (kDebugMode) print('Failed to fetch battery: $e');
       setState(() => _batteryLoading = false);
@@ -265,9 +267,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
-      
+
       if (userId == null) return;
-      
+
       final response = await supabase
           .from('devices')
           .select('battery_health')
@@ -276,12 +278,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('last_sync_at', ascending: false)
           .limit(1)
           .maybeSingle();
-      
+
       if (response != null && response['battery_health'] != null && mounted) {
         setState(() {
           _batteryHealth = response['battery_health'].toString();
         });
-        
+
         if (kDebugMode) {
           print('Battery fetched on retry: $_batteryHealth');
         }
@@ -363,22 +365,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: colors.textPrimary,
                   ),
                 ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colors.textSecondary.withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.notifications_outlined,
-                    size: 20,
-                    color: colors.textSecondary,
-                  ),
-                ),
               ],
             ),
 
@@ -402,20 +388,32 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           children: [
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AIPredictionScreen(),
+                                ),
+                              ),
                               child: _predictionCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RecommendationsScreen(),
+                                ),
+                              ),
                               child: _recommendationsCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PatientCarePlanScreen(),
+                                ),
+                              ),
                               child: _carePlanCard(context),
                             ),
                           ],
@@ -430,20 +428,32 @@ class _HomeScreenState extends State<HomeScreen> {
                       _statusIndicatorsRow(context),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AIPredictionScreen(),
+                          ),
+                        ),
                         child: _predictionCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RecommendationsScreen(),
+                          ),
+                        ),
                         child: _recommendationsCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PatientCarePlanScreen(),
+                          ),
+                        ),
                         child: _carePlanCard(context),
                       ),
                     ],
@@ -507,7 +517,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : Icon(trendIcon, color: Colors.white, size: 22),
               ),
@@ -579,18 +591,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _dot(Color c, String label, GlucoraColors colors) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          TranslatedText(label,
-              style: TextStyle(fontSize: 12, color: colors.textSecondary)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      TranslatedText(
+        label,
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
+    ],
+  );
 
   // ════════════════════════════════════════════════════
   // IOB + BATTERY ROW — both live
@@ -598,12 +612,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
 
-    final String iobDisplay =
-        _iobLoading ? '–' : (_iobValue?.toStringAsFixed(1) ?? '–');
+    final String iobDisplay = _iobLoading
+        ? '–'
+        : (_iobValue?.toStringAsFixed(1) ?? '–');
 
     // Battery - parse the percentage
     final double? batteryPercent = _parseBatteryPercent(_batteryHealth);
-    
+
     // Display: use numeric value if parseable, otherwise show the raw string
     final String batteryDisplay = batteryPercent != null
         ? '${(batteryPercent * 100).toInt()}'
@@ -612,10 +627,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final Color batteryColor = batteryPercent == null
         ? const Color(0xFF4CAF50) // default to green when unknown
         : batteryPercent > 0.5
-            ? const Color(0xFF4CAF50)
-            : batteryPercent > 0.2
-                ? const Color(0xFFFFB300)
-                : const Color(0xFFEF1616);
+        ? const Color(0xFF4CAF50)
+        : batteryPercent > 0.2
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFEF1616);
 
     return Row(
       children: [
@@ -627,7 +642,8 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -649,10 +665,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? Padding(
                           padding: const EdgeInsets.all(10),
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: colors.primary),
+                            strokeWidth: 2,
+                            color: colors.primary,
+                          ),
                         )
-                      : Icon(Icons.water_drop_rounded,
-                          size: 19, color: colors.primary),
+                      : Icon(
+                          Icons.water_drop_rounded,
+                          size: 19,
+                          color: colors.primary,
+                        ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -725,7 +746,8 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -747,7 +769,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? Padding(
                           padding: const EdgeInsets.all(10),
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: batteryColor),
+                            strokeWidth: 2,
+                            color: batteryColor,
+                          ),
                         )
                       : Icon(
                           batteryPercent != null && batteryPercent <= 0.2
@@ -802,8 +826,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: LinearProgressIndicator(
                             value: batteryPercent,
                             minHeight: 5,
-                            backgroundColor:
-                                colors.textSecondary.withValues(alpha: 0.15),
+                            backgroundColor: colors.textSecondary.withValues(
+                              alpha: 0.15,
+                            ),
                             valueColor: AlwaysStoppedAnimation(batteryColor),
                           ),
                         )
@@ -861,16 +886,22 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TranslatedText("AI Prediction",
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary)),
-              TranslatedText("View details",
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: colors.primary,
-                      fontWeight: FontWeight.w500)),
+              TranslatedText(
+                "AI Prediction",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              TranslatedText(
+                "View details",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -878,17 +909,21 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              TranslatedText("135",
-                  style: TextStyle(
-                      fontSize: 46,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary)),
+              TranslatedText(
+                "135",
+                style: TextStyle(
+                  fontSize: 46,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: TranslatedText(" mg/dL",
-                    style: TextStyle(
-                        fontSize: 18, color: colors.textSecondary)),
+                child: TranslatedText(
+                  " mg/dL",
+                  style: TextStyle(fontSize: 18, color: colors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -898,20 +933,26 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
-              TranslatedText("22.73%",
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: colors.error,
-                      fontWeight: FontWeight.w600)),
+              TranslatedText(
+                "22.73%",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 6),
-              TranslatedText("Expected glucose in 30 minutes",
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textSecondary)),
+              TranslatedText(
+                "Expected glucose in 30 minutes",
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          TranslatedText("Glucose from 10:21pm 15 Jan, 2026",
-              style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+          TranslatedText(
+            "Glucose from 10:21pm 15 Jan, 2026",
+            style: TextStyle(fontSize: 11, color: colors.textSecondary),
+          ),
           const SizedBox(height: 14),
           SizedBox(
             height: 130,
@@ -925,15 +966,17 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              TranslatedText("Next 60 minutes",
-                  style:
-                      TextStyle(fontSize: 11, color: colors.textSecondary)),
+              TranslatedText(
+                "Next 60 minutes",
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              TranslatedText("Last Hour",
-                  style:
-                      TextStyle(fontSize: 11, color: colors.textSecondary)),
+              TranslatedText(
+                "Last Hour",
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
             ],
           ),
         ],
@@ -958,7 +1001,8 @@ class _HomeScreenState extends State<HomeScreen> {
               color: colors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
             ),
             child: const Center(child: CircularProgressIndicator()),
           );
@@ -972,7 +1016,8 @@ class _HomeScreenState extends State<HomeScreen> {
             color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: colors.textSecondary.withValues(alpha: 0.2)),
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -987,44 +1032,59 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TranslatedText("Recommendations",
-                      style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary)),
+                  TranslatedText(
+                    "Recommendations",
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const RecommendationsScreen())),
-                    child: TranslatedText("View details",
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: colors.primary,
-                            fontWeight: FontWeight.w500)),
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecommendationsScreen(),
+                      ),
+                    ),
+                    child: TranslatedText(
+                      "View details",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...recs.map((rec) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _rec(colors, rec),
-                  )),
+              ...recs.map(
+                (rec) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _rec(colors, rec),
+                ),
+              ),
               const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 1),
-                    child: Icon(Icons.warning_amber_rounded,
-                        size: 12, color: colors.textSecondary),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 12,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: TranslatedText(
                       "Recommendations are supportive and not a medical diagnosis.",
                       style: TextStyle(
-                          fontSize: 10, color: colors.textSecondary),
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -1068,24 +1128,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _rec(GlucoraColors colors, String recText) => Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration:
-                BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: TranslatedText(
-              recText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 14, color: colors.textPrimary),
-            ),
-          ),
-        ],
-      );
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: colors.primary,
+          shape: BoxShape.circle,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Flexible(
+        child: TranslatedText(
+          recText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+        ),
+      ),
+    ],
+  );
 
   // ════════════════════════════════════════════════════
   // CARE PLAN CARD
@@ -1127,33 +1189,53 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.assignment_outlined,
-                            size: 18, color: colors.primary),
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 18,
+                          color: colors.primary,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: TranslatedText('My Care Plan',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.textPrimary)),
+                          child: TranslatedText(
+                            'My Care Plan',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
                         ),
-                        Icon(Icons.chevron_right_rounded,
-                            size: 20, color: colors.textSecondary),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: colors.textSecondary,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    TranslatedText('$_doctorName  ·  Target: $_targetRange',
-                        style: TextStyle(
-                            fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      '$_doctorName  ·  Target: $_targetRange',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 12, color: colors.textSecondary),
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: colors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
-                        TranslatedText('Next appointment: $_nextAppointment',
-                            style: TextStyle(
-                                fontSize: 11, color: colors.textSecondary)),
+                        TranslatedText(
+                          'Next appointment: $_nextAppointment',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -1253,8 +1335,7 @@ class _ChartPainter extends CustomPainter {
     final p = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (int i = 1; i < pts.length; i++) {
       final a = pts[i - 1], b = pts[i];
-      p.cubicTo(
-          (a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
     }
     return p;
   }
