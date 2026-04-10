@@ -8,13 +8,14 @@ class OnboardingLanguageScreen extends StatefulWidget {
   const OnboardingLanguageScreen({super.key});
 
   @override
-  State<OnboardingLanguageScreen> createState() => _OnboardingLanguageScreenState();
+  State<OnboardingLanguageScreen> createState() =>
+      _OnboardingLanguageScreenState();
 }
 
 class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
     with TickerProviderStateMixin {
   late AnimationController _listController;
-  String? _switching;
+  late AnimationController _headerController;
   String _selectedLanguageCode = 'en';
 
   @override
@@ -22,10 +23,14 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
     super.initState();
     _listController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 700),
     )..forward();
-    
-    // Get current language
+
+    _headerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..forward();
+
     final service = Provider.of<LocalizationService>(context, listen: false);
     _selectedLanguageCode = service.currentLanguageCode;
   }
@@ -33,19 +38,16 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
   @override
   void dispose() {
     _listController.dispose();
+    _headerController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectLanguage(LocalizationService service, String code) async {
+  // ✅ Instant selection — no blocking await, no spinner
+  void _selectLanguage(LocalizationService service, String code) {
     if (code == _selectedLanguageCode) return;
-    setState(() => _switching = code);
-    await service.changeLanguage(code);
-    if (mounted) {
-      setState(() {
-        _selectedLanguageCode = code;
-        _switching = null;
-      });
-    }
+    setState(() => _selectedLanguageCode = code);
+    // Fire and forget — runs in background
+    service.changeLanguage(code);
   }
 
   void _continue() {
@@ -59,159 +61,264 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
 
     return Scaffold(
       backgroundColor: colors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header with logo
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 40, 28, 20),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      'assets/images/Glucora_logo.png',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Select Your Language',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Choose your preferred language for the app',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          // Subtle background accent blob
+          Positioned(
+            top: -60,
+            right: -40,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors.accent.withValues(alpha: 0.06),
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            // Language list
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                itemCount: kSupportedLocales.length,
-                itemBuilder: (context, index) {
-                  final locale = kSupportedLocales[index];
-                  final isSelected = locale.code == _selectedLanguageCode;
-                  final isSwitching = _switching == locale.code;
-
-                  final animation = Tween<double>(begin: 0, end: 1).animate(
-                    CurvedAnimation(
-                      parent: _listController,
-                      curve: Interval(
-                        index * 0.1,
-                        (index * 0.1 + 0.4).clamp(0.0, 1.0),
-                        curve: Curves.easeOutBack,
-                      ),
-                    ),
-                  );
-
-                  return AnimatedBuilder(
-                    animation: animation,
-                    builder: (context, child) => Transform.translate(
-                      offset: Offset(0, 20 * (1 - animation.value)),
-                      child: Opacity(opacity: animation.value, child: child),
-                    ),
-                    child: _LanguageTile(
-                      locale: locale,
-                      isSelected: isSelected,
-                      isSwitching: isSwitching,
-                      colors: colors,
-                      onTap: () => _selectLanguage(service, locale.code),
-                    ),
-                  );
-                },
+          ),
+          Positioned(
+            bottom: 80,
+            left: -60,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors.primary.withValues(alpha: 0.05),
               ),
             ),
+          ),
 
-            // Continue Button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 0, 28, 36),
-              child: SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _continue,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.accent,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+          SafeArea(
+            child: Column(
+              children: [
+                // ── Header ───────────────────────────────────────────
+                FadeTransition(
+                  opacity: _headerController,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'assets/images/Glucora_logo.png',
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Choose Your Language',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You can always change this later in settings',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: colors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
+
+                const SizedBox(height: 28),
+
+                // ── Language list ─────────────────────────────────────
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: kSupportedLocales.length,
+                    itemBuilder: (context, index) {
+                      final locale = kSupportedLocales[index];
+                      final isSelected = locale.code == _selectedLanguageCode;
+
+                      final delay = index * 0.07;
+                      final animation = Tween<double>(begin: 0, end: 1).animate(
+                        CurvedAnimation(
+                          parent: _listController,
+                          curve: Interval(
+                            delay.clamp(0.0, 0.8),
+                            (delay + 0.35).clamp(0.0, 1.0),
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                      );
+
+                      return AnimatedBuilder(
+                        animation: animation,
+                        builder: (context, child) => Transform.translate(
+                          offset: Offset(0, 24 * (1 - animation.value)),
+                          child: Opacity(
+                              opacity: animation.value.clamp(0.0, 1.0),
+                              child: child),
+                        ),
+                        child: _LanguageTile(
+                          locale: locale,
+                          isSelected: isSelected,
+                          colors: colors,
+                          onTap: () => _selectLanguage(service, locale.code),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // ── Continue button ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
+                  child: GestureDetector(
+                    onTap: _continue,
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [colors.accent, colors.primary],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.accent.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                            spreadRadius: -4,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Continue',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _LanguageTile extends StatelessWidget {
+// ── Language Tile ─────────────────────────────────────────────────────────────
+
+class _LanguageTile extends StatefulWidget {
   final GlucoraLocale locale;
   final bool isSelected;
-  final bool isSwitching;
   final dynamic colors;
   final VoidCallback onTap;
 
   const _LanguageTile({
     required this.locale,
     required this.isSelected,
-    required this.isSwitching,
     required this.colors,
     required this.onTap,
   });
 
   @override
+  State<_LanguageTile> createState() => _LanguageTileState();
+}
+
+class _LanguageTileState extends State<_LanguageTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _selectController;
+  late Animation<double> _selectScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: widget.isSelected ? 1.0 : 0.0,
+    );
+    _selectScale = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _selectController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_LanguageTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected != oldWidget.isSelected && widget.isSelected) {
+      _selectController.forward().then((_) => _selectController.reverse());
+    }
+  }
+
+  @override
+  void dispose() {
+    _selectController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isSelected = widget.isSelected;
+
     return GestureDetector(
-      onTap: isSwitching ? null : onTap,
+      onTap: widget.onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: isSelected
-              ? colors.primary.withValues(alpha: 0.08)
-              : colors.surface,
+              ? widget.colors.accent.withValues(alpha: 0.09)
+              : widget.colors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? colors.primary.withValues(alpha: 0.4)
-                : colors.textSecondary.withValues(alpha: 0.15),
+                ? widget.colors.accent.withValues(alpha: 0.45)
+                : widget.colors.textSecondary.withValues(alpha: 0.12),
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: colors.primary.withValues(alpha: 0.1),
-                    blurRadius: 12,
+                    color: widget.colors.accent.withValues(alpha: 0.12),
+                    blurRadius: 16,
                     offset: const Offset(0, 4),
+                    spreadRadius: -2,
                   )
                 ]
               : [
@@ -224,79 +331,86 @@ class _LanguageTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
+            // Flag container
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? colors.primary.withValues(alpha: 0.12)
-                    : colors.background,
+                    ? widget.colors.accent.withValues(alpha: 0.12)
+                    : widget.colors.background,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
-                      ? colors.primary.withValues(alpha: 0.3)
-                      : colors.textSecondary.withValues(alpha: 0.1),
+                      ? widget.colors.accent.withValues(alpha: 0.25)
+                      : widget.colors.textSecondary.withValues(alpha: 0.08),
                 ),
               ),
               child: Center(
-                child: Text(locale.flag, style: const TextStyle(fontSize: 28)),
+                child: Text(
+                  widget.locale.flag,
+                  style: const TextStyle(fontSize: 26),
+                ),
               ),
             ),
-            const SizedBox(width: 16),
+
+            const SizedBox(width: 14),
+
+            // Language name
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    locale.nativeName,
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: isSelected ? colors.primary : colors.textPrimary,
+                      color: isSelected
+                          ? widget.colors.accent
+                          : widget.colors.textPrimary,
                     ),
+                    child: Text(widget.locale.nativeName),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    locale.name,
+                    widget.locale.name,
                     style: TextStyle(
                       fontSize: 13,
-                      color: colors.textSecondary,
+                      color: widget.colors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            if (isSwitching)
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.primary,
-                ),
-              )
-            else if (isSelected)
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_rounded,
-                    color: Colors.white, size: 14),
-              )
-            else
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors.textSecondary.withValues(alpha: 0.3),
-                  ),
+
+            // Check indicator
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? widget.colors.accent
+                    : Colors.transparent,
+                border: Border.all(
+                  color: isSelected
+                      ? widget.colors.accent
+                      : widget.colors.textSecondary.withValues(alpha: 0.25),
+                  width: 1.5,
                 ),
               ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    )
+                  : null,
+            ),
           ],
         ),
       ),
