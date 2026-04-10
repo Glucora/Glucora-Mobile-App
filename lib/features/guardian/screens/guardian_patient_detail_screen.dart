@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/location_view.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class GuardianPatientDetailScreen extends StatefulWidget {
   final GuardianPatient patient;
@@ -74,7 +75,7 @@ class _GuardianPatientDetailScreenState
     final phone = widget.patient.phoneNumber;
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No phone number available')),
+        const SnackBar(content: TranslatedText('No phone number available')),
       );
       return;
     }
@@ -88,7 +89,7 @@ class _GuardianPatientDetailScreenState
     final phone = widget.patient.phoneNumber;
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No phone number available')),
+        const SnackBar(content: TranslatedText('No phone number available')),
       );
       return;
     }
@@ -133,7 +134,7 @@ class _GuardianPatientDetailScreenState
                       CircleAvatar(
                         radius: isLandscape ? 18 : 22,
                         backgroundColor: sColor.withValues(alpha: 0.12),
-                        child: Text(
+                        child: TranslatedText(
                           p.name.substring(0, 1),
                           style: TextStyle(
                             color: sColor,
@@ -147,7 +148,7 @@ class _GuardianPatientDetailScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            TranslatedText(
                               p.name,
                               style: TextStyle(
                                 fontSize: isLandscape ? 15 : 18,
@@ -155,7 +156,7 @@ class _GuardianPatientDetailScreenState
                                 color: colors.textPrimary,
                               ),
                             ),
-                            Text(
+                            TranslatedText(
                               '${p.relationship}  ·  Age ${p.age}  ·  Type 1',
                               style: TextStyle(
                                 fontSize: 12,
@@ -174,7 +175,7 @@ class _GuardianPatientDetailScreenState
                           color: sColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(
+                        child: TranslatedText(
                           p.overallStatus == 'emergency'
                               ? 'Needs help now'
                               : p.overallStatus == 'attention'
@@ -516,7 +517,7 @@ class _OverviewTabState extends State<_OverviewTab> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
+              TranslatedText(
                 '${patient.glucoseValue}',
                 style: TextStyle(
                   fontSize: 52,
@@ -529,7 +530,7 @@ class _OverviewTabState extends State<_OverviewTab> {
               const SizedBox(width: 6),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
+                child: TranslatedText(
                   'mg/dL',
                   style: TextStyle(
                     fontSize: 13,
@@ -552,7 +553,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   children: [
                     Icon(tIcon, color: glucoseColorVal, size: 14),
                     const SizedBox(width: 5),
-                    Text(
+                    TranslatedText(
                       patient.glucoseLabel,
                       style: TextStyle(
                         color: glucoseColorVal,
@@ -580,11 +581,11 @@ class _OverviewTabState extends State<_OverviewTab> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            TranslatedText(
               'Too Low',
               style: TextStyle(fontSize: 10, color: colors.textSecondary),
             ),
-            Text(
+            TranslatedText(
               'Normal Range',
               style: TextStyle(
                 fontSize: 10,
@@ -592,7 +593,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            Text(
+            TranslatedText(
               'Too High',
               style: TextStyle(fontSize: 10, color: colors.textSecondary),
             ),
@@ -703,7 +704,7 @@ class _OverviewTabState extends State<_OverviewTab> {
           child: Icon(icon, color: color, size: 15),
         ),
         const SizedBox(width: 10),
-        Text(
+        TranslatedText(
           label,
           style: TextStyle(
             fontSize: 13,
@@ -718,7 +719,7 @@ class _OverviewTabState extends State<_OverviewTab> {
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(
+          child: TranslatedText(
             status,
             style: TextStyle(
               fontSize: 12,
@@ -769,7 +770,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                 ),
                 const SizedBox(width: 8),
                 Flexible(
-                  child: Text(
+                  child: TranslatedText(
                     patient.allDosesAutomatic
                         ? 'The device handled everything automatically today.'
                         : 'Some doses were given manually today.',
@@ -792,7 +793,7 @@ class _OverviewTabState extends State<_OverviewTab> {
   Widget _stat(GlucoraColors colors, String val, String label) => Expanded(
     child: Column(
       children: [
-        Text(
+        TranslatedText(
           val,
           style: TextStyle(
             fontSize: 16,
@@ -801,7 +802,7 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
+        TranslatedText(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -870,7 +871,7 @@ class _OverviewTabState extends State<_OverviewTab> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
-          child: Text(
+          child: TranslatedText(
             'No readings recorded today',
             style: TextStyle(
               fontSize: 13,
@@ -928,7 +929,7 @@ class _OverviewTabState extends State<_OverviewTab> {
         const SizedBox(width: 12),
         SizedBox(
           width: 70,
-          child: Text(
+          child: TranslatedText(
             timeLabel,
             style: TextStyle(
               fontSize: 13,
@@ -938,7 +939,7 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
         ),
         Expanded(
-          child: Text(
+          child: TranslatedText(
             _getReadingDescription(value, inRange),
             style: TextStyle(fontSize: 13, color: colors.textSecondary),
             overflow: TextOverflow.ellipsis,
@@ -950,7 +951,7 @@ class _OverviewTabState extends State<_OverviewTab> {
             color: valueColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
+          child: TranslatedText(
             '$value mg/dL',
             style: TextStyle(
               fontSize: 13,
@@ -1009,7 +1010,7 @@ class _OverviewTabState extends State<_OverviewTab> {
 
   Widget _secLabel(BuildContext context, String text) {
     final colors = context.colors;
-    return Text(
+    return TranslatedText(
       text.toUpperCase(),
       style: TextStyle(
         fontSize: 11,
@@ -1230,7 +1231,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
               color: colors.textSecondary,
             ),
             const SizedBox(height: 12),
-            Text(
+            TranslatedText(
               _error ?? 'No plan available',
               style: TextStyle(color: colors.textSecondary, fontSize: 15),
             ),
@@ -1283,7 +1284,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          TranslatedText(
                             plan.doctorName,
                             style: const TextStyle(
                               color: Colors.white,
@@ -1292,7 +1293,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          TranslatedText(
                             plan.updatedAt != null
                                 ? 'Endocrinologist  ·  Last updated ${_formatShortDate(plan.updatedAt!)}'
                                 : 'Endocrinologist',
@@ -1313,7 +1314,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
+                      child: const TranslatedText(
                         'Read Only',
                         style: TextStyle(
                           color: Colors.white,
@@ -1366,7 +1367,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    TranslatedText(
                       plan.insulinType,
                       style: TextStyle(
                         fontSize: 17,
@@ -1375,7 +1376,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    TranslatedText(
                       'This insulin works quickly. The device gives it automatically when needed.',
                       style: TextStyle(
                         fontSize: 13,
@@ -1445,7 +1446,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          TranslatedText(
                             _formatDate(plan.nextAppointment!),
                             style: TextStyle(
                               fontSize: 17,
@@ -1454,7 +1455,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          TranslatedText(
                             _daysFromNow(plan.nextAppointment!),
                             style: TextStyle(
                               fontSize: 12,
@@ -1515,7 +1516,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             title.toUpperCase(),
             style: TextStyle(
               fontSize: 11,
@@ -1547,7 +1548,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TranslatedText(
             label,
             style: TextStyle(
               fontSize: 11,
@@ -1556,7 +1557,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          TranslatedText(
             value,
             style: TextStyle(
               fontSize: 20,
@@ -1565,7 +1566,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
+          TranslatedText(
             sub,
             style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
           ),
@@ -1583,7 +1584,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
         children: [
           SizedBox(
             width: 90,
-            child: Text(
+            child: TranslatedText(
               label,
               style: TextStyle(
                 fontSize: 12,
@@ -1593,7 +1594,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
             ),
           ),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               value,
               style: TextStyle(
                 fontSize: 13,
@@ -1626,7 +1627,7 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               text,
               style: TextStyle(
                 fontSize: 13,

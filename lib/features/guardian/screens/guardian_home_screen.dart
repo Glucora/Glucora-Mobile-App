@@ -7,6 +7,8 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+
 
 final _supabase = Supabase.instance.client;
 
@@ -277,7 +279,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   void _snack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
+        content: TranslatedText(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -426,7 +428,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Center(
-                                    child: Text(
+                                    child: TranslatedText(
                                       '1',
                                       style: TextStyle(
                                         color: Colors.white,
@@ -448,7 +450,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                     child: Row(
                       children: [
-                        Text(
+                        TranslatedText(
                           'Your Patients',
                           style: TextStyle(
                             fontSize: 16,
@@ -457,7 +459,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Text(
+                        TranslatedText(
                           '${list.length} of ${_allPatients.length}',
                           style: TextStyle(
                             fontSize: 12,
@@ -480,7 +482,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                             color: colors.textSecondary,
                           ),
                           const SizedBox(height: 12),
-                          Text(
+                          TranslatedText(
                             'No patients match your search.',
                             style: TextStyle(
                               color: colors.textSecondary,
@@ -494,7 +496,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                                 _query = '';
                                 _searchCtrl.clear();
                               }),
-                              child: Text(
+                              child: TranslatedText(
                                 'Clear filters',
                                 style: TextStyle(
                                   color: colors.accent,
@@ -552,7 +554,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        TranslatedText(
           greeting,
           style: TextStyle(
             fontSize: 24,
@@ -562,7 +564,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           ),
         ),
         const SizedBox(height: 3),
-        Text(
+        TranslatedText(
           'Watching over ${_allPatients.length} people',
           style: TextStyle(
             fontSize: 13,
@@ -611,7 +613,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           color: bg,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
+        child: TranslatedText(
           label,
           style: TextStyle(
             fontSize: 11,
@@ -652,7 +654,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           Icon(Icons.favorite_border_rounded, color: color, size: 17),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: TranslatedText(
               message,
               style: TextStyle(
                 fontSize: 13,
@@ -700,7 +702,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: sBg,
-                  child: Text(
+                  child: TranslatedText(
                     p.name.substring(0, 1),
                     style: TextStyle(
                       fontSize: 18,
@@ -714,7 +716,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         p.name,
                         style: TextStyle(
                           fontSize: 16,
@@ -723,7 +725,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
+                      TranslatedText(
                         '${p.relationship}  ·  Age ${p.age}',
                         style: TextStyle(
                           fontSize: 12,
@@ -742,7 +744,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     color: sBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     statusLabel(p.overallStatus),
                     style: TextStyle(
                       fontSize: 11,
@@ -763,7 +765,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
             child: Row(
               children: [
-                Text(
+                TranslatedText(
                   '${p.glucoseValue}',
                   style: TextStyle(
                     fontSize: 26,
@@ -775,7 +777,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 const SizedBox(width: 4),
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(
+                  child: TranslatedText(
                     'mg/dL',
                     style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
@@ -795,7 +797,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     children: [
                       Icon(trendIcon(p.glucoseTrend), color: gColor, size: 13),
                       const SizedBox(width: 3),
-                      Text(
+                      TranslatedText(
                         p.glucoseLabel,
                         style: TextStyle(
                           fontSize: 11,
@@ -888,7 +890,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      Text(
+                      TranslatedText(
                         'View details',
                         style: TextStyle(
                           fontSize: 12,
@@ -922,7 +924,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     children: [
       Icon(icon, size: 11, color: ok ? colors.accent : colors.textSecondary),
       const SizedBox(width: 3),
-      Text(
+      TranslatedText(
         ok ? '$label on' : '$label off',
         style: TextStyle(
           fontSize: 10,
@@ -939,7 +941,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       color: bg,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: Text(
+    child: TranslatedText(
       label,
       style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
     ),
@@ -964,7 +966,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(
+          TranslatedText(
             label,
             style: TextStyle(
               fontSize: 12,
@@ -1023,7 +1025,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              TranslatedText(
                 'Filter by Status',
                 style: TextStyle(
                   fontSize: 17,
@@ -1038,7 +1040,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     widget.onApply(null);
                     Navigator.pop(context);
                   },
-                  child: Text(
+                  child: TranslatedText(
                     'Clear',
                     style: TextStyle(
                       color: colors.accent,
@@ -1101,7 +1103,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: Text(
+              child: TranslatedText(
                 _sel == null ? 'Show All Patients' : 'Apply Filter',
                 style: const TextStyle(
                   fontSize: 15,
@@ -1153,7 +1155,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  TranslatedText(
                     title,
                     style: TextStyle(
                       fontSize: 14,
@@ -1161,7 +1163,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       color: active ? color : colors.textPrimary,
                     ),
                   ),
-                  Text(
+                  TranslatedText(
                     subtitle,
                     style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),

@@ -6,6 +6,7 @@ import 'guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class _Alert {
   final String id;
@@ -97,7 +98,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
   void _call(String name) {
     HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Calling $name...', style: const TextStyle(fontWeight: FontWeight.w600)),
+      content: TranslatedText('Calling $name...', style: const TextStyle(fontWeight: FontWeight.w600)),
       backgroundColor: const Color(0xFF2A9D8F),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -186,14 +187,14 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                   child: Row(children: [
-                    Text('${list.length} alert${list.length == 1 ? '' : 's'}',
+                    TranslatedText('${list.length} alert${list.length == 1 ? '' : 's'}',
                         style: TextStyle(fontSize: 12, color: colors.textSecondary)),
                     const Spacer(),
                     if (_unreadCount > 0)
                       TextButton(
                         onPressed: _markAllRead,
                         style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                        child: Text('Mark all seen',
+                        child: TranslatedText('Mark all seen',
                             style: TextStyle(color: colors.accent, fontWeight: FontWeight.w700, fontSize: 13)),
                       ),
                   ]),
@@ -205,7 +206,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                   child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.notifications_off_outlined, size: 48, color: colors.textSecondary),
                     const SizedBox(height: 12),
-                    Text('No alerts found.', style: TextStyle(color: colors.textSecondary, fontSize: 14)),
+                    TranslatedText('No alerts found.', style: TextStyle(color: colors.textSecondary, fontSize: 14)),
                   ])),
                 ),
 
@@ -243,7 +244,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
     final colors = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Text('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+        TranslatedText('Alerts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
             color: colors.textPrimary, letterSpacing: -0.5)),
         const Spacer(),
       ]),
@@ -255,9 +256,9 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                 color: colors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('$_unreadCount new',
+              child: TranslatedText('$_unreadCount new',
                   style: TextStyle(color: colors.error, fontWeight: FontWeight.w700, fontSize: 12)))
-          : Text('All caught up', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+          : TranslatedText('All caught up', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
       const SizedBox(height: 4),
     ]);
   }
@@ -279,7 +280,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
           color: active ? colors.accent : colors.surface,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: TextStyle(
+        child: TranslatedText(label, style: TextStyle(
             fontSize: 12, fontWeight: FontWeight.w700,
             color: active ? Colors.white : colors.textSecondary)),
       ),
@@ -315,7 +316,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                 color: uc.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(a.typeLabel,
+              child: TranslatedText(a.typeLabel,
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: uc, letterSpacing: 0.5)),
             ),
             const SizedBox(width: 8),
@@ -325,7 +326,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
                 color: colors.background,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(a.patientName,
+              child: TranslatedText(a.patientName,
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: colors.textSecondary)),
             ),
             const Spacer(),
@@ -337,13 +338,13 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
 
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Text(a.title,
+          child: TranslatedText(a.title,
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
                   color: a.isRead ? colors.textSecondary : uc, height: 1.3)),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: Text(a.description,
+          child: TranslatedText(a.description,
               style: TextStyle(fontSize: 12, color: colors.textSecondary, height: 1.5)),
         ),
 
@@ -352,7 +353,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
           child: Row(children: [
             Icon(Icons.access_time_rounded, size: 12, color: colors.textSecondary),
             const SizedBox(width: 4),
-            Text(a.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+            TranslatedText(a.timeAgo, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
             const Spacer(),
             if (!a.isRead)
               _btn(Icons.check_rounded, 'Got it', colors.textSecondary, colors.background, () => _markRead(a)),
@@ -385,7 +386,7 @@ class _GuardianAlertsScreenState extends State<GuardianAlertsScreen> {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 13, color: color),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+            TranslatedText(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
           ]),
         ),
       );

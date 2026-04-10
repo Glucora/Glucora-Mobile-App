@@ -132,7 +132,7 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: Text(
+                        child: TranslatedText(
                           '$badge',
                           style: const TextStyle(
                             color: Colors.white,
@@ -815,7 +815,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      TranslatedText(
                         _name,
                         style: TextStyle(
                           fontSize: 20,
@@ -835,7 +835,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  TranslatedText(
                     "$_age years",
                     style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
@@ -971,7 +971,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
         const SizedBox(height: 4),
-        Text(
+        TranslatedText(
           value,
           style: TextStyle(
             fontSize: 16,
