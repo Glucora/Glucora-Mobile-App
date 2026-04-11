@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'guardian_patient_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/location_view.dart';
@@ -453,8 +450,6 @@ class _OverviewTabState extends State<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final glucoseColorVal = gColor(context);
 
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
@@ -656,7 +651,6 @@ class _OverviewTabState extends State<_OverviewTab> {
   }
 
   Widget _devicesCard(BuildContext context) {
-    final colors = context.colors;
     return _card(
       context,
       child: Column(
@@ -826,7 +820,6 @@ class _OverviewTabState extends State<_OverviewTab> {
   }
 
   Widget _todayCard(BuildContext context) {
-    final colors = context.colors;
     return _card(
       context,
       child: Column(

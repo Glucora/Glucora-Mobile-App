@@ -628,7 +628,7 @@ Future<void> _deleteMedication(int medId) async {
                 // Toggle switch
                 Switch(
                   value: med.isActive,
-                  activeColor: colors.primary,
+                  activeThumbColor: colors.primary,
                   onChanged: (_) =>
                       _toggleMedication(med.id, med.isActive),
                 ),

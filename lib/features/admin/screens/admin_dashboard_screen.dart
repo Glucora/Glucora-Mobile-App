@@ -59,7 +59,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     final patients = _allUsers.where((u) => u.role == 'patient').toList();
     final doctors = _allUsers.where((u) => u.role == 'doctor').toList();
-    final admins = _allUsers.where((u) => u.role == 'admin').toList();
     final guardians = _allUsers.where((u) => u.role == 'guardian').toList();
 
     final activeDevices = mockAdminDevices.where((d) => d.isActive).length;

@@ -46,7 +46,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       final fullName = _nameController.text.trim();
-      final phone = _phoneController.text.trim();
 
       final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),

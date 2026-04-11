@@ -19,7 +19,6 @@ class GuardianMainScreen extends StatefulWidget {
 
 class _GuardianMainScreenState extends State<GuardianMainScreen> {
   int _index = 0;
-  static const int _unreadAlerts = 3;
   static const int _pendingRequests = 2;
 
   final List<Widget> _screens = [
@@ -745,7 +744,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
 
     if (_isLoading) {

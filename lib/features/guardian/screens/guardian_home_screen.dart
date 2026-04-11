@@ -262,7 +262,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: TranslatedText(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
       ),
@@ -390,7 +390,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           context,
           '$goodCount Doing well',
           colors.accent,
-          colors.accent.withOpacity(0.1),
+          colors.accent.withValues(alpha: 0.1),
         ),
         const SizedBox(width: 8),
         if (_attentionCount > 0)
@@ -398,7 +398,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             context,
             '$_attentionCount Worth a look',
             colors.warning,
-            colors.warning.withOpacity(0.1),
+            colors.warning.withValues(alpha: (0.1)),
           ),
         if (_emergencyCount > 0) ...[
           const SizedBox(width: 8),
@@ -406,7 +406,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             context,
             '$_emergencyCount Check on them',
             colors.error,
-            colors.error.withOpacity(0.1),
+            colors.error.withValues(alpha: 0.1),
           ),
         ],
       ],
@@ -511,7 +511,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           Icon(
             Icons.search_off,
             size: 64,
-            color: colors.textSecondary.withOpacity(0.5),
+            color: colors.textSecondary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -559,13 +559,13 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: patient.overallStatus == 'good'
-              ? colors.textSecondary.withOpacity(0.2)
-              : statusColor.withOpacity(0.3),
+              ? colors.textSecondary.withValues(alpha: 0.2)
+              : statusColor.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -663,7 +663,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: glucoseColor.withOpacity(0.1),
+                    color: glucoseColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -780,14 +780,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         Icon(
           icon,
           size: 12,
-          color: isActive ? colors.accent : colors.textSecondary.withOpacity(0.5),
+          color: isActive ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 4),
         Text(
           isActive ? label : '$label off',
           style: TextStyle(
             fontSize: 10,
-            color: isActive ? colors.accent : colors.textSecondary.withOpacity(0.5),
+            color: isActive ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -799,7 +799,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -825,7 +825,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -907,9 +907,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   Color _getStatusBgColor(String status, GlucoraColors colors) {
     switch (status) {
-      case 'emergency': return colors.error.withOpacity(0.1);
-      case 'attention': return colors.warning.withOpacity(0.1);
-      default: return colors.accent.withOpacity(0.1);
+      case 'emergency': return colors.error.withValues(alpha: 0.1);
+      case 'attention': return colors.warning.withValues(alpha: 0.1);
+      default: return colors.accent.withValues(alpha: 0.1);
     }
   }
 
@@ -971,7 +971,7 @@ class _FilterBottomSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: colors.textSecondary.withOpacity(0.3),
+              color: colors.textSecondary.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1019,7 +1019,7 @@ class _FilterBottomSheet extends StatelessWidget {
             'Doing Well',
             'Blood sugar in normal range',
             colors.accent,
-            colors.accent.withOpacity(0.1),
+            colors.accent.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 8),
           _buildFilterOption(
@@ -1028,7 +1028,7 @@ class _FilterBottomSheet extends StatelessWidget {
             'Worth a Look',
             'Blood sugar slightly off',
             colors.warning,
-            colors.warning.withOpacity(0.1),
+            colors.warning.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 8),
           _buildFilterOption(
@@ -1037,7 +1037,7 @@ class _FilterBottomSheet extends StatelessWidget {
             'Check on Them',
             'Immediate attention needed',
             colors.error,
-            colors.error.withOpacity(0.1),
+            colors.error.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 24),
           SizedBox(
@@ -1082,7 +1082,7 @@ class _FilterBottomSheet extends StatelessWidget {
           color: isSelected ? bgColor : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : colors.textSecondary.withOpacity(0.2),
+            color: isSelected ? color : colors.textSecondary.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
         ),

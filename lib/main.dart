@@ -1,6 +1,5 @@
 // main.dart — Updated with LocalizationService and Welcome Screen
 import 'package:app_links/app_links.dart';
-import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
