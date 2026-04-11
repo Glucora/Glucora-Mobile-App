@@ -516,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TranslatedText(
+                    Text(
                       "Current Glucose Level:",
                       style: TextStyle(
                         fontSize: 13,
@@ -529,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        TranslatedText(
+                        Text(
                           _glucoseLoading
                               ? '– mg/dL'
                               : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL',
@@ -541,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: TranslatedText(
+                          child: Text(
                             'Last updated: ${_timeAgo(_glucoseUpdatedAt)}',
                             style: TextStyle(
                               fontSize: 10,
@@ -666,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TranslatedText(
+                        Text(
                           "IOB",
                           style: TextStyle(
                             fontSize: 11,
@@ -679,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            TranslatedText(
+                            Text(
                               iobDisplay,
                               style: TextStyle(
                                 fontSize: 22,
@@ -688,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 3),
-                            TranslatedText(
+                            Text(
                               " U",
                               style: TextStyle(
                                 fontSize: 13,
@@ -698,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        TranslatedText(
+                        Text(
                           "Insulin on board",
                           style: TextStyle(
                             fontSize: 9.5,
@@ -762,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TranslatedText(
+                      Text(
                         "Sensor Battery",
                         style: TextStyle(
                           fontSize: 11,
@@ -775,7 +775,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          TranslatedText(
+                          Text(
                             batteryDisplay,
                             style: TextStyle(
                               fontSize: 22,
@@ -784,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           if (batteryPercent != null) ...[
-                            TranslatedText(
+                            Text(
                               " %",
                               style: TextStyle(
                                 fontSize: 13,
