@@ -262,7 +262,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: TranslatedText(message),
+        content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
       ),
@@ -357,7 +357,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TranslatedText(
+          Text(
             greeting,
             style: TextStyle(
               fontSize: 28,
@@ -366,7 +366,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          TranslatedText(
+          Text(
             'Watching over ${_allPatients.length} ${_allPatients.length == 1 ? 'person' : 'people'}',
             style: TextStyle(
               fontSize: 14,
@@ -420,7 +420,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: TranslatedText(
+      child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
@@ -514,7 +514,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             color: colors.textSecondary.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
-          TranslatedText(
+          Text(
             _query.isNotEmpty
                 ? 'No patients match "$_query"'
                 : 'No patients found',
@@ -533,7 +533,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   _searchCtrl.clear();
                 });
               },
-              child: TranslatedText(
+              child: Text(
                 'Clear filters',
                 style: TextStyle(
                   color: colors.accent,
@@ -581,7 +581,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: statusBgColor,
-                  child: TranslatedText(
+                  child: Text(
                     patient.name.isNotEmpty ? patient.name[0].toUpperCase() : '?',
                     style: TextStyle(
                       fontSize: 20,
@@ -595,7 +595,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TranslatedText(
+                      Text(
                         patient.name,
                         style: TextStyle(
                           fontSize: 16,
@@ -604,7 +604,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      TranslatedText(
+                      Text(
                         '${patient.relationship} • Age ${patient.age}',
                         style: TextStyle(
                           fontSize: 13,
@@ -620,7 +620,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     color: statusBgColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: TranslatedText(
+                  child: Text(
                     _getStatusLabel(patient.overallStatus),
                     style: TextStyle(
                       fontSize: 12,
@@ -643,7 +643,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
             child: Row(
               children: [
-                TranslatedText(
+                Text(
                   '${patient.glucoseValue}',
                   style: TextStyle(
                     fontSize: 32,
@@ -652,7 +652,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                TranslatedText(
+                Text(
                   'mg/dL',
                   style: TextStyle(
                     fontSize: 12,
@@ -674,7 +674,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         color: glucoseColor,
                       ),
                       const SizedBox(width: 4),
-                      TranslatedText(
+                      Text(
                         patient.glucoseLabel,
                         style: TextStyle(
                           fontSize: 12,
@@ -749,7 +749,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   onTap: () => _navigateToDetail(patient),
                   child: Row(
                     children: [
-                      TranslatedText(
+                      Text(
                         'Details',
                         style: TextStyle(
                           fontSize: 13,
@@ -783,7 +783,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           color: isActive ? colors.accent : colors.textSecondary.withOpacity(0.5),
         ),
         const SizedBox(width: 4),
-        TranslatedText(
+        Text(
           isActive ? label : '$label off',
           style: TextStyle(
             fontSize: 10,
@@ -802,7 +802,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: TranslatedText(
+      child: Text(
         text,
         style: TextStyle(
           fontSize: 11,
@@ -832,7 +832,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 6),
-            TranslatedText(
+            Text(
               label,
               style: TextStyle(
                 fontSize: 13,
@@ -979,7 +979,7 @@ class _FilterBottomSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TranslatedText(
+              Text(
                 'Filter by Status',
                 style: TextStyle(
                   fontSize: 18,
@@ -993,7 +993,7 @@ class _FilterBottomSheet extends StatelessWidget {
                     onFilterSelected(null);
                     Navigator.pop(context);
                   },
-                  child: TranslatedText(
+                  child: Text(
                     'Clear',
                     style: TextStyle(
                       color: colors.accent,
@@ -1052,7 +1052,7 @@ class _FilterBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const TranslatedText('Close'),
+              child: const Text('Close'),
             ),
           ),
         ],
@@ -1101,7 +1101,7 @@ class _FilterBottomSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TranslatedText(
+                  Text(
                     title,
                     style: TextStyle(
                       fontSize: 15,
@@ -1110,7 +1110,7 @@ class _FilterBottomSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  TranslatedText(
+                  Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
