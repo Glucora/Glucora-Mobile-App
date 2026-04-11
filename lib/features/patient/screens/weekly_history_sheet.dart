@@ -1,14 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'weekly_report_model.dart';
+import 'history_entry.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
-class WeeklyHistorySheet extends StatelessWidget {
+class WeeklyHistorySheet extends StatefulWidget {
   const WeeklyHistorySheet({super.key});
+
+  @override
+  State<WeeklyHistorySheet> createState() => _WeeklyHistorySheetState();
+}
+
+class _WeeklyHistorySheetState extends State<WeeklyHistorySheet> {
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  // ✅ Load last 12 weeks of data so computeWeeklyStats works for any week
+  Future<void> _loadHistory() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) return;
+
+      final from = DateTime.now()
+          .subtract(const Duration(days: 90))
+          .toUtc()
+          .toIso8601String();
+
+      final response = await supabase
+          .from('event_history')
+          .select()
+          .eq('patient_id', patientId)
+          .gte('occurred_at', from)
+          .order('occurred_at', ascending: false);
+
+      patientLogEntries = (response as List)
+          .map((e) => HistoryEntry.fromJson(e))
+          .toList();
+
+      setState(() => _loading = false);
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+
+    if (_loading) {
+      return Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        height: 200,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final currentMonday = weekMonday(DateTime.now());
     final weeks = List.generate(12, (i) {
       return currentMonday.subtract(Duration(days: 7 * (i + 1)));
@@ -24,8 +84,7 @@ class WeeklyHistorySheet extends StatelessWidget {
         children: [
           const SizedBox(height: 10),
           Container(
-            width: 40,
-            height: 4,
+            width: 40, height: 4,
             decoration: BoxDecoration(
               color: colors.textSecondary,
               borderRadius: BorderRadius.circular(2),
@@ -76,6 +135,7 @@ class WeeklyHistorySheet extends StatelessWidget {
   }
 }
 
+// ✅ _WeekTile stays exactly the same as before
 class _WeekTile extends StatelessWidget {
   final String label;
   final WeeklyStats stats;
@@ -108,7 +168,8 @@ class _WeekTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+          border: Border.all(
+              color: colors.textSecondary.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -120,44 +181,35 @@ class _WeekTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 42, height: 42,
               decoration: BoxDecoration(
                 color: colors.accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                Icons.bar_chart_rounded,
-                color: colors.accent,
-                size: 22,
-              ),
+              child: Icon(Icons.bar_chart_rounded,
+                  color: colors.accent, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TranslatedText(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
-                  ),
+                  TranslatedText(label,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary)),
                   const SizedBox(height: 3),
                   TranslatedText(
                     '$avgText$tirText  $eventText'.trim(),
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 12, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: colors.textSecondary,
-            ),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: colors.textSecondary),
           ],
         ),
       ),

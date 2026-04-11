@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'history_entry.dart';
 import 'weekly_history_sheet.dart';
@@ -26,8 +28,10 @@ class WeeklyReportScreen extends StatefulWidget {
 }
 
 class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
-  late WeeklyStats _stats;
+  WeeklyStats? _stats;           // ✅ nullable until loaded
+  bool _loading = true;          // ✅ NEW
   bool _exporting = false;
+  DateTime? _currentWeekStart;   // ✅ track selected week
 
   final GlobalKey _trendKey = GlobalKey();
   final GlobalKey _tirKey = GlobalKey();
@@ -37,28 +41,74 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   @override
   void initState() {
     super.initState();
-    final start = widget.weekStart ?? weekMonday(DateTime.now());
-    _stats = computeWeeklyStats(start);
+    _currentWeekStart = widget.weekStart ?? weekMonday(DateTime.now());
+    _loadAndCompute();
   }
 
-  Future<void> _showHistory() async {
-    final result = await showModalBottomSheet<DateTime>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const WeeklyHistorySheet(),
-    );
-    if (result != null && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WeeklyReportScreen(weekStart: result),
-        ),
-      );
+
+  // ✅ Fetch from DB then compute stats
+  Future<void> _loadAndCompute() async {
+    setState(() => _loading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) throw Exception('No patient profile');
+
+      // Fetch 30 days of data to cover history sheet browsing
+      final from = _currentWeekStart!
+          .subtract(const Duration(days: 1))
+          .toUtc()
+          .toIso8601String();
+
+      final to = _currentWeekStart!
+          .add(const Duration(days: 7))
+          .toUtc()
+          .toIso8601String();
+
+      final response = await supabase
+          .from('event_history')
+          .select()
+          .eq('patient_id', patientId)
+          .gte('occurred_at', from)
+          .lte('occurred_at', to)
+          .order('occurred_at', ascending: false);
+
+      // ✅ Populate global list so computeWeeklyStats works
+      patientLogEntries = (response as List)
+          .map((e) => HistoryEntry.fromJson(e))
+          .toList();
+
+      setState(() {
+        _stats = computeWeeklyStats(_currentWeekStart!);
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: $e')),
+        );
+      }
     }
   }
+
+Future<void> _showHistory() async {
+  final result = await showModalBottomSheet<DateTime>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const WeeklyHistorySheet(),
+  );
+  if (result != null && mounted) {
+    setState(() => _currentWeekStart = result);
+    await _loadAndCompute(); // ✅ reload for selected week
+  }
+}
 
   Future<Uint8List?> _captureWidget(GlobalKey key) async {
     try {
@@ -89,7 +139,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           bold: pw.Font.helveticaBold(),
         ),
       );
-      final stats = _stats;
+      final stats = _stats!;
       final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
 
       doc.addPage(
@@ -254,7 +304,19 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final stats = _stats;
+      // ✅ Show loader while fetching
+    if (_loading || _stats == null) {
+      return Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          backgroundColor: colors.primaryDark,
+          foregroundColor: Colors.white,
+          title: const Text('Weekly Report'),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final stats = _stats!;
     final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
 
     return Scaffold(
@@ -620,6 +682,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
     );
   }
 }
+
+
 
 // ─── Keep the existing helper functions and classes below (they are correct) ───
 

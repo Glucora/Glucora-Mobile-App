@@ -46,26 +46,43 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     });
   }
-
   Future<void> _navigateByRole(User? user) async {
     if (!mounted || _didNavigateAfterAuth || user == null) return;
 
     try {
+      // ✅ Use maybeSingle instead of single — won't throw if row missing
       final response = await Supabase.instance.client
           .from('users')
           .select('role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-      final normalizedRole = (response['role'] as String? ?? '')
-          .trim()
-          .toLowerCase();
+      // ✅ If no row exists, fall back to auth metadata role
+      String normalizedRole = '';
 
-      if (normalizedRole == 'norole') {
+      if (response != null && response['role'] != null) {
+        normalizedRole = (response['role'] as String).trim().toLowerCase();
+      } else {
+        // Try user metadata as fallback
+        final metaRole = user.userMetadata?['role']?.toString() ??
+            user.appMetadata['role']?.toString() ?? '';
+        normalizedRole = metaRole.trim().toLowerCase();
+      }
+
+      // ✅ If still no role, create the user row and send to role selection
+      if (normalizedRole.isEmpty || normalizedRole == 'norole') {
+        // Upsert a basic users row so future logins work
+        await Supabase.instance.client.from('users').upsert({
+          'id': user.id,
+          'email': user.email,
+          'full_name': user.userMetadata?['full_name'] ?? '',
+          'role': 'norole',
+        });
+
         _didNavigateAfterAuth = true;
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+        if (!mounted) return;
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/role-selection', (route) => false);
         return;
       }
 
@@ -88,17 +105,24 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       _didNavigateAfterAuth = true;
 
-      await NotificationService.saveTokenToSupabase();
+      try {
+        await NotificationService.saveTokenToSupabase();
+      } catch (e) {
+        print('Notification token save failed: $e'); // ✅ don't block login
+      }
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => targetScreen ?? const SignUpScreen()),
+        MaterialPageRoute(
+            builder: (_) => targetScreen ?? const SignUpScreen()),
         (route) => false,
       );
     } catch (e) {
-      _showErrorSnackBar('Could not load user role. Please try again.');
+      print('Login error: $e'); // ✅ print actual error for debugging
+      if (mounted) {
+        _showErrorSnackBar('Could not load user role: $e');
+      }
     }
   }
-
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;

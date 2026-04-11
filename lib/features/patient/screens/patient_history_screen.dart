@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'history_entry.dart';
 import 'history_detail_screen.dart';
 import 'csv_export_sheet.dart';
@@ -68,34 +70,65 @@ class PatientHistoryScreen extends StatefulWidget {
   State<PatientHistoryScreen> createState() => _PatientHistoryScreenState();
 }
 
+
 class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   String _activeFilter = 'All';
   _GraphType _graphType = _GraphType.glucose;
   _GraphSpan _graphSpan = _GraphSpan.day;
+  bool _loading = true;
+  String? _error;
 
   final List<String> _filters = [
-    'All',
-    'CGM Reading',
-    'Manual Log',
-    'Insulin',
-    'CGM Failure',
-    'Pump Failure',
+    'All', 'CGM Reading', 'Manual Log',
+    'Insulin', 'CGM Failure', 'Pump Failure',
   ];
 
-  // ── Computed ───────────────────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
+  // ✅ Fetch from Supabase
+  Future<void> _loadHistory() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) throw Exception('No patient profile');
+
+      final response = await supabase
+          .from('event_history')
+          .select()
+          .eq('patient_id', patientId)
+          .order('occurred_at', ascending: false)
+          .limit(200);
+
+      setState(() {
+        patientLogEntries = (response as List)
+            .map((e) => HistoryEntry.fromJson(e))
+            .toList();
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() { _loading = false; _error = 'Failed to load history: $e'; });
+    }
+  }
+
+  // ── Computed ───────────────────────────────────────────────────────────
   List<HistoryEntry> get _filtered {
     if (_activeFilter == 'All') return patientLogEntries;
     const map = {
-      'CGM Reading': HistoryEntryType.cgmReading,
-      'Manual Log': HistoryEntryType.manualGlucoseLog,
-      'Insulin': HistoryEntryType.insulinDelivery,
-      'CGM Failure': HistoryEntryType.cgmDeviceFailure,
+      'CGM Reading':  HistoryEntryType.cgmReading,
+      'Manual Log':   HistoryEntryType.manualGlucoseLog,
+      'Insulin':      HistoryEntryType.insulinDelivery,
+      'CGM Failure':  HistoryEntryType.cgmDeviceFailure,
       'Pump Failure': HistoryEntryType.micropumpFailure,
     };
-    return patientLogEntries
-        .where((e) => e.type == map[_activeFilter])
-        .toList();
+    return patientLogEntries.where((e) => e.type == map[_activeFilter]).toList();
   }
 
   int _countForType(HistoryEntryType t) =>
@@ -264,6 +297,33 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final filtered = _filtered;
+
+      if (_loading) {
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  if (_error != null) {
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadHistory,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -863,6 +923,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 }
+
 
 // ── _HistoryCard ────────────────────────────────────────────────────────────
 
