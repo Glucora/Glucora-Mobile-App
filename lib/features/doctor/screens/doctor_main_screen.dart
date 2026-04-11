@@ -763,29 +763,29 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
 _faqItem(
   context,
   0,
-  "How do I connect my glucose monitor?",
-  "Go to settings and connect your CGM device via Bluetooth.",
+  "How do I monitor my patient's glucose levels?",
+  "You can view real-time glucose readings and trends from the home dashboard once your patient is connected.",
 ),
 
 _faqItem(
   context,
   1,
-  "What do the glucose ranges mean?",
-  "They indicate whether your sugar is low, normal, or high.",
+  "Will I receive alerts for abnormal readings?",
+  "Yes, you will receive alerts when glucose levels are too high or too low, depending on your notification settings.",
 ),
 
 _faqItem(
   context,
   2,
-  "Can I share data with my doctor?",
-  "Yes, you can securely share your data with connected doctors.",
+  "Can I manage multiple patients?",
+  "Yes, you can connect to and monitor multiple patients from your account.",
 ),
 
 _faqItem(
   context,
   3,
-  "How accurate are the predictions?",
-  "Predictions are AI-based and improve over time with more data.",
+  "What should I do in case of critical readings?",
+  "If you notice dangerous glucose levels, contact the patient immediately and seek medical help if necessary.",
 ),
             const SizedBox(height: 24),
             Center(
