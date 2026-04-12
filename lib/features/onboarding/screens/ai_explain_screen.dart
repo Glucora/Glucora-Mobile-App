@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class AIExplainScreen extends StatefulWidget {
   const AIExplainScreen({super.key});
@@ -101,7 +102,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         'You are always\nin the loop.',
                         style: TextStyle(
                           fontSize: 26,
@@ -111,7 +112,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
+                      TranslatedText(
                         'Here is what happens at every step.',
                         style: TextStyle(
                           fontSize: 13,
@@ -123,7 +124,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                   TextButton(
                     onPressed: () =>
                         Navigator.pushReplacementNamed(context, '/landing'),
-                    child: Text(
+                    child: TranslatedText(
                       'Skip',
                       style: TextStyle(
                         color: colors.textSecondary,
@@ -164,7 +165,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          TranslatedText(
                             s['number'] as String,
                             style: TextStyle(
                               fontSize: 64,
@@ -174,7 +175,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                             ),
                           ),
                           const Spacer(),
-                          Text(
+                          TranslatedText(
                             s['title'] as String,
                             style: const TextStyle(
                               fontSize: 24,
@@ -184,7 +185,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Text(
+                          TranslatedText(
                             s['body'] as String,
                             style: TextStyle(
                               fontSize: 13,
@@ -236,7 +237,7 @@ class _AIExplainScreenState extends State<AIExplainScreen>
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(
+                  child: TranslatedText(
                     _currentPage == _steps.length - 1
                         ? 'Let\'s get started'
                         : 'Next',

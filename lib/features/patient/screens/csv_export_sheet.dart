@@ -106,7 +106,6 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
   }
 
   Widget _buildRangeSection(BuildContext context) {
-    final colors = context.colors;
     const presets = [
       'Today',
       '3 Days',

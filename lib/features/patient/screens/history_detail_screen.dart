@@ -291,7 +291,6 @@ class HistoryDetailScreen extends StatelessWidget {
   }
 
   List<Widget> _buildTypeSpecificSections(BuildContext context) {
-    final colors = context.colors;
     switch (entry.type) {
       case HistoryEntryType.cgmReading:
         return [

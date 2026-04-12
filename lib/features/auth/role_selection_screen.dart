@@ -4,6 +4,8 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/doctor/screens/doctor_main_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
 import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
+
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -49,13 +51,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       if (!mounted) return;
       print(e.toString());
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        SnackBar(content: TranslatedText(e.message), backgroundColor: Colors.red),
       );
     } catch (ex) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not save your role. Please try again.'),
+          content: TranslatedText('Could not save your role. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -87,7 +89,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       appBar: AppBar(
         backgroundColor: colors.primaryDark,
         elevation: 0,
-        title: const Text(
+        title: const TranslatedText(
           'Select Role',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
@@ -99,7 +101,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TranslatedText(
                 'Welcome to Glucora',
                 style: TextStyle(
                   color: colors.textPrimary,
@@ -108,7 +110,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              TranslatedText(
                 'Choose your role to personalize your experience.',
                 style: TextStyle(color: colors.textSecondary, fontSize: 16),
               ),
@@ -197,7 +199,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 child: Icon(icon, color: color, size: 28),
               ),
               const Spacer(),
-              Text(
+              TranslatedText(
                 title,
                 style: TextStyle(
                   color: colors.textPrimary,
@@ -206,7 +208,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              TranslatedText(
                 subtitle,
                 style: TextStyle(
                   color: colors.textSecondary,

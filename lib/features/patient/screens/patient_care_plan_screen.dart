@@ -332,7 +332,6 @@ class _PatientCarePlanScreenState extends State<PatientCarePlanScreen> {
     required String value,
     required Color color,
   }) {
-    final colors = context.colors;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

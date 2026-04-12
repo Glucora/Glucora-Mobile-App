@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class FAQScreen extends StatefulWidget {
   const FAQScreen({super.key});
@@ -170,7 +171,7 @@ class _FAQScreenState extends State<FAQScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TranslatedText(
                         'FAQs',
                         style: TextStyle(
                           fontSize: 22,
@@ -178,7 +179,7 @@ class _FAQScreenState extends State<FAQScreen> {
                           color: colors.textPrimary,
                         ),
                       ),
-                      Text(
+                      TranslatedText(
                         'Everything you need to know.',
                         style: TextStyle(
                           fontSize: 13,
@@ -218,7 +219,7 @@ class _FAQScreenState extends State<FAQScreen> {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          Text(
+                          TranslatedText(
                             section['label'] as String,
                             style: TextStyle(
                               fontSize: 13,
@@ -261,7 +262,7 @@ class _FAQScreenState extends State<FAQScreen> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Text(
+                                  child: TranslatedText(
                                     q['q'] as String,
                                     style: TextStyle(
                                       fontSize: 14,
@@ -287,7 +288,7 @@ class _FAQScreenState extends State<FAQScreen> {
                               const SizedBox(height: 12),
                               Divider(height: 1, color: colors.textSecondary.withValues(alpha: 0.2)),
                               const SizedBox(height: 12),
-                              Text(
+                              TranslatedText(
                                 q['a'] as String,
                                 style: TextStyle(
                                   fontSize: 13,

@@ -19,8 +19,6 @@ class GuardianMainScreen extends StatefulWidget {
 
 class _GuardianMainScreenState extends State<GuardianMainScreen> {
   int _index = 0;
-
-  static const int _unreadAlerts = 3;
   static const int _pendingRequests = 2;
 
   final List<Widget> _screens = [
@@ -600,7 +598,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   String _phone = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
-
+  Set<int> _openFaqs = {};
   @override
   void initState() {
     super.initState();
@@ -746,7 +744,6 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
 
     if (_isLoading) {
@@ -885,10 +882,33 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               ),
             ),
             const SizedBox(height: 12),
-            _faqItem(context, "How do I connect my glucose monitor?"),
-            _faqItem(context, "What do the glucose ranges mean?"),
-            _faqItem(context, "Can I share data with my doctor?"),
-            _faqItem(context, "How accurate are the predictions?"),
+_faqItem(
+  context,
+  0,
+  "How do I monitor my patient's glucose levels?",
+  "You can view real-time glucose readings and trends from the home dashboard once your patient is connected.",
+),
+
+_faqItem(
+  context,
+  1,
+  "Will I receive alerts for abnormal readings?",
+  "Yes, you will receive alerts when glucose levels are too high or too low, depending on your notification settings.",
+),
+
+_faqItem(
+  context,
+  2,
+  "Can I manage multiple patients?",
+  "Yes, you can connect to and monitor multiple patients from your account.",
+),
+
+_faqItem(
+  context,
+  3,
+  "What should I do in case of critical readings?",
+  "If you notice dangerous glucose levels, contact the patient immediately and seek medical help if necessary.",
+),
 
             const SizedBox(height: 24),
             Center(
@@ -983,28 +1003,76 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     );
   }
 
-  Widget _faqItem(BuildContext context, String question) {
-    final colors = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+  Widget _faqItem(
+  BuildContext context,
+  int index,
+  String question,
+  String answer,
+
+
+) {
+  final colors = context.colors;
+  final isOpen = _openFaqs.contains(index);
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (isOpen) {
+          _openFaqs.remove(index);
+        } else {
+          _openFaqs.add(index);
+        }
+      });
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: colors.textSecondary.withValues(alpha: 0.3),
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TranslatedText(
-              question,
-              style: TextStyle(fontSize: 14, color: colors.textPrimary),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: TranslatedText(
+                  question,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              Icon(
+                isOpen
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: colors.textSecondary,
+              ),
+            ],
           ),
-          Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+
+          // ✅ ANSWER (this was missing!)
+          if (isOpen) ...[
+            const SizedBox(height: 10),
+            TranslatedText(
+              answer,
+              style: TextStyle(
+                fontSize: 13,
+                color: colors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-}
+    ),
+  );
+}}

@@ -5,7 +5,6 @@ import '../../../services/ai_service.dart';
 import '../../../services/supabase_service.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 
-final _db = Supabase.instance.client;
 
 // ─── DISPLAY MODEL ────────────────────────────────────────────────────────────
 class _RecCard {

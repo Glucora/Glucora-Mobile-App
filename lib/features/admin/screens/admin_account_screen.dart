@@ -183,7 +183,6 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final colors = context.colors;
 
     if (_loading) {

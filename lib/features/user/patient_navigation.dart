@@ -1036,6 +1036,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _name = ""; int _age = 0; String _height = ""; String _phone = ""; String _email = ""; String _weight = "";
   bool _isLoading = true;
   final supabase = Supabase.instance.client;
+ Set<int> _openFaqs = {};
 
   @override
   void initState() { super.initState(); _loadProfile(); }
@@ -1169,10 +1170,33 @@ class _ProfileTabState extends State<_ProfileTab> {
             const SizedBox(height: 24),
             TranslatedText('FAQs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary)),
             const SizedBox(height: 12),
-            _faqItem(context, 'How do I connect my glucose monitor?'),
-            _faqItem(context, 'What do the glucose ranges mean?'),
-            _faqItem(context, 'Can I share data with my doctor?'),
-            _faqItem(context, 'How accurate are the predictions?'),
+_faqItem(
+  context,
+  0,
+  "How do I connect my glucose monitor?",
+  "Go to settings and connect your CGM device via Bluetooth.",
+),
+
+_faqItem(
+  context,
+  1,
+  "What do the glucose ranges mean?",
+  "They indicate whether your sugar is low, normal, or high.",
+),
+
+_faqItem(
+  context,
+  2,
+  "Can I share data with my doctor?",
+  "Yes, you can securely share your data with connected doctors.",
+),
+
+_faqItem(
+  context,
+  3,
+  "How accurate are the predictions?",
+  "Predictions are AI-based and improve over time with more data.",
+),
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
@@ -1220,22 +1244,77 @@ class _ProfileTabState extends State<_ProfileTab> {
     ]);
   }
 
-  Widget _faqItem(BuildContext context, String question) {
-    final colors = context.colors;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2))),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _faqItem(
+  BuildContext context,
+  int index,
+  String question,
+  String answer,
+) {
+  final colors = context.colors;
+  final isOpen = _openFaqs.contains(index);
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        if (isOpen) {
+          _openFaqs.remove(index);
+        } else {
+          _openFaqs.add(index);
+        }
+      });
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colors.textSecondary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: TranslatedText(question, style: TextStyle(fontSize: 14, color: colors.textPrimary))),
-          Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+          Row(
+            children: [
+              Expanded(
+                child: TranslatedText(
+                  question,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              Icon(
+                isOpen
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: colors.textSecondary,
+              ),
+            ],
+          ),
+
+          // ✅ ANSWER (this was missing!)
+          if (isOpen) ...[
+            const SizedBox(height: 10),
+            TranslatedText(
+              answer,
+              style: TextStyle(
+                fontSize: 13,
+                color: colors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-
+    ),
+  );
+}
   Future<void> _editProfile() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,

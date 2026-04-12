@@ -328,7 +328,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   // ── Header ─────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, bool isLandscape) {
-    final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, isLandscape ? 12 : 24, 16, 0),
       child: isLandscape
