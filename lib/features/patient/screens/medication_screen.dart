@@ -34,6 +34,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
   // FETCH
   // ════════════════════════════════════════════════════
   Future<void> _loadMedications() async {
+    if (!mounted) return; // ✅ add at very top
     setState(() { _loading = true; _error = null; });
     try {
       final supabase = Supabase.instance.client;
@@ -43,25 +44,32 @@ class _MedicationScreenState extends State<MedicationScreen> {
       final patientId = await getPatientProfileId(userId);
       if (patientId == null) throw Exception('No patient profile');
 
-      // Fetch medications with their reminders
+      print('Loading meds for patient: $patientId');
+
       final medsResponse = await supabase
           .from('medications')
           .select('*, medication_reminder(*)')
           .eq('patient_id', patientId)
           .order('created_at', ascending: false);
 
+      print('Meds response: $medsResponse');
+
+      if (!mounted) return; // ✅ check again after await
       setState(() {
         _medications = (medsResponse as List)
             .map((e) => _Medication.fromJson(e))
             .toList();
         _loading = false;
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to load medications: $e');
-      setState(() { _loading = false; _error = 'Failed to load medications'; });
+
+      print('Loaded ${_medications.length} medications');
+    } catch (e, stack) {
+      print('LOAD ERROR: $e');
+      print('STACK: $stack');
+      if (!mounted) return; // ✅ check before setState in catch
+      setState(() { _loading = false; _error = 'Failed to load medications: $e'; });
     }
   }
-
   // ════════════════════════════════════════════════════
   // ADD MEDICATION
   // ════════════════════════════════════════════════════
@@ -233,6 +241,8 @@ Future<void> _deleteMedication(int medId) async {
   void _showAddSheet(BuildContext context) {
     final colors = context.colors;
     List<TimeOfDay> reminders = [];
+    // Get frequency value inside the sheet
+    final freq = int.tryParse(_freqCtrl.text.trim()) ?? 0;
 
     showModalBottomSheet(
       context: context,
@@ -312,8 +322,30 @@ Future<void> _deleteMedication(int medId) async {
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: colors.textPrimary)),
+                    // Replace the "Add time" GestureDetector:
                     GestureDetector(
                       onTap: () async {
+                        final currentFreq = int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                        if (currentFreq <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Enter frequency first'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
+                        if (reminders.length >= currentFreq) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Max $currentFreq reminder${currentFreq > 1 ? 's' : ''} for this frequency',
+                              ),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
                         final picked = await showTimePicker(
                           context: context,
                           initialTime: TimeOfDay.now(),
@@ -323,20 +355,25 @@ Future<void> _deleteMedication(int medId) async {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: colors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.add_alarm_rounded,
-                                size: 14, color: colors.primary),
+                            Icon(Icons.add_alarm_rounded, size: 14, color: colors.primary),
                             const SizedBox(width: 4),
-                            TranslatedText('Add time',
-                                style: TextStyle(
-                                    fontSize: 12, color: colors.primary)),
+                            Builder(builder: (context) {
+                              final currentFreq = int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                              final remaining = currentFreq - reminders.length;
+                              return Text(
+                                currentFreq > 0
+                                    ? 'Add time (${reminders.length}/$currentFreq)'
+                                    : 'Add time',
+                                style: TextStyle(fontSize: 12, color: colors.primary),
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -388,21 +425,35 @@ Future<void> _deleteMedication(int medId) async {
                 const SizedBox(height: 24),
 
                 SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () => _saveMedication(reminders),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14))),
-                    child: const TranslatedText('Save Medication',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final currentFreq = int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                        if (currentFreq > 0 && reminders.length != currentFreq) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}',
+                              ),
+                              backgroundColor: Colors.orange,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+                        _saveMedication(reminders);
+                      },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14))),
+                      child: const Text('Save Medication',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -441,7 +492,7 @@ Future<void> _deleteMedication(int medId) async {
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: colors.textPrimary)),
-                    TranslatedText('${activeMeds.length} active',
+                    Text('${activeMeds.length} active',
                         style: TextStyle(
                             fontSize: 12,
                             color: colors.textSecondary)),

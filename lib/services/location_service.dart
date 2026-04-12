@@ -50,6 +50,7 @@ class LocationService {
   }
 
   static void startSharingLocation(String userId) async {
+    if (kIsWeb) return; // ✅ add this line at the very top
     final service = FlutterBackgroundService();
     bool isRunning = await service.isRunning();
     if (!isRunning) {

@@ -109,9 +109,9 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
         'patient_id': patientId,
         'name': name,
         'calories': cal,
-        if (carbs != null) 'carbs_g': carbs,
-        if (protein != null) 'protein_g': protein,
-        if (fat != null) 'fat_g': fat,
+        'carbs_g': ?carbs,
+        'protein_g': ?protein,
+        'fat_g': ?fat,
         'meal_type': _selectedMeal,
         'logged_at': DateTime.now().toIso8601String(),
       });

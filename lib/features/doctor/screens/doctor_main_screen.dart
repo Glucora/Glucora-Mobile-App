@@ -517,7 +517,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   String _specialty = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
-  Set<int> _openFaqs = {};
+  final Set<int> _openFaqs = {};
 
 
   @override
