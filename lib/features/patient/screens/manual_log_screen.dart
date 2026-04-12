@@ -1,50 +1,9 @@
+// lib\features\patient\screens\manual_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
-
-
-class ApiService {
-  static final supabase = Supabase.instance.client;
-
-  // Fetch the current patient's profile id (bigint) from patient_profile
-  static Future<int> _getPatientId() async {
-    final userId = supabase.auth.currentUser!.id;
-    final response = await supabase
-        .from('patient_profile')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-    return response['id'] as int;
-  }
-
-  static Future<List<GlucoseLog>> fetchLogs() async {
-    final patientId = await _getPatientId();
-    final response = await supabase
-        .from('glucose_readings')           // ✅ correct table name
-        .select()
-        .eq('patient_id', patientId)
-        .order('recorded_at', ascending: false);
-
-    return (response as List)
-        .map((e) => GlucoseLog.fromJson(e))
-        .toList();
-  }
-
-static Future<void> insertLog(double value, String? notes, String mealTime) async {
-  final patientId = await _getPatientId();
-  await supabase.from('glucose_readings').insert({
-    'value_mg_dl': value,
-    'source': 'manual',
-    'trend': 'stable',
-    'patient_id': patientId,
-    'is_predicted': false,
-    'meal_time': mealTime,
-    if (notes != null && notes.isNotEmpty) 'notes': notes,
-    'recorded_at': DateTime.now().toIso8601String(),
-  });
-}
-}
+import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/core/models/glucoseLog_model.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 
 class ManualLogScreen extends StatefulWidget {
   const ManualLogScreen({super.key});
@@ -79,7 +38,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
   Future<void> _loadLogs() async {
     try {
-      final data = await ApiService.fetchLogs();
+      final data = await fetchGlucoseLogs();
       setState(() {
         _logs = data;
         _loading = false;
@@ -107,7 +66,7 @@ Future<void> _save() async {
   setState(() => _loading = true);
 
   try {
-    await ApiService.insertLog(parsed, notes, _mealTime);  // ✅ now notes is defined
+    await insertGlucoseLog(parsed, notes, _mealTime);  // ✅ now notes is defined
     _glucoseCtrl.clear();
     _notesCtrl.clear();
     await _loadLogs();
@@ -443,44 +402,5 @@ Widget _logTile(BuildContext context, GlucoseLog log) {
     final local = dt.toLocal();
     return "${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} "
         "${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}";
-  }
-}
-
-// ✅ Model matches the actual glucose_readings schema
-class GlucoseLog {
-  final String id;
-  final int patientId;
-  final double value;
-  final String source;
-  final String trend;
-  final bool isPredicted;
-  final DateTime recordedAt;
-  final String? notes;
-  final String? mealTime; // ✅ NEW
-
-  GlucoseLog({
-    required this.id,
-    required this.patientId,
-    required this.value,
-    required this.source,
-    required this.trend,
-    required this.isPredicted,
-    required this.recordedAt,
-    this.notes,
-    this.mealTime, // ✅ NEW
-  });
-
-  factory GlucoseLog.fromJson(Map<String, dynamic> json) {
-    return GlucoseLog(
-      id: json['id'].toString(),
-      patientId: json['patient_id'] as int,
-      value: double.parse(json['value_mg_dl'].toString()),
-      source: json['source'] ?? 'unknown',
-      trend: json['trend'] ?? 'stable',
-      isPredicted: json['is_predicted'] ?? false,
-      recordedAt: DateTime.parse(json['recorded_at']),
-      notes: json['notes'],
-      mealTime: json['meal_time'], // ✅ NEW
-    );
   }
 }

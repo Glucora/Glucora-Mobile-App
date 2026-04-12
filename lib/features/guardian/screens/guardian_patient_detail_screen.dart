@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'guardian_patient_model.dart';
+import '../../../core/models/guardian_patient_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';

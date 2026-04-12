@@ -1,5 +1,8 @@
+// lib\services\supabase_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:glucora_ai_companion/core/models/glucoseLog_model.dart';
+
 
 final _db = Supabase.instance.client;
 
@@ -183,3 +186,38 @@ Future<int> getUnreadCount(int patientProfileId) async {
     return 0;
   }
 }
+
+// ─── MANUAL GLUCOSE LOG ───────────────────────────────────────────────────────
+
+/// Fetch all glucose readings for the current patient, newest first.
+Future<List<GlucoseLog>> fetchGlucoseLogs() async {
+  final userId = _db.auth.currentUser!.id;
+  final patientId = await getPatientProfileId(userId);
+  if (patientId == null) return [];
+
+  final response = await _db
+      .from('glucose_readings')
+      .select()
+      .eq('patient_id', patientId)
+      .order('recorded_at', ascending: false);
+
+  return (response as List).map((e) => GlucoseLog.fromJson(e)).toList();
+}
+
+/// Insert a manual glucose reading for the current patient.
+Future<void> insertGlucoseLog(double value, String? notes, String mealTime) async {
+  final userId = _db.auth.currentUser!.id;
+  final patientId = await getPatientProfileId(userId);
+  if (patientId == null) return;
+
+  await _db.from('glucose_readings').insert({
+    'value_mg_dl': value,
+    'source': 'manual',
+    'trend': 'stable',
+    'patient_id': patientId,
+    'is_predicted': false,
+    'meal_time': mealTime,
+    if (notes != null && notes.isNotEmpty) 'notes': notes,
+    'recorded_at': DateTime.now().toIso8601String(),
+  });
+} 

@@ -1,6 +1,6 @@
 // lib\features\guardian\screens\guardian_home_screen.dart
 import 'package:flutter/material.dart';
-import 'guardian_patient_model.dart';
+import '../../../core/models/guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';

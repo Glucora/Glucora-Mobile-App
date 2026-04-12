@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/doctor/screens/doctor_main_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
-import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
+import 'package:glucora_ai_companion/features/patient/screens/patient_navigation.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart';
 
 

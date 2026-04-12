@@ -12,9 +12,9 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/features/user/screens/calorie_log_screen.dart';
-import 'package:glucora_ai_companion/features/user/screens/home_screen.dart';
-import 'package:glucora_ai_companion/features/user/screens/manual_log_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/calorie_log_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/home_screen.dart';
+import 'package:glucora_ai_companion/features/patient/screens/manual_log_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/medication_screen.dart';
@@ -25,7 +25,7 @@ import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 // ✅ NEW IMPORTS
 import 'package:glucora_ai_companion/services/localization_service.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart';
-import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
+import 'package:glucora_ai_companion/shared/language_selection_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
 // PatientNavigation — unchanged structure, added Directionality

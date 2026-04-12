@@ -18,7 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/signup_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/role_selection_screen.dart';
-import 'features/user/patient_navigation.dart';
+import 'features/patient/screens/patient_navigation.dart';
 import 'features/doctor/screens/doctor_main_screen.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/screens/guardian_main_screen.dart';

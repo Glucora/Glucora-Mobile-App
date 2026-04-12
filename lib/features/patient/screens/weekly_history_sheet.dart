@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'weekly_report_model.dart';
+import '../../../core/models/weekly_report_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
 

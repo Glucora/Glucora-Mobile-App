@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart';
-import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
+import 'package:glucora_ai_companion/shared/language_selection_screen.dart';
 import 'doctor_patients_screen.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
 
