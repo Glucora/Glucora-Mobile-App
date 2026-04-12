@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,9 @@ import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+
+Timer? _timeTicker;
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -17,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  
   // Care plan
   String _doctorName = '';
   String _targetRange = '– mg/dL';
@@ -43,8 +48,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchLatestGlucose();
     _fetchLatestIOB();
     _fetchDeviceBattery();
+    _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        setState(() {}); // just rebuild to update timeAgo
+      }
+    });
   }
-
+@override
+void dispose() {
+  _timeTicker?.cancel();
+  super.dispose();
+}
   // ════════════════════════════════════════════════════
   // HELPER: GET PATIENT PROFILE ID
   // ════════════════════════════════════════════════════
@@ -291,6 +305,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+Future<void> _onRefresh() async {
+  await Future.wait([
+    _fetchLatestGlucose(),
+    _fetchLatestIOB(),
+    _fetchDeviceBattery(),
+    _fetchCarePlanSummary(),
+  ]);
+}
+
+
+
+
+
+
   // ════════════════════════════════════════════════════
   // HELPERS
   // ════════════════════════════════════════════════════
@@ -343,8 +371,11 @@ class _HomeScreenState extends State<HomeScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
     final hPadding = isLandscape ? screenWidth * 0.08 : 20.0;
 
-    return SafeArea(
-      child: SingleChildScrollView(
+return SafeArea(
+  child: RefreshIndicator(
+    onRefresh: _onRefresh, // 👈 add this
+    child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(), // 👈 IMPORTANT
         padding: EdgeInsets.symmetric(horizontal: hPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,6 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+  ),
     );
   }
 

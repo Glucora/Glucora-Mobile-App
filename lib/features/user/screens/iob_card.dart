@@ -128,7 +128,7 @@ class _IobDetailSheetState extends State<IobDetailSheet> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: colors.textPrimary)),
-                  TranslatedText(
+                  Text(
                     _iob != null
                         ? 'Updated ${_timeAgo(_iob!['calculated_at'])}'
                         : '–',
