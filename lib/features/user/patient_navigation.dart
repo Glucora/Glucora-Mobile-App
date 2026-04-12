@@ -1036,7 +1036,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _name = ""; int _age = 0; String _height = ""; String _phone = ""; String _email = ""; String _weight = "";
   bool _isLoading = true;
   final supabase = Supabase.instance.client;
- Set<int> _openFaqs = {};
+ final Set<int> _openFaqs = {};
 
   @override
   void initState() { super.initState(); _loadProfile(); }

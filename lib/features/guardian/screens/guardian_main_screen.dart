@@ -598,7 +598,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   String _phone = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
-  Set<int> _openFaqs = {};
+  final Set<int> _openFaqs = {};
   @override
   void initState() {
     super.initState();

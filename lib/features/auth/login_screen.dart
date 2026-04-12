@@ -47,58 +47,84 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _navigateByRole(User? user) async {
-    if (!mounted || _didNavigateAfterAuth || user == null) return;
+
+Future<void> _navigateByRole(User? user) async {
+  if (!mounted || _didNavigateAfterAuth || user == null) return;
+
+  try {
+    // ✅ Use maybeSingle instead of single — won't throw if row missing
+    final response = await Supabase.instance.client
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    // ✅ If no row exists, fall back to auth metadata role
+    String normalizedRole = '';
+
+    if (response != null && response['role'] != null) {
+      normalizedRole = (response['role'] as String).trim().toLowerCase();
+    } else {
+      // Try user metadata as fallback
+      final metaRole = user.userMetadata?['role']?.toString() ??
+          user.appMetadata['role']?.toString() ?? '';
+      normalizedRole = metaRole.trim().toLowerCase();
+    }
+
+    // ✅ If still no role, create the user row and send to role selection
+    if (normalizedRole.isEmpty || normalizedRole == 'norole') {
+      // Upsert a basic users row so future logins work
+      await Supabase.instance.client.from('users').upsert({
+        'id': user.id,
+        'email': user.email,
+        'full_name': user.userMetadata?['full_name'] ?? '',
+        'role': 'norole',
+      });
+
+      _didNavigateAfterAuth = true;
+      if (!mounted) return;
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/role-selection', (route) => false);
+      return;
+    }
+
+    Widget? targetScreen;
+    if (normalizedRole == 'patient') {
+      try {
+        LocationService.startSharingLocation(user.id);
+      } catch (e) {
+        print('Could not start location: $e');
+      }
+      targetScreen = const PatientNavigation();
+    } else if (normalizedRole == 'doctor') {
+      targetScreen = const DoctorMainScreen();
+    } else if (normalizedRole == 'guardian') {
+      targetScreen = const GuardianMainScreen();
+    } else if (normalizedRole == 'admin') {
+      targetScreen = const AdminMainScreen();
+    }
+
+    if (!mounted) return;
+    _didNavigateAfterAuth = true;
 
     try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-      final normalizedRole = (response['role'] as String? ?? '')
-          .trim()
-          .toLowerCase();
-
-      if (normalizedRole == 'norole') {
-        _didNavigateAfterAuth = true;
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
-        return;
-      }
-
-      Widget? targetScreen;
-      if (normalizedRole == 'patient') {
-        try {
-          LocationService.startSharingLocation(user.id);
-        } catch (e) {
-          print('Could not start location: $e');
-        }
-        targetScreen = const PatientNavigation();
-      } else if (normalizedRole == 'doctor') {
-        targetScreen = const DoctorMainScreen();
-      } else if (normalizedRole == 'guardian') {
-        targetScreen = const GuardianMainScreen();
-      } else if (normalizedRole == 'admin') {
-        targetScreen = const AdminMainScreen();
-      }
-
-      if (!mounted) return;
-      _didNavigateAfterAuth = true;
-
       await NotificationService.saveTokenToSupabase();
-
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => targetScreen ?? const SignUpScreen()),
-        (route) => false,
-      );
     } catch (e) {
-      _showErrorSnackBar('Could not load user role. Please try again.');
+      print('Notification token save failed: $e'); // ✅ don't block login
+    }
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+          builder: (_) => targetScreen ?? const SignUpScreen()),
+      (route) => false,
+    );
+  } catch (e) {
+    print('Login error: $e'); // ✅ print actual error for debugging
+    if (mounted) {
+      _showErrorSnackBar('Could not load user role: $e');
     }
   }
-
+}
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
