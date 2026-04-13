@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'role_selection_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'login_screen.dart';
+import 'login_screen.dart'; 
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -62,16 +62,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.user != null) {
-        await Supabase.instance.client.from('users').insert({
-          'id': response.user!.id,
-          'email': _emailController.text.trim(),
-          'full_name': _nameController.text.trim(),
-          'phone_no': _phoneController.text.trim(),
-          'age': int.tryParse(_ageController.text.trim()) ?? 0,
-          'address': _addressController.text.trim(),
-          'role': 'norole',
-        });
-        if (!mounted) return;
+        // Navigate directly to role selection screen
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
@@ -87,10 +78,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText(e.message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: TranslatedText(e.message), backgroundColor: Colors.red),
       );
     } catch (_) {
       if (!mounted) return;
@@ -121,10 +109,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             );
           },
         ),
-        title: TranslatedText(
-          'Sign Up',
-          style: TextStyle(color: colors.textPrimary),
-        ),
+        title: TranslatedText('Sign Up', style: TextStyle(color: colors.textPrimary)),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -353,10 +338,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 decoration: InputDecoration(
                   labelText: 'Enter your address',
                   labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(
-                    Icons.location_on_outlined,
-                    color: colors.primary,
-                  ),
+                  prefixIcon: Icon(Icons.location_on_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
@@ -473,10 +455,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const TranslatedText(
-                        'Sign Up',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                    : const TranslatedText('Sign Up', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
               // Link to login
@@ -572,10 +551,7 @@ class SignUpSuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const TranslatedText(
-                'Go to Login',
-                style: TextStyle(fontSize: 18),
-              ),
+              child: const TranslatedText('Go to Login', style: TextStyle(fontSize: 18)),
             ),
           ],
         ),
