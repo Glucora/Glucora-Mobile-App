@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
+import '../../../services/admin_service.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminDeviceFormScreen extends StatefulWidget {
   final AdminDevice? device;
@@ -21,11 +22,10 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
   late String _assignedToUserId;
   late bool _isActive;
   bool _saving = false;
+  List<AdminUser> _patients = [];
+  bool _loadingPatients = true;
 
   bool get _isEditing => widget.device != null;
-
-  List<AdminUser> get _patients =>
-      mockAdminUsers.where((u) => u.role == UserRole.patient).toList();
 
   @override
   void initState() {
@@ -38,10 +38,21 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
       text: widget.device?.serialNumber ?? '',
     );
     _deviceType = widget.device?.deviceType ?? 'CGM';
-    _assignedToUserId =
-        widget.device?.assignedToUserId ??
-        (_patients.isNotEmpty ? _patients.first.id : '');
+    _assignedToUserId = widget.device?.assignedToUserId ?? '';
     _isActive = widget.device?.isActive ?? true;
+    _loadPatients();
+  }
+
+  Future<void> _loadPatients() async {
+    final allUsers = await AdminService.getAllUsers();
+    setState(() {
+      _patients = allUsers.where((u) => u.role == 'patient').toList();
+      _loadingPatients = false;
+      // Set default assigned patient if none selected and patients exist
+      if (_assignedToUserId.isEmpty && _patients.isNotEmpty) {
+        _assignedToUserId = _patients.first.id;
+      }
+    });
   }
 
   @override
@@ -52,45 +63,97 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
     super.dispose();
   }
 
-  void _save() async {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
-    await Future.delayed(const Duration(milliseconds: 500));
 
-    final assignedUser = mockAdminUsers.firstWhere(
+    final assignedUser = _patients.firstWhere(
       (u) => u.id == _assignedToUserId,
+      orElse: () => AdminUser(
+        id: '',
+        name: 'Unassigned',
+        email: '',
+        role: 'patient',
+        createdAt: DateTime.now(),
+      ),
     );
 
+    bool success = false;
+
     if (_isEditing) {
-      widget.device!.deviceName = _nameController.text.trim();
-      widget.device!.model = _modelController.text.trim();
-      widget.device!.serialNumber = _serialController.text.trim();
-      widget.device!.deviceType = _deviceType;
-      widget.device!.assignedToUserId = _assignedToUserId;
-      widget.device!.assignedToUserName = assignedUser.name;
-      widget.device!.isActive = _isActive;
-    } else {
-      mockAdminDevices.add(
-        AdminDevice(
-          id: 'dev${DateTime.now().millisecondsSinceEpoch}',
-          deviceName: _nameController.text.trim(),
-          deviceType: _deviceType,
-          model: _modelController.text.trim(),
-          serialNumber: _serialController.text.trim(),
-          assignedToUserId: _assignedToUserId,
-          assignedToUserName: assignedUser.name,
-          isActive: _isActive,
-        ),
+      // Update existing device
+      final updatedDevice = AdminDevice(
+        id: widget.device!.id,
+        deviceName: _nameController.text.trim(),
+        deviceType: _deviceType,
+        model: _modelController.text.trim(),
+        serialNumber: _serialController.text.trim(),
+        assignedToUserId: _assignedToUserId,
+        assignedToUserName: assignedUser.name,
+        isActive: _isActive,
       );
+      success = await AdminService.updateDevice(updatedDevice);
+    } else {
+      // Add new device
+      final newDevice = AdminDevice(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        deviceName: _nameController.text.trim(),
+        deviceType: _deviceType,
+        model: _modelController.text.trim(),
+        serialNumber: _serialController.text.trim(),
+        assignedToUserId: _assignedToUserId,
+        assignedToUserName: assignedUser.name,
+        isActive: _isActive,
+      );
+      success = await AdminService.addDevice(newDevice);
     }
 
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      setState(() => _saving = false);
+      
+      if (success) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText(
+              _isEditing ? 'Device updated successfully!' : 'Device added successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: TranslatedText('Failed to save device. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    
+    if (_loadingPatients) {
+      return Scaffold(
+        appBar: AppBar(
+          title: TranslatedText(
+            _isEditing ? 'Edit Device' : 'Add Device',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: colors.primaryDark,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: TranslatedText(
@@ -148,13 +211,22 @@ class _AdminDeviceFormScreenState extends State<AdminDeviceFormScreen> {
             const SizedBox(height: 16),
             _label(context, 'Assigned To (Patient)'),
             DropdownButtonFormField<String>(
-              initialValue: _assignedToUserId,
+              initialValue: _assignedToUserId.isEmpty && _patients.isNotEmpty 
+                  ? _patients.first.id 
+                  : _assignedToUserId,
               decoration: _inputDecoration(context, 'Select patient'),
-              items: _patients
-                  .map(
-                    (p) => DropdownMenuItem(value: p.id, child: TranslatedText(p.name)),
-                  )
-                  .toList(),
+              items: [
+                const DropdownMenuItem(
+                  value: '',
+                  child: TranslatedText('-- Unassigned --'),
+                ),
+                ..._patients.map(
+                  (p) => DropdownMenuItem(
+                    value: p.id, 
+                    child: TranslatedText(p.name),
+                  ),
+                ),
+              ],
               onChanged: (v) {
                 if (v != null) setState(() => _assignedToUserId = v);
               },

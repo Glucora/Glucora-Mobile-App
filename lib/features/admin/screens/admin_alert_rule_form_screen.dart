@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
+import '../../../services/admin_service.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
-
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminAlertRuleFormScreen extends StatefulWidget {
   final AdminAlertRule? rule;
@@ -68,7 +68,6 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
-    await Future.delayed(const Duration(milliseconds: 500));
 
     final threshold = _showThreshold
         ? double.tryParse(_thresholdController.text)
@@ -77,28 +76,58 @@ class _AdminAlertRuleFormScreenState extends State<AdminAlertRuleFormScreen> {
         ? int.tryParse(_durationController.text)
         : null;
 
+    bool success = false;
+
     if (_isEditing) {
-      widget.rule!.name = _nameController.text.trim();
-      widget.rule!.conditionType = _conditionType;
-      widget.rule!.thresholdValue = threshold;
-      widget.rule!.durationMinutes = duration;
-      widget.rule!.severity = _severity;
-      widget.rule!.isEnabled = _isEnabled;
-    } else {
-      mockAlertRules.add(
-        AdminAlertRule(
-          id: 'ar${DateTime.now().millisecondsSinceEpoch}',
-          name: _nameController.text.trim(),
-          conditionType: _conditionType,
-          thresholdValue: threshold,
-          durationMinutes: duration,
-          severity: _severity,
-          isEnabled: _isEnabled,
-        ),
+      // Update existing rule
+      final updatedRule = AdminAlertRule(
+        id: widget.rule!.id,
+        name: _nameController.text.trim(),
+        conditionType: _conditionType,
+        thresholdValue: threshold,
+        durationMinutes: duration,
+        severity: _severity,
+        isEnabled: _isEnabled,
+        appliesToRole: widget.rule!.appliesToRole,
       );
+      success = await AdminService.updateAlertRule(updatedRule);
+    } else {
+      // Create new rule
+      final newRule = AdminAlertRule(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _nameController.text.trim(),
+        conditionType: _conditionType,
+        thresholdValue: threshold,
+        durationMinutes: duration,
+        severity: _severity,
+        isEnabled: _isEnabled,
+        appliesToRole: 'All Patients',
+      );
+      success = await AdminService.addAlertRule(newRule);
     }
 
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      setState(() => _saving = false);
+      
+      if (success) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText(
+              _isEditing ? 'Rule updated successfully!' : 'Rule created successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: TranslatedText('Failed to save rule. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

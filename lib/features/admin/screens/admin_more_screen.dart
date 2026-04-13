@@ -3,9 +3,9 @@ import 'admin_user_list_screen.dart';
 import 'admin_device_list_screen.dart';
 import 'admin_alert_rules_screen.dart';
 import 'admin_role_management_screen.dart';
-import 'admin_assignments_screen.dart';
+import 'admin_assignments_screen.dart';  
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminMoreScreen extends StatelessWidget {
   const AdminMoreScreen({super.key});
@@ -62,7 +62,7 @@ class AdminMoreScreen extends StatelessWidget {
             subtitle: 'Manage which doctors oversee which patients',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AdminAssignmentsScreen()),
+              MaterialPageRoute(builder: (_) => const AdminAssignmentsScreen()),  // ✅ This should work with proper import
             ),
           ),
           const SizedBox(height: 24),

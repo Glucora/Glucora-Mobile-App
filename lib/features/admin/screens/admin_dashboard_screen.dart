@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/models/admin_model.dart';
+import '../../../services/admin_service.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -13,42 +13,47 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<AdminUser> _allUsers = [];
+  List<AdminDevice> _allDevices = [];
+  List<AdminAlertRule> _allRules = [];
+  List<DoctorPatientAssignment> _allAssignments = [];
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers();
+    _fetchAllData();
   }
 
-  Future<void> _fetchUsers() async {
+  Future<void> _fetchAllData() async {
     setState(() {
       _loading = true;
       _error = null;
     });
+    
     try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id, full_name, email, role, is_active, created_at')
-          .order('created_at', ascending: false);
+      final results = await Future.wait([
+        AdminService.getAllUsers(),
+        AdminService.getAllDevices(),
+        AdminService.getAllAlertRules(),
+        AdminService.getAllAssignments(),
+      ]);
 
-      final users = (response as List)
-          .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
-          .toList();
-
-      if (mounted) {
+if (mounted) {
         setState(() {
-        _allUsers = users;
-        _loading = false;
-      });
+          _allUsers = results[0] as List<AdminUser>;
+          _allDevices = results[1] as List<AdminDevice>;
+          _allRules = results[2] as List<AdminAlertRule>;
+          _allAssignments = results[3] as List<DoctorPatientAssignment>;
+          _loading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+          _error = e.toString();
+          _loading = false;
+        });
       }
     }
   }
@@ -61,12 +66,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final doctors = _allUsers.where((u) => u.role == 'doctor').toList();
     final guardians = _allUsers.where((u) => u.role == 'guardian').toList();
 
-    final activeDevices = mockAdminDevices.where((d) => d.isActive).length;
-    final inactiveDevices = mockAdminDevices.where((d) => !d.isActive).length;
-    final enabledRules = mockAlertRules.where((r) => r.isEnabled).length;
-    final criticalRules = mockAlertRules
-        .where((r) => r.severity == 'Critical')
-        .length;
+    final activeDevices = _allDevices.where((d) => d.isActive).length;
+    final inactiveDevices = _allDevices.where((d) => !d.isActive).length;
+    final enabledRules = _allRules.where((r) => r.isEnabled).length;
+    final criticalRules = _allRules.where((r) => r.severity == 'Critical').length;
+    
+    final unassignedPatients = patients.where(
+      (p) => !_allAssignments.any((a) => a.patientId == p.id)
+    ).length;
 
     if (_loading) {
       return Scaffold(
@@ -98,7 +105,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               TranslatedText('Failed to load data', style: TextStyle(color: colors.error)),
               const SizedBox(height: 8),
-              ElevatedButton(onPressed: _fetchUsers, child: const TranslatedText('Retry')),
+              ElevatedButton(
+                onPressed: _fetchAllData, 
+                child: const TranslatedText('Retry')
+              ),
             ],
           ),
         ),
@@ -113,6 +123,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchAllData,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       backgroundColor: colors.background,
       body: OrientationBuilder(
@@ -223,7 +240,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: _statCard(
                           context,
                           'Total Assignments',
-                          '${mockAssignments.length}',
+                          '${_allAssignments.length}',
                           Icons.link,
                           const Color(0xFF9B59B6),
                         ),
@@ -233,7 +250,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: _statCard(
                           context,
                           'Unassigned Patients',
-                          '${patients.where((p) => !mockAssignments.any((a) => a.patientId == p.id)).length}',
+                          '$unassignedPatients',
                           Icons.person_off,
                           colors.warning,
                         ),
@@ -251,6 +268,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             );
           }
 
+          // Portrait layout
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -366,7 +384,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: _statCard(
                         context,
                         'Total Assignments',
-                        '${mockAssignments.length}',
+                        '${_allAssignments.length}',
                         Icons.link,
                         const Color(0xFF9B59B6),
                       ),
@@ -376,7 +394,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: _statCard(
                         context,
                         'Unassigned',
-                        '${patients.where((p) => !mockAssignments.any((a) => a.patientId == p.id)).length}',
+                        '$unassignedPatients',
                         Icons.person_off,
                         colors.warning,
                       ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
-import 'admin_device_form_screen.dart';
+import '../../../services/admin_service.dart';
+import '../screens/admin_device_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminDeviceListScreen extends StatefulWidget {
   const AdminDeviceListScreen({super.key});
@@ -15,9 +16,26 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   String _typeFilter = 'All';
+  List<AdminDevice> _devices = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    setState(() => _isLoading = true);
+    final devices = await AdminService.getAllDevices();
+    setState(() {
+      _devices = devices;
+      _isLoading = false;
+    });
+  }
 
   List<AdminDevice> get _filtered {
-    return mockAdminDevices.where((d) {
+    return _devices.where((d) {
       if (_query.isNotEmpty &&
           !d.deviceName.toLowerCase().contains(_query.toLowerCase()) &&
           !d.assignedToUserName.toLowerCase().contains(_query.toLowerCase()) &&
@@ -38,7 +56,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
     super.dispose();
   }
 
-  void _deleteDevice(AdminDevice device) {
+  Future<void> _deleteDevice(AdminDevice device) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -52,9 +70,29 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
             child: const TranslatedText('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => mockAdminDevices.remove(device));
+            onPressed: () async {
               Navigator.pop(ctx);
+              setState(() => _isLoading = true);
+              
+              final success = await AdminService.deleteDevice(device.id);
+              
+              if (success && mounted) {
+                await _loadDevices();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Device deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Failed to delete device'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
           ),
@@ -67,6 +105,20 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final filtered = _filtered;
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const TranslatedText(
+            'Devices',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: colors.primaryDark,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -86,8 +138,15 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                   builder: (_) => const AdminDeviceFormScreen(),
                 ),
               );
-              if (result == true) setState(() {});
+              if (result == true && mounted) {
+                await _loadDevices();
+              }
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDevices,
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -160,7 +219,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                       vertical: 4,
                     ),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, a2) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) =>
                         _deviceCard(context, filtered[index]),
                   ),
@@ -187,7 +246,9 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
               builder: (_) => AdminDeviceFormScreen(device: device),
             ),
           );
-          if (result == true) setState(() {});
+          if (result == true && mounted) {
+            await _loadDevices();
+          }
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

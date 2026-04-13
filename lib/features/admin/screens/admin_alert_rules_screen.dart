@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
+import '../../../services/admin_service.dart';
 import 'admin_alert_rule_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminAlertRulesScreen extends StatefulWidget {
   const AdminAlertRulesScreen({super.key});
@@ -13,13 +14,30 @@ class AdminAlertRulesScreen extends StatefulWidget {
 
 class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _severityFilter = 'All';
+  List<AdminAlertRule> _rules = [];
+  bool _isLoading = true;
 
-  List<AdminAlertRule> get _filtered {
-    if (_severityFilter == 'All') return mockAlertRules;
-    return mockAlertRules.where((r) => r.severity == _severityFilter).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadRules();
   }
 
-  void _deleteRule(AdminAlertRule rule) {
+  Future<void> _loadRules() async {
+    setState(() => _isLoading = true);
+    final rules = await AdminService.getAllAlertRules();
+    setState(() {
+      _rules = rules;
+      _isLoading = false;
+    });
+  }
+
+  List<AdminAlertRule> get _filtered {
+    if (_severityFilter == 'All') return _rules;
+    return _rules.where((r) => r.severity == _severityFilter).toList();
+  }
+
+  Future<void> _deleteRule(AdminAlertRule rule) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -31,15 +49,62 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
             child: const TranslatedText('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => mockAlertRules.remove(rule));
+            onPressed: () async {
               Navigator.pop(ctx);
+              
+              // Show loading
+              setState(() => _isLoading = true);
+              
+              // Delete from database
+              final success = await AdminService.deleteAlertRule(rule.id);
+              
+              if (success && mounted) {
+                await _loadRules();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Rule deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Failed to delete rule'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggleRuleEnabled(AdminAlertRule rule, bool value) async {
+    // Optimistically update UI
+    final oldValue = rule.isEnabled;
+    setState(() {
+      rule.isEnabled = value;
+    });
+    
+    // Update in database
+    final success = await AdminService.toggleAlertRule(rule.id, value);
+    
+    if (!success && mounted) {
+      // Revert on failure
+      setState(() {
+        rule.isEnabled = oldValue;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: TranslatedText('Failed to update rule status'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Color _severityColor(String severity) {
@@ -97,54 +162,58 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   builder: (_) => const AdminAlertRuleFormScreen(),
                 ),
               );
-              if (result == true) setState(() {});
+              if (result == true && mounted) {
+                await _loadRules();
+              }
             },
           ),
         ],
       ),
       backgroundColor: colors.background,
-      body: Column(
-        children: [
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: ['All', 'Critical', 'Warning', 'Info'].map((label) {
-                final selected = _severityFilter == label;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
-                    selected: selected,
-                    selectedColor: colors.accent.withValues(alpha: 0.2),
-                    checkmarkColor: colors.accent,
-                    onSelected: (_) => setState(() => _severityFilter = label),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                SizedBox(
+                  height: 50,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    children: ['All', 'Critical', 'Warning', 'Info'].map((label) {
+                      final selected = _severityFilter == label;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
+                          selected: selected,
+                          selectedColor: colors.accent.withValues(alpha: 0.2),
+                          checkmarkColor: colors.accent,
+                          onSelected: (_) => setState(() => _severityFilter = label),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
+                ),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: TranslatedText(
+                            'No alert rules',
+                            style: TextStyle(color: colors.textSecondary),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) => _ruleCard(context, filtered[index]),
+                        ),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: TranslatedText(
-                      'No alert rules',
-                      style: TextStyle(color: colors.textSecondary),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, a2) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) => _ruleCard(context, filtered[index]),
-                  ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -164,7 +233,9 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
               builder: (_) => AdminAlertRuleFormScreen(rule: rule),
             ),
           );
-          if (result == true) setState(() {});
+          if (result == true && mounted) {
+            await _loadRules();
+          }
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -228,7 +299,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   Switch(
                     value: rule.isEnabled,
                     activeThumbColor: colors.accent,
-                    onChanged: (v) => setState(() => rule.isEnabled = v),
+                    onChanged: (v) => _toggleRuleEnabled(rule, v),
                   ),
                 ],
               ),

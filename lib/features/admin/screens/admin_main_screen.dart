@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'admin_dashboard_screen.dart';
+import '../screens/admin_dashboard_screen.dart';
 import 'admin_more_screen.dart';
 import 'admin_account_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';

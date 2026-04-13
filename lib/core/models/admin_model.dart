@@ -6,9 +6,10 @@ class AdminUser {
   final String id;
   String name;
   String email;
-  String role; // raw string from DB: 'patient', 'doctor', 'admin', 'guardian'
+  String role;
   bool isActive;
   final DateTime createdAt;
+  String? profilePictureUrl;
 
   AdminUser({
     required this.id,
@@ -17,6 +18,7 @@ class AdminUser {
     required this.role,
     this.isActive = true,
     required this.createdAt,
+    this.profilePictureUrl,
   });
 
   factory AdminUser.fromMap(Map<String, dynamic> map) {
@@ -29,6 +31,7 @@ class AdminUser {
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : DateTime.now(),
+      profilePictureUrl: map['profile_picture_url'] as String?,
     );
   }
 
@@ -52,17 +55,31 @@ class AdminUser {
         return role;
     }
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'full_name': name,
+      'email': email,
+      'role': role,
+      'is_active': isActive,
+      'profile_picture_url': profilePictureUrl,
+    };
+  }
 }
 
 class AdminDevice {
   final String id;
   String deviceName;
-  String deviceType; // 'CGM' | 'Micropump'
+  String deviceType;
   String model;
   String serialNumber;
   String assignedToUserId;
   String assignedToUserName;
   bool isActive;
+  DateTime? lastSyncAt;
+  String? batteryHealth;
+  String? firmwareVersion;
 
   AdminDevice({
     required this.id,
@@ -73,7 +90,42 @@ class AdminDevice {
     required this.assignedToUserId,
     required this.assignedToUserName,
     this.isActive = true,
+    this.lastSyncAt,
+    this.batteryHealth,
+    this.firmwareVersion,
   });
+
+  factory AdminDevice.fromMap(Map<String, dynamic> map, {String? assignedUserName}) {
+    return AdminDevice(
+      id: map['id'].toString(),
+      deviceName: map['device_name'] as String? ?? 'Unknown Device',
+      deviceType: map['device_type'] as String? ?? 'Unknown',
+      model: map['model'] as String? ?? 'Unknown',
+      serialNumber: map['serial_number'] as String? ?? 'N/A',
+      assignedToUserId: map['patient_id'] as String? ?? '',
+      assignedToUserName: assignedUserName ?? 'Unassigned',
+      isActive: map['is_active'] as bool? ?? true,
+      lastSyncAt: map['last_sync_at'] != null
+          ? DateTime.tryParse(map['last_sync_at'] as String)
+          : null,
+      batteryHealth: map['battery_health'] as String?,
+      firmwareVersion: map['firmware_version'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'device_name': deviceName,
+      'device_type': deviceType,
+      'model': model,
+      'serial_number': serialNumber,
+      'patient_id': assignedToUserId,
+      'is_active': isActive,
+      'last_sync_at': lastSyncAt?.toIso8601String(),
+      'battery_health': batteryHealth,
+      'firmware_version': firmwareVersion,
+    };
+  }
 }
 
 class AdminAlertRule {
@@ -82,7 +134,7 @@ class AdminAlertRule {
   String conditionType;
   double? thresholdValue;
   int? durationMinutes;
-  String severity; // 'Critical' | 'Warning' | 'Info'
+  String severity;
   bool isEnabled;
   String appliesToRole;
 
@@ -96,6 +148,31 @@ class AdminAlertRule {
     this.isEnabled = true,
     this.appliesToRole = 'All Patients',
   });
+
+  factory AdminAlertRule.fromMap(Map<String, dynamic> map) {
+    return AdminAlertRule(
+      id: map['id'].toString(),
+      name: map['name'] as String? ?? '',
+      conditionType: map['condition_type'] as String? ?? '',
+      thresholdValue: map['threshold_value'] as double?,
+      durationMinutes: map['duration_minutes'] as int?,
+      severity: map['severity'] as String? ?? 'Warning',
+      isEnabled: map['is_enabled'] as bool? ?? true,
+      appliesToRole: map['applies_to_role'] as String? ?? 'All Patients',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'condition_type': conditionType,
+      'threshold_value': thresholdValue,
+      'duration_minutes': durationMinutes,
+      'severity': severity,
+      'is_enabled': isEnabled,
+      'applies_to_role': appliesToRole,
+    };
+  }
 }
 
 class DoctorPatientAssignment {
@@ -112,162 +189,5 @@ class DoctorPatientAssignment {
   });
 }
 
-// ─── MOCK DATA (devices & alerts only — users are now from Supabase) ──────────
-
-// Kept as empty list so existing screens that haven't been migrated yet
-// (dashboard, assignments, device form) still compile without errors.
-// Remove this once those screens are wired to Supabase.
-final List<AdminUser> mockAdminUsers = [];
-
-final List<AdminDevice> mockAdminDevices = [
-  AdminDevice(
-    id: 'dev1',
-    deviceName: 'Dexcom G7 #1',
-    deviceType: 'CGM',
-    model: 'Dexcom G7',
-    serialNumber: 'DX7-2025-0001',
-    assignedToUserId: 'u1',
-    assignedToUserName: 'Walid Ahmed',
-  ),
-  AdminDevice(
-    id: 'dev2',
-    deviceName: 'Dexcom G7 #2',
-    deviceType: 'CGM',
-    model: 'Dexcom G7',
-    serialNumber: 'DX7-2025-0002',
-    assignedToUserId: 'u2',
-    assignedToUserName: 'Qamar Salah',
-  ),
-  AdminDevice(
-    id: 'dev3',
-    deviceName: 'Omnipod 5 #1',
-    deviceType: 'Micropump',
-    model: 'Omnipod 5',
-    serialNumber: 'OP5-2025-0001',
-    assignedToUserId: 'u1',
-    assignedToUserName: 'Walid Ahmed',
-  ),
-  AdminDevice(
-    id: 'dev4',
-    deviceName: 'Libre 3 #1',
-    deviceType: 'CGM',
-    model: 'FreeStyle Libre 3',
-    serialNumber: 'FL3-2025-0001',
-    assignedToUserId: 'u3',
-    assignedToUserName: 'Omar Latif',
-  ),
-  AdminDevice(
-    id: 'dev5',
-    deviceName: 'Omnipod 5 #2',
-    deviceType: 'Micropump',
-    model: 'Omnipod 5',
-    serialNumber: 'OP5-2025-0002',
-    assignedToUserId: 'u4',
-    assignedToUserName: 'Mayada Youssef',
-  ),
-  AdminDevice(
-    id: 'dev6',
-    deviceName: 'Dexcom G7 #3',
-    deviceType: 'CGM',
-    model: 'Dexcom G7',
-    serialNumber: 'DX7-2025-0003',
-    assignedToUserId: 'u5',
-    assignedToUserName: 'Khaled Adel',
-    isActive: false,
-  ),
-  AdminDevice(
-    id: 'dev7',
-    deviceName: 'Tandem t:slim X2',
-    deviceType: 'Micropump',
-    model: 't:slim X2',
-    serialNumber: 'TX2-2025-0001',
-    assignedToUserId: 'u6',
-    assignedToUserName: 'Carol Amr',
-  ),
-];
-
-final List<AdminAlertRule> mockAlertRules = [
-  AdminAlertRule(
-    id: 'ar1',
-    name: 'Critical High Glucose',
-    conditionType: 'Glucose High',
-    thresholdValue: 250,
-    severity: 'Critical',
-  ),
-  AdminAlertRule(
-    id: 'ar2',
-    name: 'Critical Low Glucose',
-    conditionType: 'Glucose Low',
-    thresholdValue: 54,
-    severity: 'Critical',
-  ),
-  AdminAlertRule(
-    id: 'ar3',
-    name: 'High Glucose Warning',
-    conditionType: 'Glucose High',
-    thresholdValue: 180,
-    severity: 'Warning',
-  ),
-  AdminAlertRule(
-    id: 'ar4',
-    name: 'Low Glucose Warning',
-    conditionType: 'Glucose Low',
-    thresholdValue: 70,
-    severity: 'Warning',
-  ),
-  AdminAlertRule(
-    id: 'ar5',
-    name: 'Sensor Disconnect',
-    conditionType: 'Sensor Disconnect',
-    durationMinutes: 30,
-    severity: 'Warning',
-  ),
-  AdminAlertRule(
-    id: 'ar6',
-    name: 'Pump Failure Alert',
-    conditionType: 'Pump Failure',
-    severity: 'Critical',
-  ),
-  AdminAlertRule(
-    id: 'ar7',
-    name: 'Missed Bolus Dose',
-    conditionType: 'Missed Dose',
-    durationMinutes: 60,
-    severity: 'Warning',
-  ),
-  AdminAlertRule(
-    id: 'ar8',
-    name: 'Time Out of Range',
-    conditionType: 'Time Out of Range',
-    thresholdValue: 30,
-    durationMinutes: 1440,
-    severity: 'Info',
-  ),
-];
-
-final List<DoctorPatientAssignment> mockAssignments = [
-  const DoctorPatientAssignment(
-    doctorId: 'd1',
-    doctorName: 'Dr. Ahmed Hassan',
-    patientId: 'u1',
-    patientName: 'Walid Ahmed',
-  ),
-  const DoctorPatientAssignment(
-    doctorId: 'd1',
-    doctorName: 'Dr. Ahmed Hassan',
-    patientId: 'u2',
-    patientName: 'Qamar Salah',
-  ),
-  const DoctorPatientAssignment(
-    doctorId: 'd2',
-    doctorName: 'Dr. Sara El-Sayed',
-    patientId: 'u4',
-    patientName: 'Mayada Youssef',
-  ),
-  const DoctorPatientAssignment(
-    doctorId: 'd3',
-    doctorName: 'Dr. Mostafa Ali',
-    patientId: 'u6',
-    patientName: 'Carol Amr',
-  ),
-];
+// ─── REMOVED ALL MOCK DATA ─────────────────────────────────────────────────────
+// No more hardcoded lists! All data comes from Supabase now.

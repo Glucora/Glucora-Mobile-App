@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
+import '../../../services/admin_service.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
-
-// ADDED
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class AdminAssignmentsScreen extends StatefulWidget {
   const AdminAssignmentsScreen({super.key});
@@ -13,30 +12,57 @@ class AdminAssignmentsScreen extends StatefulWidget {
 }
 
 class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
-  List<AdminUser> get _doctors =>
-      mockAdminUsers.where((u) => u.role == UserRole.doctor).toList();
-  List<AdminUser> get _patients =>
-      mockAdminUsers.where((u) => u.role == UserRole.patient).toList();
+  List<AdminUser> _doctors = [];
+  List<AdminUser> _patients = [];
+  List<DoctorPatientAssignment> _assignments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    final allUsers = await AdminService.getAllUsers();
+    final assignments = await AdminService.getAllAssignments();
+    
+    setState(() {
+      _doctors = allUsers.where((u) => u.role == 'doctor').toList();
+      _patients = allUsers.where((u) => u.role == 'patient').toList();
+      _assignments = assignments;
+      _isLoading = false;
+    });
+  }
 
   List<DoctorPatientAssignment> _assignmentsForDoctor(String doctorId) {
-    return mockAssignments.where((a) => a.doctorId == doctorId).toList();
+    return _assignments.where((a) => a.doctorId == doctorId).toList();
   }
 
   List<AdminUser> _unassignedPatients() {
-    final assignedIds = mockAssignments.map((a) => a.patientId).toSet();
+    final assignedIds = _assignments.map((a) => a.patientId).toSet();
     return _patients.where((p) => !assignedIds.contains(p.id)).toList();
   }
 
-  void _addAssignment() {
+  Future<void> _addAssignment() async {
     String? selectedDoctorId;
     String? selectedPatientId;
 
     final availablePatients = _unassignedPatients();
 
     if (_doctors.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: TranslatedText('No doctors available')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TranslatedText('No doctors available')),
+      );
+      return;
+    }
+
+    if (availablePatients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TranslatedText('All patients are assigned')),
+      );
       return;
     }
 
@@ -54,14 +80,14 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: ctx.colors.primaryDark, // UPDATED
+                  color: ctx.colors.primaryDark,
                 ),
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: selectedDoctorId,
+                hint: const TranslatedText('Select doctor'),
                 decoration: InputDecoration(
-                  hintText: 'Select doctor',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -72,7 +98,10 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 ),
                 items: _doctors
                     .map(
-                      (d) => DropdownMenuItem(value: d.id, child: TranslatedText(d.name)),
+                      (d) => DropdownMenuItem(
+                        value: d.id,
+                        child: TranslatedText(d.name),
+                      ),
                     )
                     .toList(),
                 onChanged: (v) => setDialogState(() => selectedDoctorId = v),
@@ -83,36 +112,32 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: ctx.colors.primaryDark, // UPDATED
+                  color: ctx.colors.primaryDark,
                 ),
               ),
               const SizedBox(height: 6),
-              if (availablePatients.isEmpty)
-                TranslatedText(
-                  'All patients are assigned',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                )
-              else
-                DropdownButtonFormField<String>(
-                  initialValue: selectedPatientId,
-                  decoration: InputDecoration(
-                    hintText: 'Select patient',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+              DropdownButtonFormField<String>(
+                initialValue: selectedPatientId,
+                hint: const TranslatedText('Select patient'),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  items: availablePatients
-                      .map(
-                        (p) =>
-                            DropdownMenuItem(value: p.id, child: TranslatedText(p.name)),
-                      )
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => selectedPatientId = v),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
+                items: availablePatients
+                    .map(
+                      (p) => DropdownMenuItem(
+                        value: p.id,
+                        child: TranslatedText(p.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setDialogState(() => selectedPatientId = v),
+              ),
             ],
           ),
           actions: [
@@ -122,24 +147,39 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
             ),
             TextButton(
               onPressed: selectedDoctorId != null && selectedPatientId != null
-                  ? () {
+                  ? () async {
                       final doctor = _doctors.firstWhere(
                         (d) => d.id == selectedDoctorId,
                       );
                       final patient = _patients.firstWhere(
                         (p) => p.id == selectedPatientId,
                       );
-                      setState(() {
-                        mockAssignments.add(
-                          DoctorPatientAssignment(
-                            doctorId: doctor.id,
-                            doctorName: doctor.name,
-                            patientId: patient.id,
-                            patientName: patient.name,
+                      
+                      Navigator.pop(ctx);
+                      setState(() => _isLoading = true);
+                      
+                      final success = await AdminService.assignDoctorToPatient(
+                        doctor.id,
+                        patient.id,
+                      );
+                      
+                      if (success && mounted) {
+                        await _loadData();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: TranslatedText('Assignment added successfully'),
+                            backgroundColor: Colors.green,
                           ),
                         );
-                      });
-                      Navigator.pop(ctx);
+                      } else if (mounted) {
+                        setState(() => _isLoading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: TranslatedText('Failed to add assignment'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
                   : null,
               child: const TranslatedText(
@@ -153,7 +193,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
     );
   }
 
-  void _removeAssignment(DoctorPatientAssignment assignment) {
+  Future<void> _removeAssignment(DoctorPatientAssignment assignment) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -167,9 +207,32 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
             child: const TranslatedText('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => mockAssignments.remove(assignment));
+            onPressed: () async {
               Navigator.pop(ctx);
+              setState(() => _isLoading = true);
+              
+              final success = await AdminService.removeAssignment(
+                assignment.doctorId,
+                assignment.patientId,
+              );
+              
+              if (success && mounted) {
+                await _loadData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Assignment removed successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Failed to remove assignment'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             child: const TranslatedText('Remove', style: TextStyle(color: Colors.red)),
           ),
@@ -181,8 +244,21 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final doctors = _doctors;
     final unassigned = _unassignedPatients();
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const TranslatedText(
+            'Doctor–Patient Assignments',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: colors.primaryDark,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -194,6 +270,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(icon: const Icon(Icons.add), onPressed: _addAssignment),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       backgroundColor: colors.background,
@@ -248,7 +325,7 @@ class _AdminAssignmentsScreenState extends State<AdminAssignmentsScreen> {
             const SizedBox(height: 16),
           ],
           // Doctor groups
-          ...doctors.map((doctor) {
+          ..._doctors.map((doctor) {
             final assignments = _assignmentsForDoctor(doctor.id);
             return _doctorGroup(context, doctor, assignments);
           }),
