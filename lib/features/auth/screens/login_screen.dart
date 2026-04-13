@@ -6,12 +6,11 @@ import 'package:glucora_ai_companion/features/admin/screens/admin_main_screen.da
 import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
-import 'signup_screen.dart';
+import 'package:glucora_ai_companion/features/auth/screens/signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:glucora_ai_companion/services/notifications_service.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,6 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
     ) async {
       if (!mounted) return;
 
+      if (event.event == AuthChangeEvent.passwordRecovery) return;
+
       if ((event.event == AuthChangeEvent.signedIn ||
               event.event == AuthChangeEvent.initialSession ||
               event.event == AuthChangeEvent.tokenRefreshed) &&
@@ -47,84 +48,84 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-
-Future<void> _navigateByRole(User? user) async {
-  if (!mounted || _didNavigateAfterAuth || user == null) return;
-
-  try {
-    // ✅ Use maybeSingle instead of single — won't throw if row missing
-    final response = await Supabase.instance.client
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
-
-    // ✅ If no row exists, fall back to auth metadata role
-    String normalizedRole = '';
-
-    if (response != null && response['role'] != null) {
-      normalizedRole = (response['role'] as String).trim().toLowerCase();
-    } else {
-      // Try user metadata as fallback
-      final metaRole = user.userMetadata?['role']?.toString() ??
-          user.appMetadata['role']?.toString() ?? '';
-      normalizedRole = metaRole.trim().toLowerCase();
-    }
-
-    // ✅ If still no role, create the user row and send to role selection
-    if (normalizedRole.isEmpty || normalizedRole == 'norole') {
-      // Upsert a basic users row so future logins work
-      await Supabase.instance.client.from('users').upsert({
-        'id': user.id,
-        'email': user.email,
-        'full_name': user.userMetadata?['full_name'] ?? '',
-        'role': 'norole',
-      });
-
-      _didNavigateAfterAuth = true;
-      if (!mounted) return;
-      Navigator.of(context)
-          .pushNamedAndRemoveUntil('/role-selection', (route) => false);
-      return;
-    }
-
-    Widget? targetScreen;
-    if (normalizedRole == 'patient') {
-      try {
-        LocationService.startSharingLocation(user.id);
-      } catch (e) {
-        print('Could not start location: $e');
-      }
-      targetScreen = const PatientNavigation();
-    } else if (normalizedRole == 'doctor') {
-      targetScreen = const DoctorMainScreen();
-    } else if (normalizedRole == 'guardian') {
-      targetScreen = const GuardianMainScreen();
-    } else if (normalizedRole == 'admin') {
-      targetScreen = const AdminMainScreen();
-    }
-
-    if (!mounted) return;
-    _didNavigateAfterAuth = true;
+  Future<void> _navigateByRole(User? user) async {
+    if (!mounted || _didNavigateAfterAuth || user == null) return;
 
     try {
-      await NotificationService.saveTokenToSupabase();
-    } catch (e) {
-      print('Notification token save failed: $e'); // ✅ don't block login
-    }
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-          builder: (_) => targetScreen ?? const SignUpScreen()),
-      (route) => false,
-    );
-  } catch (e) {
-    print('Login error: $e'); // ✅ print actual error for debugging
-    if (mounted) {
-      _showErrorSnackBar('Could not load user role: $e');
+      String normalizedRole = '';
+
+      if (response != null && response['role'] != null) {
+        normalizedRole = (response['role'] as String).trim().toLowerCase();
+      } else {
+        // Try user metadata as fallback
+        final metaRole =
+            user.userMetadata?['role']?.toString() ??
+            user.appMetadata['role']?.toString() ??
+            '';
+        normalizedRole = metaRole.trim().toLowerCase();
+      }
+
+      // ✅ If still no role, create the user row and send to role selection
+      if (normalizedRole.isEmpty || normalizedRole == 'norole') {
+        // Upsert a basic users row so future logins work
+        await Supabase.instance.client.from('users').upsert({
+          'id': user.id,
+          'email': user.email,
+          'full_name': user.userMetadata?['full_name'] ?? '',
+          'role': 'norole',
+        });
+
+        _didNavigateAfterAuth = true;
+        if (!mounted) return;
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/role-selection', (route) => false);
+        return;
+      }
+
+      Widget? targetScreen;
+      if (normalizedRole == 'patient') {
+        try {
+          LocationService.startSharingLocation(user.id);
+        } catch (e) {
+          print('Could not start location: $e');
+        }
+        targetScreen = const PatientNavigation();
+      } else if (normalizedRole == 'doctor') {
+        targetScreen = const DoctorMainScreen();
+      } else if (normalizedRole == 'guardian') {
+        targetScreen = const GuardianMainScreen();
+      } else if (normalizedRole == 'admin') {
+        targetScreen = const AdminMainScreen();
+      }
+
+      if (!mounted) return;
+      _didNavigateAfterAuth = true;
+
+      try {
+        await NotificationService.saveTokenToSupabase();
+      } catch (e) {
+        print('Notification token save failed: $e'); // ✅ don't block login
+      }
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => targetScreen ?? const SignUpScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      print('Login error: $e'); // ✅ print actual error for debugging
+      if (mounted) {
+        _showErrorSnackBar('Could not load user role: $e');
+      }
     }
   }
-}
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -186,21 +187,83 @@ Future<void> _navigateByRole(User? user) async {
   }
 
   void _forgotPassword() {
+    final TextEditingController resetEmailController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const TranslatedText('Forgot Password?'),
-        content: const TranslatedText(
-          'For demo, use one of these:\n'
-          'patient@test.com / patient123\n'
-          'doctor@test.com / doctor123\n'
-          'guardian@test.com / guardian123\n'
-          'admin@test.com / admin123',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const TranslatedText(
+              'Enter your email and we will send you a reset link.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const TranslatedText('OK'),
+            child: const TranslatedText('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = resetEmailController.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Please enter a valid email.'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(ctx);
+              try {
+                await Supabase.instance.client.auth.resetPasswordForEmail(
+                  email,
+                  redirectTo:
+                      'com.glucora.companion://login-callback?type=recovery',
+                );
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText(
+                      'Reset link sent! Check your email.',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } on AuthException catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: TranslatedText(e.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } catch (_) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: TranslatedText('Something went wrong. Try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } finally {
+                resetEmailController.dispose();
+              }
+            },
+            child: const TranslatedText('Send Reset Link'),
           ),
         ],
       ),
@@ -221,7 +284,10 @@ Future<void> _navigateByRole(User? user) async {
             );
           },
         ),
-        title: TranslatedText('Login', style: TextStyle(color: colors.textPrimary)),
+        title: TranslatedText(
+          'Login',
+          style: TextStyle(color: colors.textPrimary),
+        ),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -358,7 +424,10 @@ Future<void> _navigateByRole(User? user) async {
                             color: Colors.white,
                           ),
                         )
-                      : const TranslatedText('Login', style: TextStyle(fontSize: 16)),
+                      : const TranslatedText(
+                          'Login',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
                 const SizedBox(height: 16),
                 // Sign up link
