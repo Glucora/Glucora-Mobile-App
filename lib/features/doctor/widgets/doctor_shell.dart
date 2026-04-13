@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 import '../screens/doctor_patients_screen.dart';
 import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
 
@@ -207,7 +208,7 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────
-// Doctor's Profile Tab
+// Doctor's Profile Tab WITH PROFILE PICTURE
 // ─────────────────────────────────────────────────────
 class _DoctorProfileTab extends StatefulWidget {
   const _DoctorProfileTab();
@@ -224,6 +225,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   String _address = "";
   String _license = "";
   String _specialty = "";
+  String _profilePictureUrl = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
   int? _openFaqIndex;
@@ -243,7 +245,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     try {
       final response = await supabase
           .from('users')
-          .select('full_name, phone_no, email, age, address, doctor_profile(liscense_number, speciality)')
+          .select('full_name, phone_no, email, age, address, profile_picture_url, doctor_profile(liscense_number, speciality)')
           .eq('id', user.id)
           .single();
 
@@ -253,6 +255,7 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         _email = response['email'] ?? "";
         _age = (response['age'] as num?)?.toInt() ?? 0;
         _address = response['address'] ?? "No Address Set";
+        _profilePictureUrl = response['profile_picture_url'] ?? "";
 
         final dynamic profileData = response['doctor_profile'];
         if (profileData != null) {
@@ -349,11 +352,13 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             Center(
               child: Column(
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-                    child: const Icon(Icons.person_rounded, size: 48, color: Colors.white),
+                  ProfilePicture(
+                    userId: Supabase.instance.client.auth.currentUser!.id,
+                    imageUrl: _profilePictureUrl,
+                    size: 90,
+                    isEditable: true,
+                    onPictureChanged: () => _loadProfileData(),
+                    displayName: _name,
                   ),
                   const SizedBox(height: 12),
                   Row(
