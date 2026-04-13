@@ -16,6 +16,7 @@ class GuardianPatient {
   final bool allDosesAutomatic;
   final String lastSeenTime;
   final String phoneNumber;
+  final String? profilePictureUrl;  
 
   const GuardianPatient({
     this.profileId,
@@ -32,6 +33,7 @@ class GuardianPatient {
     required this.allDosesAutomatic,
     required this.lastSeenTime,
     required this.phoneNumber,
+    this.profilePictureUrl,
   });
 
   String get glucoseLabel {

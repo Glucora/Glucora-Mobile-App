@@ -1,4 +1,3 @@
-// lib\features\guardian\screens\guardian_home_screen.dart
 import 'package:flutter/material.dart';
 import '../../../core/models/guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
@@ -7,6 +6,7 @@ import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -43,7 +43,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       final userId = _supabase.auth.currentUser!.id;
       print('👤 Current Guardian User ID: $userId');
 
-      // Step 1: Get connections with user info
+      // Step 1: Get connections with user info including profile picture
       final connectionsResp = await _supabase
           .from('guardian_patient_connections')
           .select('''
@@ -52,7 +52,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             users!patient_id (
               full_name, 
               age, 
-              phone_no
+              phone_no,
+              profile_picture_url
             )
           ''')
           .eq('guardian_id', userId)
@@ -171,6 +172,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         final name = user?['full_name'] as String? ?? 'Unknown';
         final age = (user?['age'] as num?)?.toInt() ?? 0;
         final phone = user?['phone_no'] as String? ?? '';
+        final profilePictureUrl = user?['profile_picture_url'] as String?;
         final relationship = row['relationship'] as String? ?? 'Guardian';
         
         // Get readings for THIS SPECIFIC patient using their profile ID
@@ -223,6 +225,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           allDosesAutomatic: allAutomatic,
           lastSeenTime: lastSeen,
           phoneNumber: phone,
+          profilePictureUrl: profilePictureUrl,
         ));
       }
       
@@ -572,22 +575,19 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       ),
       child: Column(
         children: [
-          // Patient Header
+          // Patient Header with Profile Picture
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: statusBgColor,
-                  child: Text(
-                    patient.name.isNotEmpty ? patient.name[0].toUpperCase() : '?',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
-                  ),
+                // ✅ Profile Picture instead of CircleAvatar
+                ProfilePicture(
+                  userId: patient.patientId,
+                  imageUrl: patient.profilePictureUrl,
+                  size: 56,
+                  isEditable: false,
+                  showInitials: true,
+                  displayName: patient.name,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
