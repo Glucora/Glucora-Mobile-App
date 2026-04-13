@@ -7,6 +7,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
@@ -292,7 +293,7 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
 }
 
 // ─────────────────────────────────────────────────────
-// Guardian's Profile Tab
+// Guardian's Profile Tab WITH PROFILE PICTURE
 // ─────────────────────────────────────────────────────
 class _GuardianProfileTab extends StatefulWidget {
   const _GuardianProfileTab();
@@ -306,6 +307,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   int _age = 0;
   String _email = "";
   String _phone = "";
+  String _profilePictureUrl = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
   int? _openFaqIndex;
@@ -324,7 +326,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     try {
       final data = await supabase
           .from('users')
-          .select('full_name, email, phone_no, age')
+          .select('full_name, email, phone_no, age, profile_picture_url')
           .eq('id', user.id)
           .single();
 
@@ -333,6 +335,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
         _email = data['email'] ?? "";
         _phone = data['phone_no'] ?? "";
         _age = (data['age'] as num?)?.toInt() ?? 0;
+        _profilePictureUrl = data['profile_picture_url'] ?? "";
         _isLoading = false;
       });
     } catch (e) {
@@ -478,11 +481,13 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
             Center(
               child: Column(
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-                    child: const Icon(Icons.person_rounded, size: 48, color: Colors.white),
+                  ProfilePicture(
+                    userId: Supabase.instance.client.auth.currentUser!.id,
+                    imageUrl: _profilePictureUrl,
+                    size: 90,
+                    isEditable: true,
+                    onPictureChanged: () => _loadProfileData(),
+                    displayName: _name,
                   ),
                   const SizedBox(height: 12),
                   Row(
