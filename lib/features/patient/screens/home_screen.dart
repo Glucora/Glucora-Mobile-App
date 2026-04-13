@@ -8,7 +8,9 @@ import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,47 +74,30 @@ class _HomeScreenState extends State<HomeScreen> {
   // FETCH: CARE PLAN
   // ════════════════════════════════════════════════════
   Future<void> _fetchCarePlanSummary() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-      final patientProfileId = await getPatientProfileId(userId);
-      if (patientProfileId == null) return;
+    final patientProfileId = await getPatientProfileId(userId);
+    if (patientProfileId == null) return;
 
-      final response = await supabase
-          .from('care_plans')
-          .select(
-            'target_glucose_min, target_glucose_max, next_appointment, '
-            'doctor_profile!care_plans_doctor_id_fkey(user_id, users(full_name))',
-          )
-          .eq('patient_id', patientProfileId)
-          .order('updated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    final response = await getCarePlanSummary(patientProfileId);
+    if (response == null) return;
 
-      if (response == null) return;
+    final doctorProfile = response['doctor_profile'];
+    final doctorUser = doctorProfile?['users'];
+    final min = response['target_glucose_min'];
+    final max = response['target_glucose_max'];
 
-      final doctorProfile = response['doctor_profile'];
-      final doctorUser = doctorProfile?['users'];
-      final doctorName = doctorUser?['full_name'] ?? 'Your Doctor';
-      final min = response['target_glucose_min'];
-      final max = response['target_glucose_max'];
-      final appt = response['next_appointment'];
-
-      setState(() {
-        _doctorName = doctorName;
-        _targetRange = (min != null && max != null)
-            ? '$min–$max mg/dL'
-            : '– mg/dL';
-        _nextAppointment = appt ?? '–';
-      });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch care plan summary: $e');
-    }
-  }
-
+    setState(() {
+      _doctorName = doctorUser?['full_name'] ?? 'Your Doctor';
+      _targetRange = (min != null && max != null)
+          ? '$min–$max mg/dL'
+          : '– mg/dL';
+      _nextAppointment = response['next_appointment'] ?? '–';
+    });
+  } 
   // ════════════════════════════════════════════════════
+
   // FETCH: LATEST GLUCOSE
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestGlucose() async {
@@ -958,7 +943,7 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: _ChartPainter(primaryColor: colors.primary),
+              painter: ChartPainter(primaryColor: colors.primary),
             ),
           ),
           const SizedBox(height: 10),
@@ -1247,99 +1232,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-// ════════════════════════════════════════════════════
-// CHART PAINTER
-// ════════════════════════════════════════════════════
-class _ChartPainter extends CustomPainter {
-  final Color primaryColor;
-  const _ChartPainter({required this.primaryColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const lh = 18.0;
-    final h = size.height - lh;
-    final w = size.width;
-    final s = w / 5;
-
-    final grid = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.15)
-      ..strokeWidth = 1;
-    for (int i = 0; i <= 3; i++) {
-      canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
-    }
-
-    const xl = ['10', '20', '30', '40', '50', '60'];
-    for (int i = 0; i < xl.length; i++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: xl[i],
-          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
-    }
-
-    final gry = [
-      Offset(0, h * 0.58),
-      Offset(s * 0.65, h * 0.42),
-      Offset(s * 1.25, h * 0.53),
-      Offset(s * 2.0, h * 0.37),
-    ];
-    final grn = [
-      Offset(s * 2.0, h * 0.37),
-      Offset(s * 2.7, h * 0.47),
-      Offset(s * 3.5, h * 0.30),
-      Offset(s * 4.2, h * 0.18),
-      Offset(s * 5.0, h * 0.04),
-    ];
-
-    final fill = _sp(grn)
-      ..lineTo(grn.last.dx, h)
-      ..lineTo(grn.first.dx, h)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..color = primaryColor.withValues(alpha: 0.10)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      _sp(gry),
-      Paint()
-        ..color = const Color(0xFFCCCCCC)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.drawPath(
-      _sp(grn),
-      Paint()
-        ..color = primaryColor
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    for (final pt in [gry.last, grn.last]) {
-      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
-      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
-    }
-  }
-
-  Path _sp(List<Offset> pts) {
-    final p = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (int i = 1; i < pts.length; i++) {
-      final a = pts[i - 1], b = pts[i];
-      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
-    }
-    return p;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
 }

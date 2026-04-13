@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:glucora_ai_companion/core/models/carePlan_model.dart';
+import 'package:glucora_ai_companion/core/models/care_plan_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

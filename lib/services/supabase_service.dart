@@ -1,7 +1,7 @@
 // lib\services\supabase_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:glucora_ai_companion/core/models/glucoseLog_model.dart';
+import 'package:glucora_ai_companion/core/models/glucose_log_model.dart';
 
 
 final _db = Supabase.instance.client;
@@ -221,3 +221,26 @@ Future<void> insertGlucoseLog(double value, String? notes, String mealTime) asyn
     'recorded_at': DateTime.now().toIso8601String(),
   });
 } 
+
+// ─── CARE PLAN ────────────────────────────────────────────────────────────────
+
+/// Returns care plan summary for the given patient.
+Future<Map<String, dynamic>?> getCarePlanSummary(int patientProfileId) async {
+  try {
+    final response = await _db
+        .from('care_plans')
+        .select(
+          'target_glucose_min, target_glucose_max, next_appointment, '
+          'doctor_profile!care_plans_doctor_id_fkey(user_id, users(full_name))',
+        )
+        .eq('patient_id', patientProfileId)
+        .order('updated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    return response;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getCarePlanSummary error: $e');
+    return null;
+  }
+}
