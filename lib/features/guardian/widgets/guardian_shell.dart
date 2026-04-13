@@ -19,14 +19,25 @@ class GuardianMainScreen extends StatefulWidget {
 
 class _GuardianMainScreenState extends State<GuardianMainScreen> {
   int _index = 0;
-  static const int _pendingRequests = 2;
+  int _pendingRequests = 0;
 
-  final List<Widget> _screens = [
-    const GuardianHomeScreen(),
-    const ConnectionRequestsScreen(role: 'guardian'),
-    const _GuardianProfileTab(),
-  ];
+  late List<Widget> _screens;
 
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const GuardianHomeScreen(),
+      ConnectionRequestsScreen(
+        role: 'guardian',
+        onIncomingCountChanged: (count) {
+          if (mounted) setState(() => _pendingRequests = count);
+        },
+      ),
+      const _GuardianProfileTab(),
+    ];
+  }
+  
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -172,7 +183,8 @@ class _GuardianSettingsScreen extends StatefulWidget {
   });
 
   @override
-  State<_GuardianSettingsScreen> createState() => _GuardianSettingsScreenState();
+  State<_GuardianSettingsScreen> createState() =>
+      _GuardianSettingsScreenState();
 }
 
 class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
@@ -269,7 +281,7 @@ class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     final colors = context.colors;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -335,7 +347,7 @@ class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
     required VoidCallback onTap,
   }) {
     final colors = context.colors;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -343,7 +355,9 @@ class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -384,10 +398,7 @@ class _GuardianSettingsScreenState extends State<_GuardianSettingsScreen> {
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: colors.textSecondary,
-            ),
+            Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
           ],
         ),
       ),
@@ -514,24 +525,22 @@ class _EditGuardianProfileScreenState
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(
-        color: colors.textPrimary,
-        fontSize: 14,
-      ),
+      style: TextStyle(color: colors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: colors.textSecondary,
-          fontSize: 13,
-        ),
+        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -598,7 +607,7 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
   String _phone = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
-  final Set<int> _openFaqs = {};
+  int? _openFaqIndex;
   @override
   void initState() {
     super.initState();
@@ -701,7 +710,9 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const TranslatedText('Log Out'),
-        content: const TranslatedText('Are you sure to log out of your account?'),
+        content: const TranslatedText(
+          'Are you sure to log out of your account?',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
@@ -845,7 +856,9 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -854,24 +867,20 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, // ← ADD THIS
                 children: [
                   _infoColumn(context, "Email", _email),
-                  Container(
-                    height: 30,
-                    width: 1,
-                    color: colors.textSecondary.withValues(alpha: 0.3),
-                  ),
+                  Divider(color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoColumn(context, "Phone", _phone),
                 ],
               ),
             ),
 
             const SizedBox(height: 24),
+
             // Dark Mode is now inside Settings screen, so remove it from here
             // (keeping UI clean like Admin and Doctor)
-
             const SizedBox(height: 24),
             TranslatedText(
               "FAQs",
@@ -882,33 +891,33 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
               ),
             ),
             const SizedBox(height: 12),
-_faqItem(
-  context,
-  0,
-  "How do I monitor my patient's glucose levels?",
-  "You can view real-time glucose readings and trends from the home dashboard once your patient is connected.",
-),
+            _faqItem(
+              context,
+              0,
+              "How do I monitor my patient's glucose levels?",
+              "You can view real-time glucose readings and trends from the home dashboard once your patient is connected.",
+            ),
 
-_faqItem(
-  context,
-  1,
-  "Will I receive alerts for abnormal readings?",
-  "Yes, you will receive alerts when glucose levels are too high or too low, depending on your notification settings.",
-),
+            _faqItem(
+              context,
+              1,
+              "Will I receive alerts for abnormal readings?",
+              "Yes, you will receive alerts when glucose levels are too high or too low, depending on your notification settings.",
+            ),
 
-_faqItem(
-  context,
-  2,
-  "Can I manage multiple patients?",
-  "Yes, you can connect to and monitor multiple patients from your account.",
-),
+            _faqItem(
+              context,
+              2,
+              "Can I manage multiple patients?",
+              "Yes, you can connect to and monitor multiple patients from your account.",
+            ),
 
-_faqItem(
-  context,
-  3,
-  "What should I do in case of critical readings?",
-  "If you notice dangerous glucose levels, contact the patient immediately and seek medical help if necessary.",
-),
+            _faqItem(
+              context,
+              3,
+              "What should I do in case of critical readings?",
+              "If you notice dangerous glucose levels, contact the patient immediately and seek medical help if necessary.",
+            ),
 
             const SizedBox(height: 24),
             Center(
@@ -926,7 +935,9 @@ _faqItem(
 
                     if (!mounted) return;
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const PatientNavigation()),
+                      MaterialPageRoute(
+                        builder: (_) => const PatientNavigation(),
+                      ),
                       (route) => false,
                     );
                   } catch (e) {
@@ -985,6 +996,7 @@ _faqItem(
   Widget _infoColumn(BuildContext context, String label, String value) {
     final colors = context.colors;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TranslatedText(
           label,
@@ -993,6 +1005,8 @@ _faqItem(
         const SizedBox(height: 4),
         TranslatedText(
           value,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -1004,75 +1018,70 @@ _faqItem(
   }
 
   Widget _faqItem(
-  BuildContext context,
-  int index,
-  String question,
-  String answer,
+    BuildContext context,
+    int index,
+    String question,
+    String answer,
+  ) {
+    final colors = context.colors;
+    final isOpen = _openFaqIndex == index;
 
-
-) {
-  final colors = context.colors;
-  final isOpen = _openFaqs.contains(index);
-
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        if (isOpen) {
-          _openFaqs.remove(index);
-        } else {
-          _openFaqs.add(index);
-        }
-      });
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colors.textSecondary.withValues(alpha: 0.3),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _openFaqIndex = _openFaqIndex == index ? null : index;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TranslatedText(
-                  question,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TranslatedText(
+                    question,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-              Icon(
-                isOpen
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                color: colors.textSecondary,
+                Icon(
+                  isOpen
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: colors.textSecondary,
+                ),
+              ],
+            ),
+
+            // ✅ ANSWER (this was missing!)
+            if (isOpen) ...[
+              const SizedBox(height: 10),
+              TranslatedText(
+                answer,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  height: 1.4,
+                ),
               ),
             ],
-          ),
-
-          // ✅ ANSWER (this was missing!)
-          if (isOpen) ...[
-            const SizedBox(height: 10),
-            TranslatedText(
-              answer,
-              style: TextStyle(
-                fontSize: 13,
-                color: colors.textSecondary,
-                height: 1.4,
-              ),
-            ),
           ],
-        ],
+        ),
       ),
-    ),
-  );
-}}
+    );
+  }
+}

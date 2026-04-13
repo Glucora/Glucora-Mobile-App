@@ -5,7 +5,6 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
-
 final supabase = Supabase.instance.client;
 
 // ─── CONFIG PER ROLE ─────────────────────────────────────────────────────────
@@ -75,7 +74,12 @@ class ConnectionRequest {
 
 class ConnectionRequestsScreen extends StatefulWidget {
   final String role;
-  const ConnectionRequestsScreen({super.key, required this.role});
+  final void Function(int count)? onIncomingCountChanged;
+  const ConnectionRequestsScreen({
+    super.key,
+    required this.role,
+    this.onIncomingCountChanged,
+  });
 
   @override
   State<ConnectionRequestsScreen> createState() =>
@@ -89,11 +93,17 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   List<ConnectionRequest> _requests = [];
 
   List<ConnectionRequest> get _incoming => _requests
-      .where((r) => r.requestedBy != widget.role && r.status == RequestStatus.pending)
+      .where(
+        (r) =>
+            r.requestedBy != widget.role && r.status == RequestStatus.pending,
+      )
       .toList();
 
   List<ConnectionRequest> get _sent => _requests
-      .where((r) => r.requestedBy == widget.role && r.status == RequestStatus.pending)
+      .where(
+        (r) =>
+            r.requestedBy == widget.role && r.status == RequestStatus.pending,
+      )
       .toList();
 
   List<ConnectionRequest> get _declined =>
@@ -119,12 +129,16 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       if (widget.role == 'patient') {
         final doctorRows = await supabase
             .from('doctor_patient_connections')
-            .select('id, status, requested_by, requested_at, users!doctor_patient_connections_doctor_id_fkey(full_name)')
+            .select(
+              'id, status, requested_by, requested_at, users!doctor_patient_connections_doctor_id_fkey(full_name)',
+            )
             .eq('patient_id', userId);
 
         final guardianRows = await supabase
             .from('guardian_patient_connections')
-            .select('id, status, requested_by, requested_at, users!guardian_patient_connections_guardian_id_fkey(full_name)')
+            .select(
+              'id, status, requested_by, requested_at, users!guardian_patient_connections_guardian_id_fkey(full_name)',
+            )
             .eq('patient_id', userId);
 
         final List<ConnectionRequest> all = [];
@@ -132,25 +146,32 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         void addRequests(List rows, String table) {
           for (final row in rows) {
             final fullName = row['users']?['full_name'] ?? 'Unknown User';
-            all.add(ConnectionRequest(
-              id: row['id'].toString(),
-              personName: fullName,
-              sentAgo: _timeAgo(row['requested_at']),
-              avatarInitials: _initials(fullName),
-              requestedBy: row['requested_by'],
-              sourceTable: table,
-              status: _parseStatus(row['status']),
-            ));
+            all.add(
+              ConnectionRequest(
+                id: row['id'].toString(),
+                personName: fullName,
+                sentAgo: _timeAgo(row['requested_at']),
+                avatarInitials: _initials(fullName),
+                requestedBy: row['requested_by'],
+                sourceTable: table,
+                status: _parseStatus(row['status']),
+              ),
+            );
           }
         }
 
         addRequests(doctorRows as List, 'doctor_patient_connections');
         addRequests(guardianRows as List, 'guardian_patient_connections');
-        if (mounted) setState(() => _requests = all);
+        if (mounted) {
+          setState(() => _requests = all);
+          widget.onIncomingCountChanged?.call(_incoming.length);
+        }
       } else {
         final response = await supabase
             .from(_config.connectionsTable)
-            .select('id, status, requested_by, requested_at, users!${_config.connectionsTable}_patient_id_fkey(full_name)')
+            .select(
+              'id, status, requested_by, requested_at, users!${_config.connectionsTable}_patient_id_fkey(full_name)',
+            )
             .eq(_config.profileIdField, userId);
 
         final List<ConnectionRequest> all = (response as List).map((row) {
@@ -166,7 +187,10 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
           );
         }).toList();
 
-        if (mounted) setState(() => _requests = all);
+        if (mounted) {
+          setState(() => _requests = all);
+          widget.onIncomingCountChanged?.call(_incoming.length);
+        }
       }
     } catch (e) {
       debugPrint('Fetch Error: $e');
@@ -181,10 +205,13 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
 
   void _accept(ConnectionRequest request) async {
     try {
-      await supabase.from(request.sourceTable).update({
-        'status': 'accepted',
-        'responded_at': DateTime.now().toIso8601String(),
-      }).eq('id', int.parse(request.id));
+      await supabase
+          .from(request.sourceTable)
+          .update({
+            'status': 'accepted',
+            'responded_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', int.parse(request.id));
 
       if (!mounted) return;
       setState(() => request.status = RequestStatus.accepted);
@@ -196,10 +223,13 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
 
   void _decline(ConnectionRequest request) async {
     try {
-      await supabase.from(request.sourceTable).update({
-        'status': 'declined',
-        'responded_at': DateTime.now().toIso8601String(),
-      }).eq('id', int.parse(request.id));
+      await supabase
+          .from(request.sourceTable)
+          .update({
+            'status': 'declined',
+            'responded_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', int.parse(request.id));
 
       if (!mounted) return;
       setState(() => request.status = RequestStatus.declined);
@@ -211,7 +241,10 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
 
   void _withdraw(ConnectionRequest request) async {
     try {
-      await supabase.from(request.sourceTable).delete().eq('id', int.parse(request.id));
+      await supabase
+          .from(request.sourceTable)
+          .delete()
+          .eq('id', int.parse(request.id));
       if (!mounted) return;
       setState(() => _requests.remove(request));
       _showSnackbar('Request withdrawn');
@@ -252,7 +285,10 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: TranslatedText(message, style: const TextStyle(fontWeight: FontWeight.w600)),
+        content: TranslatedText(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: colors.accent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -273,7 +309,10 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         icon: const Icon(Icons.person_search_rounded),
         label: TranslatedText(
           widget.role == 'patient' ? 'Add Doctor/Guardian' : 'Add Patient',
-          style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
       backgroundColor: colors.background,
@@ -289,9 +328,24 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildList(context, _incoming, tabType: 'incoming', isLandscape: isLandscape),
-                      _buildList(context, _sent, tabType: 'sent', isLandscape: isLandscape),
-                      _buildList(context, _declined, tabType: 'declined', isLandscape: isLandscape),
+                      _buildList(
+                        context,
+                        _incoming,
+                        tabType: 'incoming',
+                        isLandscape: isLandscape,
+                      ),
+                      _buildList(
+                        context,
+                        _sent,
+                        tabType: 'sent',
+                        isLandscape: isLandscape,
+                      ),
+                      _buildList(
+                        context,
+                        _declined,
+                        tabType: 'declined',
+                        isLandscape: isLandscape,
+                      ),
                     ],
                   ),
                 ),
@@ -312,12 +366,21 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         children: [
           TranslatedText(
             'Connection Requests',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: colors.textPrimary, letterSpacing: -0.5),
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: colors.textPrimary,
+              letterSpacing: -0.5,
+            ),
           ),
           const SizedBox(height: 6),
           TranslatedText(
             'Manage your clinical and care connections',
-            style: TextStyle(fontSize: 15, color: colors.textSecondary, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 15,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 20),
           SingleChildScrollView(
@@ -349,9 +412,20 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 8),
-          TranslatedText('$count $label', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+          TranslatedText(
+            '$count $label',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -361,33 +435,57 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     final colors = context.colors;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.1))),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.1)),
+      ),
       child: TabBar(
         controller: _tabController,
         labelColor: Colors.white,
         unselectedLabelColor: colors.textSecondary,
         indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(color: colors.accent, borderRadius: BorderRadius.circular(10)),
+        indicator: BoxDecoration(
+          color: colors.accent,
+          borderRadius: BorderRadius.circular(10),
+        ),
         dividerColor: Colors.transparent,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
- tabs: [
-        Tab(child: TranslatedText('Incoming')),  // Changed
-        Tab(child: TranslatedText('Sent')),      // Changed
-        Tab(child: TranslatedText('Declined')),  // Changed
-      ],      ),
+        tabs: [
+          Tab(child: TranslatedText('Incoming')), // Changed
+          Tab(child: TranslatedText('Sent')), // Changed
+          Tab(child: TranslatedText('Declined')), // Changed
+        ],
+      ),
     );
   }
 
-  Widget _buildList(BuildContext context, List<ConnectionRequest> requests, {required String tabType, required bool isLandscape}) {
+  Widget _buildList(
+    BuildContext context,
+    List<ConnectionRequest> requests, {
+    required String tabType,
+    required bool isLandscape,
+  }) {
     final colors = context.colors;
     if (requests.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons. people_outline_rounded, size: 64, color: colors.textSecondary.withValues(alpha: 0.3)),
+            Icon(
+              Icons.people_outline_rounded,
+              size: 64,
+              color: colors.textSecondary.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 16),
-            TranslatedText('No $tabType requests found', style: TextStyle(color: colors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
+            TranslatedText(
+              'No $tabType requests found',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       );
@@ -431,7 +529,13 @@ class _RequestCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
         border: Border.all(color: colors.textSecondary.withValues(alpha: 0.05)),
       ),
       child: Column(
@@ -441,20 +545,45 @@ class _RequestCard extends StatelessWidget {
               CircleAvatar(
                 radius: 26,
                 backgroundColor: colors.accent.withValues(alpha: 0.12),
-                child: TranslatedText(request.avatarInitials, style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.w900, fontSize: 15)),
+                child: TranslatedText(
+                  request.avatarInitials,
+                  style: TextStyle(
+                    color: colors.primaryDark,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TranslatedText(request.personName, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: colors.textPrimary)),
+                    TranslatedText(
+                      request.personName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                        color: colors.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.access_time_rounded, size: 12, color: colors.textSecondary),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: colors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
-                        TranslatedText(request.sentAgo, style: TextStyle(fontSize: 12, color: colors.textSecondary, fontWeight: FontWeight.w500)),
+                        TranslatedText(
+                          request.sentAgo,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -466,15 +595,87 @@ class _RequestCard extends StatelessWidget {
           if (tabType == 'incoming')
             Row(
               children: [
-                Expanded(child: OutlinedButton(onPressed: onDecline, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.5)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Decline', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onDecline,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.error,
+                      side: BorderSide(
+                        color: colors.error.withValues(alpha: 0.5),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const TranslatedText(
+                      'Decline',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: ElevatedButton(onPressed: onAccept, style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Accept', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onAccept,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const TranslatedText(
+                      'Accept',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             )
           else if (tabType == 'sent')
-            SizedBox(width: double.infinity, child: OutlinedButton(onPressed: onWithdraw, style: OutlinedButton.styleFrom(foregroundColor: colors.error, side: BorderSide(color: colors.error.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const TranslatedText('Withdraw Request', style: TextStyle(fontWeight: FontWeight.bold))))
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onWithdraw,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.error,
+                  side: BorderSide(color: colors.error.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const TranslatedText(
+                  'Withdraw Request',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            )
           else
-            Align(alignment: Alignment.centerRight, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: TranslatedText('Declined', style: TextStyle(color: colors.error, fontWeight: FontWeight.w800, fontSize: 12)))),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TranslatedText(
+                  'Declined',
+                  style: TextStyle(
+                    color: colors.error,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -508,11 +709,18 @@ class _SearchSheetState extends State<_SearchSheet> {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) return;
 
-    setState(() { _isLoading = true; _results = []; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _results = [];
+      _errorMessage = null;
+    });
 
     try {
-      final query = supabase.from('users').select('id, full_name, phone_no, role').eq('phone_no', phone);
-      
+      final query = supabase
+          .from('users')
+          .select('id, full_name, phone_no, role')
+          .eq('phone_no', phone);
+
       if (widget.role == 'patient') {
         query.inFilter('role', ['doctor', 'guardian']);
       } else {
@@ -521,7 +729,10 @@ class _SearchSheetState extends State<_SearchSheet> {
 
       final userRows = await query;
       if ((userRows as List).isEmpty) {
-        setState(() { _errorMessage = 'No registered user found with this number.'; _isLoading = false; });
+        setState(() {
+          _errorMessage = 'No registered user found with this number.';
+          _isLoading = false;
+        });
         return;
       }
 
@@ -531,21 +742,31 @@ class _SearchSheetState extends State<_SearchSheet> {
       for (final user in userRows) {
         final targetUserId = user['id'] as String;
         final targetRole = user['role'] as String;
-        
+
         final String table;
         final String foreignKey;
 
         if (widget.role == 'patient') {
-          table = targetRole == 'doctor' ? 'doctor_patient_connections' : 'guardian_patient_connections';
+          table = targetRole == 'doctor'
+              ? 'doctor_patient_connections'
+              : 'guardian_patient_connections';
           foreignKey = targetRole == 'doctor' ? 'doctor_id' : 'guardian_id';
         } else {
           table = widget.config.connectionsTable;
           foreignKey = widget.config.profileIdField;
         }
 
-        final connCheck = await supabase.from(table).select('id, status')
-            .eq('patient_id', widget.role == 'patient' ? currentUserId : targetUserId)
-            .eq(foreignKey, widget.role == 'patient' ? targetUserId : currentUserId);
+        final connCheck = await supabase
+            .from(table)
+            .select('id, status')
+            .eq(
+              'patient_id',
+              widget.role == 'patient' ? currentUserId : targetUserId,
+            )
+            .eq(
+              foreignKey,
+              widget.role == 'patient' ? targetUserId : currentUserId,
+            );
 
         found.add({
           'targetId': targetUserId,
@@ -553,13 +774,21 @@ class _SearchSheetState extends State<_SearchSheet> {
           'phone_no': user['phone_no'],
           'table': table,
           'foreignKey': foreignKey,
-          'status': (connCheck as List).isNotEmpty ? connCheck[0]['status'] : 'none',
+          'status': (connCheck as List).isNotEmpty
+              ? connCheck[0]['status']
+              : 'none',
         });
       }
 
-      setState(() { _results = found; _isLoading = false; });
+      setState(() {
+        _results = found;
+        _isLoading = false;
+      });
     } catch (e) {
-      setState(() { _errorMessage = 'Search failed. Please try again.'; _isLoading = false; });
+      setState(() {
+        _errorMessage = 'Search failed. Please try again.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -586,7 +815,10 @@ class _SearchSheetState extends State<_SearchSheet> {
       widget.onRequestChanged();
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() { _errorMessage = 'Failed to send request.'; _isLoading = false; });
+      setState(() {
+        _errorMessage = 'Failed to send request.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -594,31 +826,75 @@ class _SearchSheetState extends State<_SearchSheet> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding: EdgeInsets.fromLTRB(25, 12, 25, 25 + MediaQuery.of(context).viewInsets.bottom),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
+      padding: EdgeInsets.fromLTRB(
+        25,
+        12,
+        25,
+        25 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: Container(width: 45, height: 5, decoration: BoxDecoration(color: colors.textSecondary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)))),
+          Center(
+            child: Container(
+              width: 45,
+              height: 5,
+              decoration: BoxDecoration(
+                color: colors.textSecondary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
           const SizedBox(height: 25),
-          TranslatedText('Search Connections', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.textPrimary)),
+          TranslatedText(
+            'Search Connections',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: colors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 20),
           TextField(
             controller: _phoneController,
             decoration: InputDecoration(
               hintText: 'Enter Phone Number',
               prefixIcon: const Icon(Icons.phone_iphone_rounded),
-              suffixIcon: IconButton(icon: Icon(Icons.search_rounded, color: colors.accent), onPressed: _search),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.search_rounded, color: colors.accent),
+                onPressed: _search,
+              ),
               filled: true,
               fillColor: colors.background,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
             ),
             keyboardType: TextInputType.phone,
             onSubmitted: (_) => _search(),
           ),
-          if (_isLoading) const Padding(padding: EdgeInsets.only(top: 20), child: Center(child: CircularProgressIndicator())),
-          if (_errorMessage != null) Padding(padding: const EdgeInsets.only(top: 15), child: TranslatedText(_errorMessage!, style: TextStyle(color: colors.error, fontWeight: FontWeight.w600))),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.only(top: 20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 15),
+              child: TranslatedText(
+                _errorMessage!,
+                style: TextStyle(
+                  color: colors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 25),
             ..._results.map((p) => _buildResultRow(p)),
@@ -633,16 +909,60 @@ class _SearchSheetState extends State<_SearchSheet> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: colors.background, borderRadius: BorderRadius.circular(15)),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(15),
+      ),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: colors.accent.withValues(alpha: 0.1), child: TranslatedText(p['full_name'][0], style: TextStyle(color: colors.primaryDark, fontWeight: FontWeight.bold))),
+          CircleAvatar(
+            backgroundColor: colors.accent.withValues(alpha: 0.1),
+            child: TranslatedText(
+              p['full_name'][0],
+              style: TextStyle(
+                color: colors.primaryDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [TranslatedText(p['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)), TranslatedText(p['phone_no'], style: TextStyle(fontSize: 12, color: colors.textSecondary))])),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TranslatedText(
+                  p['full_name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TranslatedText(
+                  p['phone_no'],
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
           if (p['status'] == 'none')
-            ElevatedButton(onPressed: () => _send(p), style: ElevatedButton.styleFrom(backgroundColor: colors.accent, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const TranslatedText('Add'))
+            ElevatedButton(
+              onPressed: () => _send(p),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.accent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const TranslatedText('Add'),
+            )
           else
-            TranslatedText(p['status'].toString().toUpperCase(), style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.w800, fontSize: 11)),
+            TranslatedText(
+              p['status'].toString().toUpperCase(),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+              ),
+            ),
         ],
       ),
     );
