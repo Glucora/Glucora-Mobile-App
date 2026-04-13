@@ -545,124 +545,157 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context) {
-    final colors = context.colors;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
+void _showDeleteConfirmation(BuildContext context) {
+  final colors = context.colors;
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
+          const SizedBox(width: 8),
+          const TranslatedText(
+            'Remove Patient',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+      content: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            fontSize: 14,
+            color: colors.textPrimary,
+            height: 1.5,
+          ),
           children: [
-            Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
-            const SizedBox(width: 8),
-            const TranslatedText(
-              'Remove Patient',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            const TextSpan(text: 'Are you sure you want to remove '),
+            TextSpan(
+              text: widget.patientName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(
+              text:
+                  ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
             ),
           ],
         ),
-        content: RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 14,
-              color: colors.textPrimary,
-              height: 1.5,
-            ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: Row(
             children: [
-              const TextSpan(text: 'Are you sure you want to remove '),
-              TextSpan(
-                text: widget.patientName,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const TranslatedText(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
-              const TextSpan(
-                text:
-                    ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    
+                    // Show loading indicator
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    
+                    try {
+                      final currentUserId = supabase.auth.currentUser!.id;
+                      
+                      // ✅ FIX: Get the patient's user ID from patient_profile
+                      final patientProfile = await supabase
+                          .from('patient_profile')
+                          .select('user_id')
+                          .eq('id', widget.patientId)
+                          .single();
+                      
+                      final patientUserId = patientProfile['user_id'] as String;
+                      
+                      // ✅ Delete using the patient's user ID (UUID)
+                      await supabase
+                          .from('doctor_patient_connections')
+                          .delete()
+                          .eq('doctor_id', currentUserId)
+                          .eq('patient_id', patientUserId);
+                      
+                      // Dismiss loading dialog
+                      if (mounted) Navigator.pop(context);
+                      
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: TranslatedText('Patient removed successfully'),
+                            backgroundColor: Colors.green,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        // Go back to previous screen
+                        Navigator.pop(context, true);
+                      }
+                    } catch (e) {
+                      print('Error removing patient: $e');
+                      
+                      // Dismiss loading dialog
+                      if (mounted) Navigator.pop(context);
+                      
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: TranslatedText(
+                              'Failed to remove patient. Please try again.',
+                            ),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.error,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const TranslatedText(
+                    'Remove',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(
-                        color: colors.textSecondary.withValues(alpha: 0.3),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const TranslatedText(
-                      'Cancel',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      try {
-                        final doctorRow = await supabase
-                            .from('doctor_profile')
-                            .select('id')
-                            .eq('user_id', supabase.auth.currentUser!.id)
-                            .single();
-
-                        await supabase
-                            .from('doctor_patient_connections')
-                            .delete()
-                            .eq('doctor_id', doctorRow['id'] as String)
-                            .eq('patient_id', widget.patientId);
-
-                        if (mounted) Navigator.pop(context, true);
-                      } catch (e) {
-                        print('Error removing patient: $e');
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const TranslatedText(
-                                'Failed to remove patient. Please try again.',
-                              ),
-                              backgroundColor: context.colors.error,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.error,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const TranslatedText(
-                      'Remove',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildGlucoseSummaryCards(BuildContext context) {
     final colors = context.colors;
