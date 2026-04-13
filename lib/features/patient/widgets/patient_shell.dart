@@ -1,16 +1,5 @@
-// ============================================================
-// UPDATED patient_navigation.dart
-// Changes:
-//  1. Added LocalizationService provider to the widget tree
-//  2. Added Language option in _SettingsScreen
-//  3. All Text in navigation/settings wrapped in TranslatedText()
-//  4. LocalizedDirectionality wrapper for RTL support
-// ============================================================
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/patient/screens/calorie_log_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/home_screen.dart';
@@ -21,14 +10,11 @@ import 'package:glucora_ai_companion/features/patient/screens/medication_screen.
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
-
-// ✅ NEW IMPORTS
-import 'package:glucora_ai_companion/services/localization_service.dart';
+import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-import 'package:glucora_ai_companion/shared/screens/language_selection_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
-// PatientNavigation — unchanged structure, added Directionality
+// PatientNavigation
 // ─────────────────────────────────────────────────────────────
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
@@ -51,7 +37,6 @@ class _PatientNavigationState extends State<PatientNavigation> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // ✅ Wrap with LocalizedDirectionality for RTL (Arabic) support
     return LocalizedDirectionality(
       child: Scaffold(
         backgroundColor: colors.background,
@@ -84,35 +69,30 @@ class _PatientNavigationState extends State<PatientNavigation> {
           child: Row(
             children: [
               _NavTile(
-                context,
                 icon: Icons.home_rounded,
                 label: "Home",
                 active: _currentIndex == 0,
                 onTap: () => setState(() => _currentIndex = 0),
               ),
               _NavTile(
-                context,
                 icon: Icons.restaurant_menu_rounded,
                 label: "Calories",
                 active: _currentIndex == 1,
                 onTap: () => setState(() => _currentIndex = 1),
               ),
               _NavTile(
-                context,
                 icon: Icons.edit_rounded,
                 label: "Log",
                 active: _currentIndex == 2,
                 onTap: () => setState(() => _currentIndex = 2),
               ),
               _NavTile(
-                context,
                 icon: Icons.medication_rounded,
                 label: "Meds",
                 active: _currentIndex == 3,
                 onTap: () => setState(() => _currentIndex = 3),
               ),
               _NavTile(
-                context,
                 icon: Icons.person_outline_rounded,
                 label: "Profile",
                 active: _currentIndex == 4,
@@ -127,17 +107,15 @@ class _PatientNavigationState extends State<PatientNavigation> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _NavTile — uses TranslatedText for label
+// _NavTile
 // ─────────────────────────────────────────────────────────────
 class _NavTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
-  final BuildContext context;
 
-  const _NavTile(
-    this.context, {
+  const _NavTile({
     required this.icon,
     required this.label,
     required this.active,
@@ -146,7 +124,7 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = this.context.colors;
+    final colors = context.colors;
     final color = active ? colors.primary : colors.textSecondary;
     return Expanded(
       child: GestureDetector(
@@ -157,7 +135,6 @@ class _NavTile extends StatelessWidget {
           children: [
             Icon(icon, size: 24, color: color),
             const SizedBox(height: 3),
-            // ✅ TranslatedText instead of Text
             TranslatedText(
               label,
               style: TextStyle(
@@ -183,7 +160,7 @@ class _NavTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _ConnectionsScreen — unchanged logic, Text → TranslatedText
+// _ConnectionsScreen
 // ─────────────────────────────────────────────────────────────
 class _ConnectionsScreen extends StatefulWidget {
   const _ConnectionsScreen();
@@ -825,323 +802,7 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _SettingsScreen — ✅ LANGUAGE OPTION ADDED
-// ─────────────────────────────────────────────────────────────
-class _SettingsScreen extends StatelessWidget {
-  const _SettingsScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    final colors = context.colors;
-    final service = context.watch<LocalizationService>();
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: colors.textPrimary,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: TranslatedText(
-          'Settings',
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _settingsCard(
-              context,
-              icon: Icons.bluetooth_rounded,
-              title: 'Bluetooth Pairing',
-              subtitle: 'Connect your CGM sensor or pump',
-              color: colors.primary,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const _BluetoothPairingScreen(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _settingsCard(
-              context,
-              icon: Icons.people_outline_rounded,
-              title: 'My Connections & Sharing',
-              subtitle: 'Doctors, guardians & location sharing',
-              color: colors.primary,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const _ConnectionsScreen()),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _settingsCard(
-              context,
-              icon: Icons.person_add_alt_1_rounded,
-              title: 'Connect with Care Team',
-              subtitle: 'Find and connect with doctors & guardians',
-              color: colors.primary,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ConnectionRequestsScreen(role: 'patient'),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ✅ LANGUAGE SELECTION CARD
-            _languageCard(context, colors, service),
-            const SizedBox(height: 16),
-
-            // Dark Mode toggle
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: colors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.dark_mode_outlined,
-                      color: colors.primary,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TranslatedText(
-                          'Dark Mode',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TranslatedText(
-                          'Switch between light and dark theme',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: Theme.of(context).brightness == Brightness.dark,
-                    onChanged: (_) => themeProvider.toggleTheme(),
-                    activeThumbColor: colors.primary,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// ✅ Language card with current language displayed as badge
-  Widget _languageCard(
-    BuildContext context,
-    dynamic colors,
-    LocalizationService service,
-  ) {
-    final current = service.currentLocale;
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.language_rounded,
-                color: colors.primary,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TranslatedText(
-                    'Language',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  TranslatedText(
-                    'Choose your preferred language',
-                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            // Current language badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TranslatedText(
-                    current.flag,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(width: 4),
-                  TranslatedText(
-                    current.code.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _settingsCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TranslatedText(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  TranslatedText(
-                    subtitle,
-                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// _BluetoothPairingScreen — Text → TranslatedText
+// _BluetoothPairingScreen
 // ─────────────────────────────────────────────────────────────
 class _BluetoothPairingScreen extends StatelessWidget {
   const _BluetoothPairingScreen();
@@ -1285,7 +946,7 @@ class _BluetoothPairingScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _EditProfileScreen — Text → TranslatedText
+// _EditProfileScreen
 // ─────────────────────────────────────────────────────────────
 class _EditProfileScreen extends StatefulWidget {
   final String name;
@@ -1525,7 +1186,7 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _ProfileTab — Text → TranslatedText
+// _ProfileTab - UPDATED to use shared SettingsScreen
 // ─────────────────────────────────────────────────────────────
 class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
@@ -1541,6 +1202,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _email = "";
   String _weight = "";
   bool _isLoading = true;
+  bool _notificationsEnabled = true;
   final supabase = Supabase.instance.client;
   int? _openFaqIndex;
 
@@ -1636,11 +1298,79 @@ class _ProfileTabState extends State<_ProfileTab> {
       ),
     );
   }
+  Widget _buildSettingsCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: colors.primary, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TranslatedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     if (_isLoading) return const Center(child: CircularProgressIndicator());
+    
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1664,10 +1394,57 @@ class _ProfileTabState extends State<_ProfileTab> {
                     Icons.settings_outlined,
                     color: colors.textSecondary,
                   ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const _SettingsScreen()),
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SettingsScreen(
+                          notificationsEnabled: _notificationsEnabled,
+                          onNotificationsChanged: (notifications) {
+                            setState(() => _notificationsEnabled = notifications);
+                          },
+                          additionalSettings: [
+                            _buildSettingsCard(
+                              context,
+                              icon: Icons.bluetooth_rounded,
+                              title: 'Bluetooth Pairing',
+                              subtitle: 'Connect your CGM sensor or pump',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const _BluetoothPairingScreen(),
+                                ),
+                              ),
+                            ),const SizedBox(height: 16),
+                            _buildSettingsCard(
+                              context,
+                              icon: Icons.people_outline_rounded,
+                              title: 'My Connections & Sharing',
+                              subtitle: 'Doctors, guardians & location sharing',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const _ConnectionsScreen(),
+                                ),
+                              ),
+                            ),const SizedBox(height: 16),
+                            _buildSettingsCard(
+                              context,
+                              icon: Icons.person_add_alt_1_rounded,
+                              title: 'Connect with Care Team',
+                              subtitle: 'Find and connect with doctors & guardians',
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ConnectionRequestsScreen(role: 'patient'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1890,21 +1667,18 @@ class _ProfileTabState extends State<_ProfileTab> {
               "How do I connect my glucose monitor?",
               "Go to settings and connect your CGM device via Bluetooth.",
             ),
-
             _faqItem(
               context,
               1,
               "What do the glucose ranges mean?",
               "They indicate whether your sugar is low, normal, or high.",
             ),
-
             _faqItem(
               context,
               2,
               "Can I share data with my doctor?",
               "Yes, you can securely share your data with connected doctors.",
             ),
-
             _faqItem(
               context,
               3,
@@ -2055,8 +1829,6 @@ class _ProfileTabState extends State<_ProfileTab> {
                 ),
               ],
             ),
-
-            // ✅ ANSWER (this was missing!)
             if (isOpen) ...[
               const SizedBox(height: 10),
               TranslatedText(

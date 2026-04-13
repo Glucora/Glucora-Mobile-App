@@ -170,6 +170,7 @@ class DeleteAccountTile extends StatelessWidget {
 
     if (user == null) return;
 
+    // Show loading indicator
     if (context.mounted) {
       showDialog(
         context: context,
@@ -179,9 +180,65 @@ class DeleteAccountTile extends StatelessWidget {
     }
 
     try {
+      // Get user role first
+      final userData = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+      
+      final role = userData['role'] as String? ?? '';
+
+      // Delete role-specific data first
+      if (role == 'patient') {
+        // Get patient profile id
+        final patientProfile = await supabase
+            .from('patient_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (patientProfile != null) {
+          // Delete patient-specific data
+          await supabase.from('glucose_readings').delete().eq('patient_id', patientProfile['id']);
+          await supabase.from('insulin_doses').delete().eq('patient_id', patientProfile['id']);
+          await supabase.from('patient_profile').delete().eq('user_id', user.id);
+        }
+        
+        // Delete connections where user is patient
+        await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id);
+        await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id);
+        await supabase.from('patient_locations').delete().eq('patient_id', user.id);
+        
+      } else if (role == 'guardian') {
+        // Delete connections where user is guardian
+        await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id);
+        
+      } else if (role == 'doctor') {
+        // Get doctor profile id
+        final doctorProfile = await supabase
+            .from('doctor_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (doctorProfile != null) {
+          // Delete doctor-specific data
+          await supabase.from('care_plans').delete().eq('doctor_id', user.id);
+          await supabase.from('doctor_profile').delete().eq('user_id', user.id);
+        }
+        
+        // Delete connections where user is doctor
+        await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id);
+      }
+
+      // Common deletions for all roles
+      await supabase.from('devices').delete().eq('patient_id', user.id);
+      
+      // Call RPC to delete user account
       final response = await supabase.rpc('delete_user_account');
       
-      debugPrint('Delete response: $response');
+      print('Delete response: $response');
       
       if (response != null && response['success'] == true) {
         await supabase.auth.signOut();

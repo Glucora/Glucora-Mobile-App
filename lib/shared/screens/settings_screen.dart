@@ -11,11 +11,13 @@ import 'package:glucora_ai_companion/shared/screens/language_selection_screen.da
 class SettingsScreen extends StatefulWidget {
   final bool notificationsEnabled;
   final ValueChanged<bool> onNotificationsChanged;
+  final List<Widget>? additionalSettings;
 
   const SettingsScreen({
     super.key,
     required this.notificationsEnabled,
     required this.onNotificationsChanged,
+    this.additionalSettings,
   });
 
   @override
@@ -36,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final colors = context.colors;
-
+    
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colors.surface,
@@ -57,49 +59,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            SettingsSwitchTile(
-              icon: Icons.notifications_outlined,
-              title: 'Notifications',
-              subtitle: 'Receive system alerts and updates',
-              color: colors.primary,
-              value: _notifications,
-              onChanged: (val) {
-                setState(() => _notifications = val);
-                widget.onNotificationsChanged(_notifications);
-              },
+      body: LayoutBuilder(  // ✅ Add LayoutBuilder to get constraints
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),  // ✅ Force scrollable
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    SettingsSwitchTile(
+                      icon: Icons.notifications_outlined,
+                      title: 'Notifications',
+                      subtitle: 'Receive system alerts and updates',
+                      color: colors.primary,
+                      value: _notifications,
+                      onChanged: (val) {
+                        setState(() => _notifications = val);
+                        widget.onNotificationsChanged(_notifications);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SettingsSwitchTile(
+                      icon: Icons.dark_mode_outlined,
+                      title: 'Dark Mode',
+                      subtitle: 'Switch to dark theme',
+                      color: const Color(0xFF5B8CF5),
+                      value: isDarkMode,
+                      onChanged: (_) => themeProvider.toggleTheme(),
+                    ),
+                    const SizedBox(height: 16),
+                    SettingsNavigationTile(
+                      icon: Icons.language_rounded,
+                      title: 'Language',
+                      subtitle: 'Choose your preferred language',
+                      color: const Color(0xFF2BB6A3),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LanguageSelectionScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    // Additional settings from patient/doctor/guardian
+                    if (widget.additionalSettings != null) ...[
+                      const SizedBox(height: 16),
+                      ...widget.additionalSettings!,
+                    ],
+                    const SizedBox(height: 16),
+                    const DeleteAccountTile(),
+                    const SizedBox(height: 32),  // ✅ Extra padding at bottom
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            SettingsSwitchTile(
-              icon: Icons.dark_mode_outlined,
-              title: 'Dark Mode',
-              subtitle: 'Switch to dark theme',
-              color: const Color(0xFF5B8CF5),
-              value: isDarkMode,
-              onChanged: (_) => themeProvider.toggleTheme(),
-            ),
-            const SizedBox(height: 16),
-            SettingsNavigationTile(
-              icon: Icons.language_rounded,
-              title: 'Language',
-              subtitle: 'Choose your preferred language',
-              color: const Color(0xFF2BB6A3),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LanguageSelectionScreen(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            const DeleteAccountTile(),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
