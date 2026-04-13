@@ -1,9 +1,9 @@
-// lib\features\doctor\screens\doctor_patients_screen.dart
 import 'package:flutter/material.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -16,6 +16,7 @@ class _Patient {
   final int glucoseValue;
   final String lastReadingTime;
   final String trend;
+  final String? profilePictureUrl;
 
   const _Patient({
     required this.id,
@@ -24,6 +25,7 @@ class _Patient {
     required this.glucoseValue,
     required this.lastReadingTime,
     required this.trend,
+    this.profilePictureUrl,
   });
 
   String get lastReading => '$glucoseValue mg/dL';
@@ -49,12 +51,14 @@ class DoctorPatientsScreen extends StatefulWidget {
 class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   List<_Patient> _allPatients = [];
   String _doctorName = '';
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchPatients();
     _fetchDoctorName();
+    _fetchPatients();
   }
 
   Future<void> _fetchDoctorName() async {
@@ -69,27 +73,35 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   }
 
   Future<void> _fetchPatients() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // Step 1: Get accepted patient IDs
+      // Step 1: Get accepted patient IDs with user data including profile picture
       final connectionsResponse = await supabase
           .from('doctor_patient_connections')
           .select(
-            'patient_id, users!doctor_patient_connections_patient_id_fkey(full_name)',
+            'patient_id, users!doctor_patient_connections_patient_id_fkey(full_name, profile_picture_url)',
           )
           .eq('doctor_id', userId)
           .eq('status', 'accepted');
+          
       if (!mounted) return;
 
       final connections = connectionsResponse as List;
       if (connections.isEmpty) {
-        setState(() => _allPatients = []);
+        setState(() {
+          _allPatients = [];
+          _isLoading = false;
+        });
         return;
       }
 
       // Step 2: Fetch glucose readings separately using patient_id
-      // TO:
       final patientUserIds = connections
           .map((row) => row['patient_id'] as String)
           .toList();
@@ -120,42 +132,56 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
         readingsByPatient.putIfAbsent(pid, () => []).add(r);
       }
 
-      setState(() {
-        _allPatients = connections.map((row) {
-          final fullName = row['users']?['full_name'] ?? 'Unknown';
-          final patientUuid = row['patient_id'] as String;
-          final profileId = uuidToProfileId[patientUuid] ?? 0;
+      final patients = connections.map((row) {
+        final userData = row['users'] as Map<String, dynamic>?;
+        final fullName = userData?['full_name'] ?? 'Unknown';
+        final profilePictureUrl = userData?['profile_picture_url'] as String?;
+        final patientUuid = row['patient_id'] as String;
+        final profileId = uuidToProfileId[patientUuid] ?? 0;
 
-          final patientReadings = readingsByPatient[profileId] ?? [];
+        final patientReadings = readingsByPatient[profileId] ?? [];
 
-          // Sort to get the latest reading
-          patientReadings.sort(
-            (a, b) => DateTime.parse(
-              b['recorded_at'],
-            ).compareTo(DateTime.parse(a['recorded_at'])),
-          );
+        // Sort to get the latest reading
+        patientReadings.sort(
+          (a, b) => DateTime.parse(
+            b['recorded_at'],
+          ).compareTo(DateTime.parse(a['recorded_at'])),
+        );
 
-          final latestReading = patientReadings.isNotEmpty
-              ? patientReadings.first
-              : null;
-          final glucoseValue = latestReading != null
-              ? (latestReading['value_mg_dl'] as num).toInt()
-              : 0;
+        final latestReading = patientReadings.isNotEmpty
+            ? patientReadings.first
+            : null;
+        final glucoseValue = latestReading != null
+            ? (latestReading['value_mg_dl'] as num).toInt()
+            : 0;
 
-          return _Patient(
-            id: profileId,
-            name: fullName,
-            glucoseValue: glucoseValue,
-            trend: latestReading?['trend'] ?? 'stable',
-            lastReadingTime: latestReading != null
-                ? _timeAgo(latestReading['recorded_at'])
-                : 'No readings',
-            status: _calculateStatus(glucoseValue),
-          );
-        }).toList();
-      });
+        return _Patient(
+          id: profileId,
+          name: fullName,
+          glucoseValue: glucoseValue,
+          trend: latestReading?['trend'] ?? 'stable',
+          lastReadingTime: latestReading != null
+              ? _timeAgo(latestReading['recorded_at'])
+              : 'No readings',
+          status: _calculateStatus(glucoseValue),
+          profilePictureUrl: profilePictureUrl,
+        );
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _allPatients = patients;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('FETCH ERROR: $e');
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -216,7 +242,45 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final filtered = _filtered;
+
+    // Calculate summary stats
+    final total = _allPatients.length;
+    final critical = _allPatients.where((p) => p.status == 'Critical').length;
+    final highRisk = _allPatients.where((p) => p.status == 'High Risk').length;
+    final normal = _allPatients.where((p) => p.status == 'Normal').length;
+    final low = _allPatients.where((p) => p.status == 'Low').length;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: colors.error),
+              const SizedBox(height: 16),
+              TranslatedText(
+                'Failed to load patients',
+                style: TextStyle(color: colors.error),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchPatients,
+                child: const TranslatedText('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
@@ -297,7 +361,15 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                       16,
                       16,
                     ),
-                    child: _buildSummaryRow(context),
+                    child: Row(
+                      children: [
+                        _summaryChip(context, 'Total', '$total', colors.accent),
+                        _summaryChip(context, 'Critical', '$critical', Colors.red),
+                        _summaryChip(context, 'High Risk', '$highRisk', Colors.orange),
+                        _summaryChip(context, 'Normal', '$normal', Colors.green),
+                        _summaryChip(context, 'Low', '$low', Colors.blue),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -324,7 +396,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           ),
                         ),
                         TranslatedText(
-                          '${filtered.length} shown',
+                          '${_filtered.length} shown',
                           style: TextStyle(
                             fontSize: 13,
                             color: colors.textSecondary,
@@ -335,7 +407,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                   ),
                 ),
 
-                if (filtered.isEmpty)
+                if (_filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
                       child: TranslatedText(
@@ -345,7 +417,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     ),
                   ),
 
-                if (filtered.isNotEmpty)
+                if (_filtered.isNotEmpty)
                   isLandscape
                       ? SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -359,21 +431,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                                 ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _PatientCard(
-                                patient: filtered[index],
+                                patient: _filtered[index],
                                 onTap: () async {
                                   final removed = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => PatientDetailsScreen(
-                                        patientId: filtered[index].id,
-                                        patientName: filtered[index].name,
+                                        patientId: _filtered[index].id,
+                                        patientName: _filtered[index].name,
                                       ),
                                     ),
                                   );
                                   if (removed == true) _fetchPatients();
                                 },
                               ),
-                              childCount: filtered.length,
+                              childCount: _filtered.length,
                             ),
                           ),
                         )
@@ -382,21 +454,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _PatientCard(
-                                patient: filtered[index],
+                                patient: _filtered[index],
                                 onTap: () async {
                                   final removed = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => PatientDetailsScreen(
-                                        patientId: filtered[index].id,
-                                        patientName: filtered[index].name,
+                                        patientId: _filtered[index].id,
+                                        patientName: _filtered[index].name,
                                       ),
                                     ),
                                   );
                                   if (removed == true) _fetchPatients();
                                 },
                               ),
-                              childCount: filtered.length,
+                              childCount: _filtered.length,
                             ),
                           ),
                         ),
@@ -405,26 +477,6 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildSummaryRow(BuildContext context) {
-    final colors = context.colors;
-
-    final total = _allPatients.length;
-    final critical = _allPatients.where((p) => p.status == 'Critical').length;
-    final highRisk = _allPatients.where((p) => p.status == 'High Risk').length;
-    final normal = _allPatients.where((p) => p.status == 'Normal').length;
-    final low = _allPatients.where((p) => p.status == 'Low').length;
-
-    return Row(
-      children: [
-        _summaryChip(context, 'Total', '$total', colors.accent),
-        _summaryChip(context, 'Critical', '$critical', Colors.red),
-        _summaryChip(context, 'High Risk', '$highRisk', Colors.orange),
-        _summaryChip(context, 'Normal', '$normal', Colors.green),
-        _summaryChip(context, 'Low', '$low', Colors.blue),
-      ],
     );
   }
 
@@ -846,7 +898,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 }
 
-// ─── PATIENT CARD ─────────────────────────────────────────────────────────────
+// ─── PATIENT CARD WITH PROFILE PICTURE ─────────────────────────────────────────────
 
 class _PatientCard extends StatelessWidget {
   final _Patient patient;
@@ -900,19 +952,14 @@ class _PatientCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: colors.accent.withValues(alpha: 0.15),
-              child: TranslatedText(
-                patient.initials,
-                style: TextStyle(
-                  color: colors.primaryDark,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+            ProfilePicture(
+              userId: '', // We don't have userId directly
+              imageUrl: patient.profilePictureUrl,
+              size: 48,
+              isEditable: false,
+              showInitials: true,
+              displayName: patient.name,
             ),
-
             const SizedBox(width: 12),
 
             Expanded(
