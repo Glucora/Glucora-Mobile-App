@@ -12,7 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 // ─────────────────────────────────────────────────────────────
 // PatientNavigation
 // ─────────────────────────────────────────────────────────────
@@ -1078,35 +1078,55 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     );
   }
 
-  Widget _buildField(
-    BuildContext context,
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    String? suffix,
-  }) {
-    final colors = context.colors;
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: suffix,
-        prefixIcon: Icon(icon, size: 20, color: colors.primary),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: const Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+Widget _buildField(
+  BuildContext context,
+  String label,
+  TextEditingController controller,
+  IconData icon, {
+  TextInputType keyboardType = TextInputType.text,
+  String? suffix,
+}) {
+  final colors = context.colors;
+  return TextField(
+    controller: controller,
+    keyboardType: keyboardType,
+    style: TextStyle(
+      color: colors.textPrimary,
+      fontSize: 14,
+    ),
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(
+        color: colors.textSecondary,
+        fontSize: 13,
       ),
-    );
-  }
+      suffixText: suffix,
+      suffixStyle: TextStyle(
+        color: colors.textSecondary,
+        fontSize: 12,
+      ),
+      prefixIcon: Icon(icon, size: 20, color: colors.primary),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      filled: true,
+      fillColor: colors.surface, // ✅ NOW USES THEME COLOR
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+    ),
+  );
+}
 
   Future<void> _save() async {
     final supabase = Supabase.instance.client;
@@ -1201,6 +1221,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _phone = "";
   String _email = "";
   String _weight = "";
+  String _profilePictureUrl = ""; 
   bool _isLoading = true;
   bool _notificationsEnabled = true;
   final supabase = Supabase.instance.client;
@@ -1243,6 +1264,7 @@ class _ProfileTabState extends State<_ProfileTab> {
         _age = (userData?['age'] ?? 0).toInt();
         _height = "${patientData?['height_cm'] ?? 0} cm";
         _weight = "${patientData?['weight_kg'] ?? 0} kg";
+        _profilePictureUrl = userData?['profile_picture_url'] ?? ""; 
         _isLoading = false;
       });
     } catch (e) {
@@ -1452,18 +1474,13 @@ class _ProfileTabState extends State<_ProfileTab> {
             Center(
               child: Column(
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: colors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      size: 48,
-                      color: Colors.white,
-                    ),
+                                   ProfilePicture(
+                    userId: supabase.auth.currentUser!.id,
+                    imageUrl: _profilePictureUrl,
+                    size: 90,
+                    isEditable: true,
+                    onPictureChanged: () => _loadProfile(),
+                    displayName: _name,
                   ),
                   const SizedBox(height: 12),
                   Row(
