@@ -1,5 +1,3 @@
-// lib\features\doctor\screens\patient_details_screen.dart
-
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'care_plan_editor_screen.dart';
@@ -7,6 +5,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/location_widget.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -36,6 +35,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   Map<String, dynamic>? _latestPrediction;
   Map<String, dynamic>? _latestIob;
   bool _isLoading = true;
+  String? _profilePictureUrl;
 
   List<GlucoseReading> get glucoseHistory => _glucoseReadings.map((r) {
     final dt = DateTime.parse(r['recorded_at']).toLocal();
@@ -137,14 +137,18 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
 
   Future<void> _fetchPatientData() async {
     try {
-      // Fetch profile including age from users join
+      // Fetch profile including age from users join and profile picture
       final profile = await supabase
           .from('patient_profile')
-          .select('*, users(full_name, age)')
+          .select('*, users(full_name, age, profile_picture_url)')
           .eq('id', widget.patientId)
           .single();
 
       final userId = profile['user_id'] as String;
+      
+      // Get profile picture URL from users table
+      final userData = profile['users'] as Map<String, dynamic>?;
+      _profilePictureUrl = userData?['profile_picture_url'] as String?;
 
       final results = await Future.wait([
         supabase
@@ -325,13 +329,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         (usersMap?['age'] ?? _patientProfile?['age'])?.toString() ?? '—';
     final gender = _patientProfile?['gender'] ?? '—';
     final name = widget.patientName;
-    final initials = name
-        .trim()
-        .split(' ')
-        .where((p) => p.isNotEmpty)
-        .take(2)
-        .map((p) => p[0].toUpperCase())
-        .join();
+    final userId = _patientProfile?['user_id'] as String? ?? '';
 
     final latest = _glucoseReadings.isNotEmpty ? _glucoseReadings.last : null;
     final latestValue = latest != null
@@ -349,17 +347,14 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: TranslatedText(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+          // ✅ Profile Picture instead of CircleAvatar
+          ProfilePicture(
+            userId: userId,
+            imageUrl: _profilePictureUrl,
+            size: 52,
+            isEditable: false,
+            showInitials: true,
+            displayName: name,
           ),
           const SizedBox(width: 12),
           Expanded(
