@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/location_widget.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 class GuardianPatientDetailScreen extends StatefulWidget {
   final GuardianPatient patient;
@@ -128,17 +129,14 @@ class _GuardianPatientDetailScreenState
                         ),
                         color: colors.textPrimary,
                       ),
-                      CircleAvatar(
-                        radius: isLandscape ? 18 : 22,
-                        backgroundColor: sColor.withValues(alpha: 0.12),
-                        child: TranslatedText(
-                          p.name.substring(0, 1),
-                          style: TextStyle(
-                            color: sColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: isLandscape ? 14 : 16,
-                          ),
-                        ),
+                      // ✅ Profile Picture instead of CircleAvatar
+                      ProfilePicture(
+                        userId: p.patientId,
+                        imageUrl: p.profilePictureUrl,
+                        size: isLandscape ? 36 : 44,
+                        isEditable: false,
+                        showInitials: true,
+                        displayName: p.name,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
