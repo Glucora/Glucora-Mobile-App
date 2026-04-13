@@ -1,12 +1,3 @@
-// ============================================================
-// UPDATED patient_navigation.dart
-// Changes:
-//  1. Added LocalizationService provider to the widget tree
-//  2. Added Language option in _SettingsScreen
-//  3. All Text in navigation/settings wrapped in TranslatedText()
-//  4. LocalizedDirectionality wrapper for RTL support
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -21,15 +12,10 @@ import 'package:glucora_ai_companion/features/patient/screens/medication_screen.
 import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
-
-// ✅ NEW IMPORTS
 import 'package:glucora_ai_companion/services/localization_service.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart';
 import 'package:glucora_ai_companion/features/settings/language_selection_screen.dart';
 
-// ─────────────────────────────────────────────────────────────
-// PatientNavigation — unchanged structure, added Directionality
-// ─────────────────────────────────────────────────────────────
 class PatientNavigation extends StatefulWidget {
   const PatientNavigation({super.key});
 
@@ -51,7 +37,6 @@ class _PatientNavigationState extends State<PatientNavigation> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // ✅ Wrap with LocalizedDirectionality for RTL (Arabic) support
     return LocalizedDirectionality(
       child: Scaffold(
         backgroundColor: colors.background,
@@ -126,9 +111,6 @@ class _PatientNavigationState extends State<PatientNavigation> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _NavTile — uses TranslatedText for label
-// ─────────────────────────────────────────────────────────────
 class _NavTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -157,7 +139,6 @@ class _NavTile extends StatelessWidget {
           children: [
             Icon(icon, size: 24, color: color),
             const SizedBox(height: 3),
-            // ✅ TranslatedText instead of Text
             TranslatedText(
               label,
               style: TextStyle(
@@ -182,9 +163,6 @@ class _NavTile extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _ConnectionsScreen — unchanged logic, Text → TranslatedText
-// ─────────────────────────────────────────────────────────────
 class _ConnectionsScreen extends StatefulWidget {
   const _ConnectionsScreen();
 
@@ -628,9 +606,6 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _SettingsScreen — ✅ LANGUAGE OPTION ADDED
-// ─────────────────────────────────────────────────────────────
 class _SettingsScreen extends StatelessWidget {
   const _SettingsScreen();
 
@@ -677,12 +652,8 @@ class _SettingsScreen extends StatelessWidget {
                 color: colors.primary,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ConnectionRequestsScreen(role: 'patient')))),
             const SizedBox(height: 16),
-
-            // ✅ LANGUAGE SELECTION CARD
             _languageCard(context, colors, service),
             const SizedBox(height: 16),
-
-            // Dark Mode toggle
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -725,7 +696,6 @@ class _SettingsScreen extends StatelessWidget {
     );
   }
 
-  /// ✅ Language card with current language displayed as badge
   Widget _languageCard(BuildContext context, dynamic colors, LocalizationService service) {
     final current = service.currentLocale;
     return GestureDetector(
@@ -761,7 +731,6 @@ class _SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // Current language badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -824,9 +793,6 @@ class _SettingsScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _BluetoothPairingScreen — Text → TranslatedText
-// ─────────────────────────────────────────────────────────────
 class _BluetoothPairingScreen extends StatelessWidget {
   const _BluetoothPairingScreen();
 
@@ -902,9 +868,6 @@ class _BluetoothPairingScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _EditProfileScreen — Text → TranslatedText
-// ─────────────────────────────────────────────────────────────
 class _EditProfileScreen extends StatefulWidget {
   final String name;
   final int age;
@@ -1023,9 +986,6 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// _ProfileTab — Text → TranslatedText
-// ─────────────────────────────────────────────────────────────
 class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
   @override
@@ -1036,7 +996,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _name = ""; int _age = 0; String _height = ""; String _phone = ""; String _email = ""; String _weight = "";
   bool _isLoading = true;
   final supabase = Supabase.instance.client;
- Set<int> _openFaqs = {};
+  Set<int> _openFaqs = {};
 
   @override
   void initState() { super.initState(); _loadProfile(); }
@@ -1170,33 +1130,10 @@ class _ProfileTabState extends State<_ProfileTab> {
             const SizedBox(height: 24),
             TranslatedText('FAQs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary)),
             const SizedBox(height: 12),
-_faqItem(
-  context,
-  0,
-  "How do I connect my glucose monitor?",
-  "Go to settings and connect your CGM device via Bluetooth.",
-),
-
-_faqItem(
-  context,
-  1,
-  "What do the glucose ranges mean?",
-  "They indicate whether your sugar is low, normal, or high.",
-),
-
-_faqItem(
-  context,
-  2,
-  "Can I share data with my doctor?",
-  "Yes, you can securely share your data with connected doctors.",
-),
-
-_faqItem(
-  context,
-  3,
-  "How accurate are the predictions?",
-  "Predictions are AI-based and improve over time with more data.",
-),
+            _faqItem(context, 0, "How do I connect my glucose monitor?", "Go to settings and connect your CGM device via Bluetooth."),
+            _faqItem(context, 1, "What do the glucose ranges mean?", "They indicate whether your sugar is low, normal, or high."),
+            _faqItem(context, 2, "Can I share data with my doctor?", "Yes, you can securely share your data with connected doctors."),
+            _faqItem(context, 3, "How accurate are the predictions?", "Predictions are AI-based and improve over time with more data."),
             const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
@@ -1206,6 +1143,7 @@ _faqItem(
                   if (userId == null) return;
                   try {
                     await supabase.from('users').update({'role': 'guardian'}).eq('id', userId);
+                    await supabase.auth.updateUser(UserAttributes(data: {'role': 'guardian'}));
                     if (!mounted) return;
                     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const GuardianMainScreen()), (route) => false);
                   } catch (e) {
@@ -1244,77 +1182,52 @@ _faqItem(
     ]);
   }
 
-  Widget _faqItem(
-  BuildContext context,
-  int index,
-  String question,
-  String answer,
-) {
-  final colors = context.colors;
-  final isOpen = _openFaqs.contains(index);
-
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        if (isOpen) {
-          _openFaqs.remove(index);
-        } else {
-          _openFaqs.add(index);
-        }
-      });
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colors.textSecondary.withValues(alpha: 0.3),
+  Widget _faqItem(BuildContext context, int index, String question, String answer) {
+    final colors = context.colors;
+    final isOpen = _openFaqs.contains(index);
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isOpen) {
+            _openFaqs.remove(index);
+          } else {
+            _openFaqs.add(index);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TranslatedText(
-                  question,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TranslatedText(
+                    question,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),
                 ),
-              ),
-              Icon(
-                isOpen
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                color: colors.textSecondary,
-              ),
-            ],
-          ),
-
-          // ✅ ANSWER (this was missing!)
-          if (isOpen) ...[
-            const SizedBox(height: 10),
-            TranslatedText(
-              answer,
-              style: TextStyle(
-                fontSize: 13,
-                color: colors.textSecondary,
-                height: 1.4,
-              ),
+                Icon(isOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: colors.textSecondary),
+              ],
             ),
+            if (isOpen) ...[
+              const SizedBox(height: 10),
+              TranslatedText(answer, style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4)),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+  
   Future<void> _editProfile() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,

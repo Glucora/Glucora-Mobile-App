@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'role_selection_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'login_screen.dart'; 
+import 'login_screen.dart';
 import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -27,10 +27,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _agreeToTerms = false;
   bool _isLoading = false;
 
+
+  bool _hasMinLength(String v) => v.length >= 8;
+  bool _hasUppercase(String v) => v.contains(RegExp(r'[A-Z]'));
+  bool _hasLowercase(String v) => v.contains(RegExp(r'[a-z]'));
+  bool _hasDigit(String v) => v.contains(RegExp(r'[0-9]'));
+  bool _hasSpecial(String v) => v.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+
+  bool get _passwordIsStrong {
+    final v = _passwordController.text;
+    return _hasMinLength(v) &&
+        _hasUppercase(v) &&
+        _hasLowercase(v) &&
+        _hasDigit(v) &&
+        _hasSpecial(v);
+  }
+
+
   Future<void> _signUp() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,14 +60,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final fullName = _nameController.text.trim();
-      final phone = _phoneController.text.trim();
-
       final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         data: {
-          'full_name': fullName,
+          'full_name': _nameController.text.trim(),
           'role': 'norole',
           'phone_no': _phoneController.text.trim(),
           'age': int.tryParse(_ageController.text.trim()) ?? 0,
@@ -63,14 +75,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.user != null) {
-        // Navigate directly to role selection screen
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
           (route) => false,
         );
       } else {
-        // If user is null (email confirmation required), show success and then login
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
@@ -79,7 +89,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: TranslatedText(e.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: TranslatedText(e.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      // Unique constraint violation on phone_no (code 23505)
+      final message = (e.code == '23505' ||
+              (e.message.contains('unique') &&
+                  e.message.contains('phone_no')))
+          ? 'This phone number is already registered. Please use a different number.'
+          : 'Sign up failed. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText(message), backgroundColor: Colors.red),
       );
     } catch (_) {
       if (!mounted) return;
@@ -90,27 +114,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ── Password strength indicator widget ───────────────────────────────────
+  Widget _buildPasswordStrengthIndicator() {
+    final v = _passwordController.text;
+    if (v.isEmpty) return const SizedBox.shrink();
+
+    final rules = [
+      (_hasMinLength(v), 'At least 8 characters'),
+      (_hasUppercase(v), 'One uppercase letter'),
+      (_hasLowercase(v), 'One lowercase letter'),
+      (_hasDigit(v), 'One number'),
+      (_hasSpecial(v), 'One special character (!@#\$%^&*…)'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: rules
+            .map(
+              (r) => Row(
+                children: [
+                  Icon(
+                    r.$1 ? Icons.check_circle : Icons.cancel,
+                    size: 14,
+                    color: r.$1 ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 6),
+                  TranslatedText(
+                    r.$2,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: r.$1 ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+
+    OutlineInputBorder border(Color color, {double width = 1}) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    InputDecoration fieldDecoration({
+      required String label,
+      required IconData icon,
+      Widget? suffix,
+    }) =>
+        InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: colors.textSecondary),
+          prefixIcon: Icon(icon, color: colors.primary),
+          suffixIcon: suffix,
+          border: border(colors.textSecondary.withValues(alpha: 0.3)),
+          enabledBorder: border(colors.textSecondary.withValues(alpha: 0.3)),
+          focusedBorder: border(colors.accent, width: 2),
+          filled: true,
+          fillColor: colors.surface,
+        );
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-          onPressed: () {
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              '/landing',
-              (Route<dynamic> route) => false,
-            );
-          },
+          onPressed: () => Navigator.of(context)
+              .pushNamedAndRemoveUntil('/landing', (_) => false),
         ),
-        title: TranslatedText('Sign Up', style: TextStyle(color: colors.textPrimary)),
+        title: TranslatedText('Sign Up',
+            style: TextStyle(color: colors.textPrimary)),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -121,277 +207,138 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: ListView(
             children: [
               const SizedBox(height: 10),
-              // Name field
+
+              // ── Name ──────────────────────────────────────────────────────
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Enter your name',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.person_outline, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  final nameRegex = RegExp(r'^[a-zA-Z ]+$');
-                  if (!nameRegex.hasMatch(value)) {
-                    return 'Please enter a valid name (letters and spaces only)';
-                  }
+                decoration: fieldDecoration(
+                    label: 'Enter your name', icon: Icons.person_outline),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Please enter your name';
+                  if (!RegExp(r'^[a-zA-Z ]+$').hasMatch(v))
+                    return 'Letters and spaces only';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Email field
+
+              // ── Email ─────────────────────────────────────────────────────
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Enter your email',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Enter a valid email';
-                  }
+                decoration: fieldDecoration(
+                    label: 'Enter your email', icon: Icons.email_outlined),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Please enter your email';
+                  if (!v.contains('@')) return 'Enter a valid email';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Password field with eye toggle
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Enter your password',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      color: colors.textSecondary,
+
+              // ── Password ──────────────────────────────────────────────────
+              StatefulBuilder(
+                builder: (context, setLocal) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      onChanged: (_) => setLocal(() {}),
+                      decoration: fieldDecoration(
+                        label: 'Enter your password',
+                        icon: Icons.lock_outline,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: colors.textSecondary,
+                          ),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty)
+                          return 'Please enter your password';
+                        if (!_passwordIsStrong)
+                          return 'Password does not meet the requirements below';
+                        return null;
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
+                    _buildPasswordStrengthIndicator(),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
-              // Phone number field
+
+              // ── Phone ─────────────────────────────────────────────────────
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Enter your phone number',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.phone, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                decoration: fieldDecoration(
+                    label: 'Enter your phone number', icon: Icons.phone),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty)
                     return 'Please enter your phone number';
-                  }
-                  final numberRegex = RegExp(r'^[0-9]+$');
-                  if (!numberRegex.hasMatch(value)) {
-                    return 'Please enter a valid number (numbers only)';
-                  }
-                  if (value.length < 10) {
-                    return 'Please enter a valid phone number';
-                  }
+                  if (!RegExp(r'^[0-9]+$').hasMatch(v))
+                    return 'Numbers only';
+                  if (v.length < 10) return 'Please enter a valid phone number';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Age field
+
+              // ── Age ───────────────────────────────────────────────────────
               TextFormField(
                 controller: _ageController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Enter your age',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.cake_outlined, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your age';
-                  }
-                  final age = int.tryParse(value);
-                  if (age == null) {
-                    return 'Please enter a valid number';
-                  }
-                  if (age < 1 || age > 120) {
-                    return 'Please enter a valid age (1-120)';
-                  }
+                decoration: fieldDecoration(
+                    label: 'Enter your age', icon: Icons.cake_outlined),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Please enter your age';
+                  final age = int.tryParse(v);
+                  if (age == null) return 'Please enter a valid number';
+                  if (age < 13) return 'You must be at least 13 years old';
+                  if (age > 100) return 'Please enter a valid age (13–100)';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Address field
+
+              // ── Address ───────────────────────────────────────────────────
               TextFormField(
                 controller: _addressController,
                 maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Enter your address',
-                  labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.location_on_outlined, color: colors.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.accent, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: colors.surface,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                decoration: fieldDecoration(
+                    label: 'Enter your address',
+                    icon: Icons.location_on_outlined),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty)
                     return 'Please enter your address';
-                  }
-                  if (value.length < 5) {
-                    return 'Please enter a valid address';
-                  }
+                  if (v.length < 5) return 'Please enter a valid address';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Terms & Conditions checkbox with clickable links
+
+              // ── Terms checkbox ────────────────────────────────────────────
               Row(
                 children: [
                   Checkbox(
                     value: _agreeToTerms,
-                    onChanged: (value) {
-                      setState(() {
-                        _agreeToTerms = value ?? false;
-                      });
-                    },
+                    onChanged: (val) =>
+                        setState(() => _agreeToTerms = val ?? false),
                     activeColor: colors.accent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                        borderRadius: BorderRadius.circular(4)),
                   ),
                   Expanded(
                     child: RichText(
                       text: TextSpan(
                         style: TextStyle(
-                          fontSize: 14,
-                          color: colors.textSecondary,
-                        ),
+                            fontSize: 14, color: colors.textSecondary),
                         children: [
                           const TextSpan(text: 'I agree to the '),
                           TextSpan(
@@ -402,14 +349,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               decoration: TextDecoration.underline,
                             ),
                             recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const TermsScreen(),
+                              ..onTap = () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => const TermsScreen()),
                                   ),
-                                );
-                              },
                           ),
                           const TextSpan(text: ' and '),
                           TextSpan(
@@ -420,14 +364,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               decoration: TextDecoration.underline,
                             ),
                             recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const TermsScreen(),
+                              ..onTap = () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => const TermsScreen()),
                                   ),
-                                );
-                              },
                           ),
                         ],
                       ),
@@ -436,7 +377,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              // Sign Up button
+
+              // ── Sign Up button ────────────────────────────────────────────
               ElevatedButton(
                 onPressed: _isLoading ? null : _signUp,
                 style: ElevatedButton.styleFrom(
@@ -444,40 +386,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                            strokeWidth: 2, color: Colors.white),
                       )
-                    : const TranslatedText('Sign Up', style: TextStyle(fontSize: 16)),
+                    : const TranslatedText('Sign Up',
+                        style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
-              // Link to login
+
+              // ── Login link ────────────────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TranslatedText(
-                    "Already have an account? ",
-                    style: TextStyle(color: colors.textSecondary),
-                  ),
+                  TranslatedText('Already have an account? ',
+                      style: TextStyle(color: colors.textSecondary)),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context); // go back to login
-                    },
-                    child: TranslatedText(
-                      'Login',
-                      style: TextStyle(
-                        color: colors.accent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    onTap: () => Navigator.pop(context),
+                    child: TranslatedText('Login',
+                        style: TextStyle(
+                            color: colors.accent,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -500,7 +434,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 }
 
-// Success screen – shown if email confirmation is required
+// ── Success screen ────────────────────────────────────────────────────────────
 class SignUpSuccessScreen extends StatelessWidget {
   const SignUpSuccessScreen({super.key});
 
@@ -515,14 +449,11 @@ class SignUpSuccessScreen extends StatelessWidget {
           children: [
             Icon(Icons.check_circle_outline, color: colors.accent, size: 100),
             const SizedBox(height: 24),
-            TranslatedText(
-              'Success!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: colors.accent,
-              ),
-            ),
+            TranslatedText('Success!',
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: colors.accent)),
             const SizedBox(height: 16),
             const TranslatedText(
               'Your account has been successfully registered',
@@ -537,22 +468,20 @@ class SignUpSuccessScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
+              onPressed: () => Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const TranslatedText('Go to Login', style: TextStyle(fontSize: 18)),
+              child: const TranslatedText('Go to Login',
+                  style: TextStyle(fontSize: 18)),
             ),
           ],
         ),

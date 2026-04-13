@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/admin/screens/admin_models.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/services/translated_text.dart';
 
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});
@@ -67,97 +67,46 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     }).toList();
   }
 
-  Future<void> _deleteUser(AdminUser user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const TranslatedText('Delete User'),
-        content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const TranslatedText('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    Future<void> _deleteUser(AdminUser user) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const TranslatedText('Delete User'),
+      content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const TranslatedText('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
 
-    if (confirmed != true) return;
+  if (confirmed != true) return;
 
-    try {
-      if (user.role == 'doctor') {
-        // Get doctor_profile.id (bigint) for this user
-        final profileResponse = await Supabase.instance.client
-            .from('doctor_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+  try {
+    await Supabase.instance.client.rpc('admin_delete_user', params: {
+      'target_user_id': user.id,  
+    });
 
-        if (profileResponse != null) {
-          final profileId = profileResponse['id'];
-          // Delete connections using the bigint profile id
-          await Supabase.instance.client
-              .from('doctor_patient_connections')
-              .delete()
-              .eq('doctor_id', profileId);
-          // Delete doctor profile
-          await Supabase.instance.client
-              .from('doctor_profile')
-              .delete()
-              .eq('user_id', user.id);
-        }
-      } else if (user.role == 'patient') {
-        // Get patient_profile.id (bigint) for this user
-        final profileResponse = await Supabase.instance.client
-            .from('patient_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        if (profileResponse != null) {
-          final profileId = profileResponse['id'];
-          // Delete glucose readings first
-          await Supabase.instance.client
-              .from('glucose_readings')
-              .delete()
-              .eq('patient_id', profileId);
-          // Delete doctor_patient_connections
-          await Supabase.instance.client
-              .from('doctor_patient_connections')
-              .delete()
-              .eq('patient_id', profileId);
-          // Delete patient profile
-          await Supabase.instance.client
-              .from('patient_profile')
-              .delete()
-              .eq('user_id', user.id);
-        }
-      }
-
-      // Finally delete the user row
-      await Supabase.instance.client
-          .from('users')
-          .delete()
-          .eq('id', user.id);
-
-      if (mounted) {
-        setState(() => _allUsers.removeWhere((u) => u.id == user.id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('${user.name} deleted'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('Failed to delete: $e'), backgroundColor: Colors.red),
-        );
-      }
+    if (mounted) {
+      setState(() => _allUsers.removeWhere((u) => u.id == user.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText('${user.name} deleted'), backgroundColor: Colors.red),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText('Failed to delete: $e'), backgroundColor: Colors.red),
+      );
     }
   }
+}
 
   void _editUser(AdminUser user) {
     String selectedRole = user.role;
@@ -168,41 +117,43 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: TranslatedText('Edit: ${user.name}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TranslatedText(
-                'Email: ${user.email}',
-                style: TextStyle(fontSize: 12, color: ctx.colors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              TranslatedText(
-                'Role',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ctx.colors.primaryDark),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: selectedRole,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TranslatedText(
+                  'Email: ${user.email}',
+                  style: TextStyle(fontSize: 12, color: ctx.colors.textSecondary),
                 ),
-                items: ['patient', 'doctor', 'guardian', 'admin']
-                    .map((r) => DropdownMenuItem(value: r, child: TranslatedText(_roleLabel(r))))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setDialogState(() => selectedRole = v);
-                },
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const TranslatedText('Active'),
-                value: isActive,
-                onChanged: (v) => setDialogState(() => isActive = v),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ],
+                const SizedBox(height: 16),
+                TranslatedText(
+                  'Role',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ctx.colors.primaryDark),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  items: ['patient', 'doctor', 'guardian', 'admin']
+                      .map((r) => DropdownMenuItem(value: r, child: TranslatedText(_roleLabel(r))))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => selectedRole = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const TranslatedText('Active'),
+                  value: isActive,
+                  onChanged: (v) => setDialogState(() => isActive = v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -222,34 +173,153 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     );
   }
 
-  Future<void> _saveUserEdits(AdminUser user, String newRole, bool newActive) async {
-    try {
-      await Supabase.instance.client
-          .from('users')
-          .update({'role': newRole, 'is_active': newActive})
-          .eq('id', user.id);
-
-      setState(() {
-        final index = _allUsers.indexWhere((u) => u.id == user.id);
-        if (index != -1) {
-          _allUsers[index].role = newRole;
-          _allUsers[index].isActive = newActive;
+    Future<void> _saveUserEdits(AdminUser user, String newRole, bool newActive) async {
+  try {
+    // If role is changing, handle profile cleanup and creation
+    if (user.role != newRole) {
+      // Delete old profile based on old role
+      if (user.role == 'patient') {
+        final oldProfile = await Supabase.instance.client
+            .from('patient_profile')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (oldProfile != null) {
+          await Supabase.instance.client
+              .from('medication_reminder')
+              .delete()
+              .eq('patient_id', oldProfile['id']);
+          
+          await Supabase.instance.client
+              .from('medications')
+              .delete()
+              .eq('patient_id', oldProfile['id']);
+          
+          await Supabase.instance.client
+              .from('glucose_readings')
+              .delete()
+              .eq('patient_id', oldProfile['id']);
+          
+          await Supabase.instance.client
+              .from('patient_profile')
+              .delete()
+              .eq('user_id', user.id);
         }
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: TranslatedText('User updated'), backgroundColor: Colors.green),
-        );
+        
+        await Supabase.instance.client
+            .from('doctor_patient_connections')
+            .delete()
+            .eq('patient_id', user.id);
+        
+        await Supabase.instance.client
+            .from('guardian_patient_connections')
+            .delete()
+            .eq('patient_id', user.id);
+        
+        await Supabase.instance.client
+            .from('patient_locations')
+            .delete()
+            .eq('patient_id', user.id);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: Colors.red),
-        );
+      else if (user.role == 'doctor') {
+        await Supabase.instance.client
+            .from('doctor_patient_connections')
+            .delete()
+            .eq('doctor_id', user.id);
+        
+        await Supabase.instance.client
+            .from('doctor_profile')
+            .delete()
+            .eq('user_id', user.id);
+      }
+      else if (user.role == 'guardian') {
+        await Supabase.instance.client
+            .from('guardian_patient_connections')
+            .delete()
+            .eq('guardian_id', user.id);
+        
+        await Supabase.instance.client
+            .from('guardian_profile')
+            .delete()
+            .eq('user_id', user.id);
+      }
+      
+      // Create new profile based on new role
+      if (newRole == 'patient') {
+        final existingProfile = await Supabase.instance.client
+            .from('patient_profile')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (existingProfile == null) {
+          await Supabase.instance.client
+              .from('patient_profile')
+              .insert({'user_id': user.id, 'weight_kg': 0, 'height_cm': 0});
+        }
+      }
+      else if (newRole == 'doctor') {
+        final existingProfile = await Supabase.instance.client
+            .from('doctor_profile')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (existingProfile == null) {
+          await Supabase.instance.client
+              .from('doctor_profile')
+              .insert({'user_id': user.id, 'speciality': 'General', 'liscense_number': 'Pending'});
+        }
+      }
+      else if (newRole == 'guardian') {
+        final existingProfile = await Supabase.instance.client
+            .from('guardian_profile')
+            .select()
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (existingProfile == null) {
+          await Supabase.instance.client
+              .from('guardian_profile')
+              .insert({'user_id': user.id});
+        }
       }
     }
+    
+    // Update the user's role and active status
+    await Supabase.instance.client
+        .from('users')
+        .update({'role': newRole, 'is_active': newActive})
+        .eq('id', user.id);
+    
+    // Update auth metadata
+    await Supabase.instance.client.auth.updateUser(
+      UserAttributes(data: {'role': newRole})
+    );
+    
+    // Update local state
+    setState(() {
+      final index = _allUsers.indexWhere((u) => u.id == user.id);
+      if (index != -1) {
+        _allUsers[index].role = newRole;
+        _allUsers[index].isActive = newActive;
+      }
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TranslatedText('User updated'), backgroundColor: Colors.green),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
+}
 
   String _roleLabel(String role) {
     switch (role) {
