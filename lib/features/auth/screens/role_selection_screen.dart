@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/features/doctor/screens/doctor_main_screen.dart';
-import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
-import 'package:glucora_ai_companion/features/user/patient_navigation.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
-
+import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
+import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -24,17 +23,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     await Supabase.instance.client
         .from('users')
         .update({'role': role})
-        .eq('id', userId);
+        .eq('id', userId)
+        .select()
+        .single();
   }
 
   Future<void> _selectRole(String role) async {
     if (_saving) return;
-
     setState(() => _saving = true);
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
-
       if (user != null) {
         await Supabase.instance.client.auth.updateUser(
           UserAttributes(data: {'role': role}),
@@ -49,22 +48,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       );
     } on AuthException catch (e) {
       if (!mounted) return;
-      print(e.toString());
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: TranslatedText(e.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: TranslatedText(e.message),
+          backgroundColor: Colors.red,
+        ),
       );
     } catch (ex) {
       if (!mounted) return;
+      debugPrint('Role save error: $ex'); // you'll see the real error here
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: TranslatedText('Could not save your role. Please try again.'),
+        SnackBar(
+          content: Text(ex.toString()), // real error shown temporarily
           backgroundColor: Colors.red,
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
+      if (mounted) setState(() => _saving = false);
     }
   }
 

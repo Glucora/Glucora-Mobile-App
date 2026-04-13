@@ -10,9 +10,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
-import 'history_entry.dart';
-import 'weekly_history_sheet.dart';
-import 'weekly_report_model.dart';
+import '../../../core/models/history_entry_model.dart';
+import '../widgets/weekly_history_sheet.dart';
+import '../../../core/models/weekly_report_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class WeeklyReportScreen extends StatefulWidget {

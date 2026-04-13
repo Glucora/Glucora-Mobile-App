@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/features/admin/screens/admin_models.dart';
+import 'package:glucora_ai_companion/core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});

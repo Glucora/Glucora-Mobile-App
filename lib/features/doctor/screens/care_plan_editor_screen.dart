@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'care_plan.dart';
+import '../../../core/models/care_plan_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 
 final supabase = Supabase.instance.client;
@@ -120,7 +120,12 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
           .from('doctor_profile')
           .select('id')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
+
+      if (doctorRow == null) {
+        throw Exception('Doctor profile not found');
+      }
+
       final doctorId = doctorRow['id'] as String;
 
       final data = {
@@ -680,8 +685,7 @@ class _CarePlanEditorScreenState extends State<CarePlanEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TranslatedText
-          (
+          TranslatedText(
             label,
             style: TextStyle(fontSize: 10, color: colors.textSecondary),
           ),

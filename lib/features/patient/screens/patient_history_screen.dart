@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'history_entry.dart';
+import '../../../core/models/history_entry_model.dart';
 import 'history_detail_screen.dart';
-import 'csv_export_sheet.dart';
+import '../widgets/csv_export_sheet.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
 // ── Graph filter enums ────────────────────────────────────────────────────
 

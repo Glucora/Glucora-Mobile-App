@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'history_entry.dart';
+import '../../../core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 

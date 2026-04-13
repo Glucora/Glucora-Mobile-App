@@ -1,5 +1,8 @@
+// lib\services\supabase_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:glucora_ai_companion/core/models/glucose_log_model.dart';
+
 
 final _db = Supabase.instance.client;
 
@@ -181,5 +184,123 @@ Future<int> getUnreadCount(int patientProfileId) async {
   } catch (e) {
     if (kDebugMode) print('[SupabaseService] getUnreadCount error: $e');
     return 0;
+  }
+}
+
+// ─── MANUAL GLUCOSE LOG ───────────────────────────────────────────────────────
+
+/// Fetch all glucose readings for the current patient, newest first.
+Future<List<GlucoseLog>> fetchGlucoseLogs() async {
+  final userId = _db.auth.currentUser!.id;
+  final patientId = await getPatientProfileId(userId);
+  if (patientId == null) return [];
+
+  final response = await _db
+      .from('glucose_readings')
+      .select()
+      .eq('patient_id', patientId)
+      .order('recorded_at', ascending: false);
+
+  return (response as List).map((e) => GlucoseLog.fromJson(e)).toList();
+}
+
+/// Insert a manual glucose reading for the current patient.
+Future<void> insertGlucoseLog(double value, String? notes, String mealTime) async {
+  final userId = _db.auth.currentUser!.id;
+  final patientId = await getPatientProfileId(userId);
+  if (patientId == null) return;
+
+  await _db.from('glucose_readings').insert({
+    'value_mg_dl': value,
+    'source': 'manual',
+    'trend': 'stable',
+    'patient_id': patientId,
+    'is_predicted': false,
+    'meal_time': mealTime,
+    if (notes != null && notes.isNotEmpty) 'notes': notes,
+    'recorded_at': DateTime.now().toIso8601String(),
+  });
+} 
+
+// ─── CARE PLAN ────────────────────────────────────────────────────────────────
+
+/// Returns care plan summary for the given patient.
+Future<Map<String, dynamic>?> getCarePlanSummary(int patientProfileId) async {
+  try {
+    final response = await _db
+        .from('care_plans')
+        .select(
+          'target_glucose_min, target_glucose_max, next_appointment, '
+          'doctor_profile!care_plans_doctor_id_fkey(user_id, users(full_name))',
+        )
+        .eq('patient_id', patientProfileId)
+        .order('updated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    return response;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getCarePlanSummary error: $e');
+    return null;
+  }
+}
+
+// ─── IOB ──────────────────────────────────────────────────────────────────────
+
+/// Returns the latest insulin on board value for this patient.
+Future<double?> getLatestIOB(int patientProfileId) async {
+  try {
+    final response = await _db
+        .from('insulin_on_board')
+        .select('total_iob_units')
+        .eq('patient_id', patientProfileId)
+        .order('calculated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return double.tryParse(response['total_iob_units'].toString());
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getLatestIOB error: $e');
+    return null;
+  }
+}
+
+
+// ─── DEVICE BATTERY ───────────────────────────────────────────────────────────
+
+/// Returns battery health string for the active device of this user.
+Future<String?> getDeviceBattery(String userId) async {
+  try {
+    // Try active device first
+    final activeDevice = await _db
+        .from('devices')
+        .select('battery_health')
+        .eq('patient_id', userId)
+        .eq('is_active', true)
+        .order('last_sync_at', ascending: false)
+        .maybeSingle();
+
+    if (activeDevice != null && activeDevice['battery_health'] != null) {
+      return activeDevice['battery_health'].toString();
+    }
+
+    // Fall back to most recent device
+    final anyDevice = await _db
+        .from('devices')
+        .select('battery_health')
+        .eq('patient_id', userId)
+        .order('last_sync_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (anyDevice != null && anyDevice['battery_health'] != null) {
+      return anyDevice['battery_health'].toString();
+    }
+
+    return null;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getDeviceBattery error: $e');
+    return null;
   }
 }

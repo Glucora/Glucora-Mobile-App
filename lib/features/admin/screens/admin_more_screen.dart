@@ -5,7 +5,7 @@ import 'admin_alert_rules_screen.dart';
 import 'admin_role_management_screen.dart';
 import 'admin_assignments_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
 class AdminMoreScreen extends StatelessWidget {
   const AdminMoreScreen({super.key});

@@ -3,15 +3,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
-import 'package:glucora_ai_companion/features/user/screens/iob_card.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/iob_detail_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
-
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 Timer? _timeTicker;
+
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,7 +73,7 @@ void dispose() {
           .select('id')
           .eq('user_id', userId)
           .maybeSingle();
-      
+
       if (response != null && response['id'] != null) {
         return response['id'] as int;
       }
@@ -85,70 +88,48 @@ void dispose() {
   // FETCH: CARE PLAN
   // ════════════════════════════════════════════════════
   Future<void> _fetchCarePlanSummary() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-      final patientProfileId = await getPatientProfileId(userId);
-      if (patientProfileId == null) return;
+    final patientProfileId = await getPatientProfileId(userId);
+    if (patientProfileId == null) return;
 
-      final response = await supabase
-          .from('care_plans')
-          .select(
-            'target_glucose_min, target_glucose_max, next_appointment, '
-            'doctor_profile!care_plans_doctor_id_fkey(user_id, users(full_name))',
-          )
-          .eq('patient_id', patientProfileId)
-          .order('updated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    final response = await getCarePlanSummary(patientProfileId);
+    if (response == null) return;
 
-      if (response == null) return;
+    final doctorProfile = response['doctor_profile'];
+    final doctorUser = doctorProfile?['users'];
+    final min = response['target_glucose_min'];
+    final max = response['target_glucose_max'];
 
-      final doctorProfile = response['doctor_profile'];
-      final doctorUser = doctorProfile?['users'];
-      final doctorName = doctorUser?['full_name'] ?? 'Your Doctor';
-      final min = response['target_glucose_min'];
-      final max = response['target_glucose_max'];
-      final appt = response['next_appointment'];
-
-      setState(() {
-        _doctorName = doctorName;
-        _targetRange = (min != null && max != null) ? '$min–$max mg/dL' : '– mg/dL';
-        _nextAppointment = appt ?? '–';
-      });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch care plan summary: $e');
-    }
+    setState(() {
+      _doctorName = doctorUser?['full_name'] ?? 'Your Doctor';
+      _targetRange = (min != null && max != null)
+          ? '$min–$max mg/dL'
+          : '– mg/dL';
+      _nextAppointment = response['next_appointment'] ?? '–';
+    });
   }
-
   // ════════════════════════════════════════════════════
+
   // FETCH: LATEST GLUCOSE
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestGlucose() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
-        setState(() => _glucoseLoading = false);
-        return;
-      }
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _glucoseLoading = false);
+      return;
+    }
 
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) {
-        setState(() => _glucoseLoading = false);
-        return;
-      }
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) {
+      setState(() => _glucoseLoading = false);
+      return;
+    }
 
-      final response = await supabase
-          .from('glucose_readings')
-          .select('value_mg_dl, trend, recorded_at')
-          .eq('patient_id', patientId)
-          .order('recorded_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    final response = await getLatestGlucoseReading(patientId);
 
+    if (mounted) {
       setState(() {
         if (response != null) {
           _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
@@ -157,9 +138,6 @@ void dispose() {
         }
         _glucoseLoading = false;
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch glucose: $e');
-      setState(() => _glucoseLoading = false);
     }
   }
 
@@ -167,31 +145,18 @@ void dispose() {
   // FETCH: LATEST IOB
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestIOB() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) return;
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) return;
 
-      final response = await supabase
-          .from('insulin_on_board')
-          .select('total_iob_units')
-          .eq('patient_id', patientId)
-          .order('calculated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
+    final iob = await getLatestIOB(patientId);
+    if (mounted) {
       setState(() {
-        _iobValue = response != null
-            ? double.tryParse(response['total_iob_units'].toString())
-            : null;
+        _iobValue = iob;
         _iobLoading = false;
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch IOB: $e');
-      setState(() => _iobLoading = false);
     }
   }
 
@@ -199,109 +164,30 @@ void dispose() {
   // FETCH: DEVICE BATTERY - FIXED VERSION
   // ════════════════════════════════════════════════════
   Future<void> _fetchDeviceBattery() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      
-      if (userId == null) {
-        setState(() => _batteryLoading = false);
-        return;
-      }
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _batteryLoading = false);
+      return;
+    }
 
-      // Try multiple approaches to get battery health
-      String? batteryValue;
-      
-      // Approach 1: Get active device first
-      final activeDevice = await supabase
-          .from('devices')
-          .select('battery_health, last_sync_at')
-          .eq('patient_id', userId)
-          .eq('is_active', true)
-          .order('last_sync_at', ascending: false)
-          .maybeSingle();
-      
-      if (activeDevice != null && activeDevice['battery_health'] != null) {
-        batteryValue = activeDevice['battery_health'].toString();
-      } else {
-        // Approach 2: Get any device (most recent)
-        final device = await supabase
-            .from('devices')
-            .select('battery_health, last_sync_at')
-            .eq('patient_id', userId)
-            .order('last_sync_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-        
-        if (device != null && device['battery_health'] != null) {
-          batteryValue = device['battery_health'].toString();
-        }
-      }
-      
-      // If still no battery, try to see if there are any devices at all
-      if (batteryValue == null) {
-        final devices = await supabase
-            .from('devices')
-            .select('id')
-            .eq('patient_id', userId);
-        
-        if (kDebugMode) {
-          print('Device count for user $userId: ${devices.length}');
-        }
-      }
-      
+    final battery = await getDeviceBattery(userId);
+
+    if (mounted) {
       setState(() {
-        _batteryHealth = batteryValue;
+        _batteryHealth = battery;
         _batteryLoading = false;
       });
-      
-      if (kDebugMode) {
-        print('Battery fetched successfully: $_batteryHealth');
-      }
-      
-      // If no battery found after first attempt, try again in 2 seconds
-      // (in case device data is still syncing)
-      if (batteryValue == null && mounted) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            _retryFetchBattery();
-          }
-        });
-      }
-      
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch battery: $e');
-      setState(() => _batteryLoading = false);
     }
-  }
 
-  // Retry function for battery fetch
-  Future<void> _retryFetchBattery() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      
-      if (userId == null) return;
-      
-      final response = await supabase
-          .from('devices')
-          .select('battery_health')
-          .eq('patient_id', userId)
-          .not('battery_health', 'is', null)
-          .order('last_sync_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-      
-      if (response != null && response['battery_health'] != null && mounted) {
-        setState(() {
-          _batteryHealth = response['battery_health'].toString();
-        });
-        
-        if (kDebugMode) {
-          print('Battery fetched on retry: $_batteryHealth');
+    // Retry once after 2 seconds if nothing found
+    if (battery == null && mounted) {
+      Future.delayed(const Duration(seconds: 2), () async {
+        if (!mounted) return;
+        final retry = await getDeviceBattery(userId);
+        if (retry != null && mounted) {
+          setState(() => _batteryHealth = retry);
         }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Retry battery fetch failed: $e');
+      });
     }
   }
 
@@ -394,22 +280,6 @@ return SafeArea(
                     color: colors.textPrimary,
                   ),
                 ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colors.textSecondary.withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.notifications_outlined,
-                    size: 20,
-                    color: colors.textSecondary,
-                  ),
-                ),
               ],
             ),
 
@@ -433,20 +303,32 @@ return SafeArea(
                         child: Column(
                           children: [
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AIPredictionScreen(),
+                                ),
+                              ),
                               child: _predictionCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RecommendationsScreen(),
+                                ),
+                              ),
                               child: _recommendationsCard(context),
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PatientCarePlanScreen(),
+                                ),
+                              ),
                               child: _carePlanCard(context),
                             ),
                           ],
@@ -461,20 +343,32 @@ return SafeArea(
                       _statusIndicatorsRow(context),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const AIPredictionScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AIPredictionScreen(),
+                          ),
+                        ),
                         child: _predictionCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RecommendationsScreen(),
+                          ),
+                        ),
                         child: _recommendationsCard(context),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const PatientCarePlanScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PatientCarePlanScreen(),
+                          ),
+                        ),
                         child: _carePlanCard(context),
                       ),
                     ],
@@ -539,7 +433,9 @@ return SafeArea(
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : Icon(trendIcon, color: Colors.white, size: 22),
               ),
@@ -611,18 +507,20 @@ return SafeArea(
   }
 
   Widget _dot(Color c, String label, GlucoraColors colors) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          TranslatedText(label,
-              style: TextStyle(fontSize: 12, color: colors.textSecondary)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      TranslatedText(
+        label,
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
+    ],
+  );
 
   // ════════════════════════════════════════════════════
   // IOB + BATTERY ROW — both live
@@ -630,12 +528,13 @@ return SafeArea(
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
 
-    final String iobDisplay =
-        _iobLoading ? '–' : (_iobValue?.toStringAsFixed(1) ?? '–');
+    final String iobDisplay = _iobLoading
+        ? '–'
+        : (_iobValue?.toStringAsFixed(1) ?? '–');
 
     // Battery - parse the percentage
     final double? batteryPercent = _parseBatteryPercent(_batteryHealth);
-    
+
     // Display: use numeric value if parseable, otherwise show the raw string
     final String batteryDisplay = batteryPercent != null
         ? '${(batteryPercent * 100).toInt()}'
@@ -644,10 +543,10 @@ return SafeArea(
     final Color batteryColor = batteryPercent == null
         ? const Color(0xFF4CAF50) // default to green when unknown
         : batteryPercent > 0.5
-            ? const Color(0xFF4CAF50)
-            : batteryPercent > 0.2
-                ? const Color(0xFFFFB300)
-                : const Color(0xFFEF1616);
+        ? const Color(0xFF4CAF50)
+        : batteryPercent > 0.2
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFEF1616);
 
     return Row(
       children: [
@@ -659,7 +558,8 @@ return SafeArea(
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -681,10 +581,15 @@ return SafeArea(
                       ? Padding(
                           padding: const EdgeInsets.all(10),
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: colors.primary),
+                            strokeWidth: 2,
+                            color: colors.primary,
+                          ),
                         )
-                      : Icon(Icons.water_drop_rounded,
-                          size: 19, color: colors.primary),
+                      : Icon(
+                          Icons.water_drop_rounded,
+                          size: 19,
+                          color: colors.primary,
+                        ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -757,7 +662,8 @@ return SafeArea(
               color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -779,7 +685,9 @@ return SafeArea(
                       ? Padding(
                           padding: const EdgeInsets.all(10),
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: batteryColor),
+                            strokeWidth: 2,
+                            color: batteryColor,
+                          ),
                         )
                       : Icon(
                           batteryPercent != null && batteryPercent <= 0.2
@@ -834,8 +742,9 @@ return SafeArea(
                           child: LinearProgressIndicator(
                             value: batteryPercent,
                             minHeight: 5,
-                            backgroundColor:
-                                colors.textSecondary.withValues(alpha: 0.15),
+                            backgroundColor: colors.textSecondary.withValues(
+                              alpha: 0.15,
+                            ),
                             valueColor: AlwaysStoppedAnimation(batteryColor),
                           ),
                         )
@@ -893,16 +802,22 @@ return SafeArea(
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TranslatedText("AI Prediction",
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary)),
-              TranslatedText("View details",
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: colors.primary,
-                      fontWeight: FontWeight.w500)),
+              TranslatedText(
+                "AI Prediction",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              TranslatedText(
+                "View details",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -910,17 +825,21 @@ return SafeArea(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              TranslatedText("135",
-                  style: TextStyle(
-                      fontSize: 46,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary)),
+              TranslatedText(
+                "135",
+                style: TextStyle(
+                  fontSize: 46,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: TranslatedText(" mg/dL",
-                    style: TextStyle(
-                        fontSize: 18, color: colors.textSecondary)),
+                child: TranslatedText(
+                  " mg/dL",
+                  style: TextStyle(fontSize: 18, color: colors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -930,26 +849,32 @@ return SafeArea(
             children: [
               Icon(Icons.arrow_upward, color: colors.error, size: 14),
               const SizedBox(width: 2),
-              TranslatedText("22.73%",
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: colors.error,
-                      fontWeight: FontWeight.w600)),
+              TranslatedText(
+                "22.73%",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 6),
-              TranslatedText("Expected glucose in 30 minutes",
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textSecondary)),
+              TranslatedText(
+                "Expected glucose in 30 minutes",
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          TranslatedText("Glucose from 10:21pm 15 Jan, 2026",
-              style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+          TranslatedText(
+            "Glucose from 10:21pm 15 Jan, 2026",
+            style: TextStyle(fontSize: 11, color: colors.textSecondary),
+          ),
           const SizedBox(height: 14),
           SizedBox(
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: _ChartPainter(primaryColor: colors.primary),
+              painter: ChartPainter(primaryColor: colors.primary),
             ),
           ),
           const SizedBox(height: 10),
@@ -957,15 +882,17 @@ return SafeArea(
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              TranslatedText("Next 60 minutes",
-                  style:
-                      TextStyle(fontSize: 11, color: colors.textSecondary)),
+              TranslatedText(
+                "Next 60 minutes",
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              TranslatedText("Last Hour",
-                  style:
-                      TextStyle(fontSize: 11, color: colors.textSecondary)),
+              TranslatedText(
+                "Last Hour",
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
             ],
           ),
         ],
@@ -990,7 +917,8 @@ return SafeArea(
               color: colors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.2)),
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
             ),
             child: const Center(child: CircularProgressIndicator()),
           );
@@ -1004,7 +932,8 @@ return SafeArea(
             color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: colors.textSecondary.withValues(alpha: 0.2)),
+              color: colors.textSecondary.withValues(alpha: 0.2),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -1019,44 +948,59 @@ return SafeArea(
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TranslatedText("Recommendations",
-                      style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary)),
+                  TranslatedText(
+                    "Recommendations",
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const RecommendationsScreen())),
-                    child: TranslatedText("View details",
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: colors.primary,
-                            fontWeight: FontWeight.w500)),
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecommendationsScreen(),
+                      ),
+                    ),
+                    child: TranslatedText(
+                      "View details",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...recs.map((rec) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _rec(colors, rec),
-                  )),
+              ...recs.map(
+                (rec) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _rec(colors, rec),
+                ),
+              ),
               const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 1),
-                    child: Icon(Icons.warning_amber_rounded,
-                        size: 12, color: colors.textSecondary),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 12,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: TranslatedText(
                       "Recommendations are supportive and not a medical diagnosis.",
                       style: TextStyle(
-                          fontSize: 10, color: colors.textSecondary),
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -1100,24 +1044,26 @@ return SafeArea(
   }
 
   Widget _rec(GlucoraColors colors, String recText) => Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration:
-                BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: TranslatedText(
-              recText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 14, color: colors.textPrimary),
-            ),
-          ),
-        ],
-      );
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: colors.primary,
+          shape: BoxShape.circle,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Flexible(
+        child: TranslatedText(
+          recText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+        ),
+      ),
+    ],
+  );
 
   // ════════════════════════════════════════════════════
   // CARE PLAN CARD
@@ -1159,33 +1105,53 @@ return SafeArea(
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.assignment_outlined,
-                            size: 18, color: colors.primary),
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 18,
+                          color: colors.primary,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: TranslatedText('My Care Plan',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.textPrimary)),
+                          child: TranslatedText(
+                            'My Care Plan',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
                         ),
-                        Icon(Icons.chevron_right_rounded,
-                            size: 20, color: colors.textSecondary),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: colors.textSecondary,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    TranslatedText('$_doctorName  ·  Target: $_targetRange',
-                        style: TextStyle(
-                            fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      '$_doctorName  ·  Target: $_targetRange',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 12, color: colors.textSecondary),
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: colors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
-                        TranslatedText('Next appointment: $_nextAppointment',
-                            style: TextStyle(
-                                fontSize: 11, color: colors.textSecondary)),
+                        TranslatedText(
+                          'Next appointment: $_nextAppointment',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -1197,100 +1163,4 @@ return SafeArea(
       ),
     );
   }
-}
-
-// ════════════════════════════════════════════════════
-// CHART PAINTER
-// ════════════════════════════════════════════════════
-class _ChartPainter extends CustomPainter {
-  final Color primaryColor;
-  const _ChartPainter({required this.primaryColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const lh = 18.0;
-    final h = size.height - lh;
-    final w = size.width;
-    final s = w / 5;
-
-    final grid = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.15)
-      ..strokeWidth = 1;
-    for (int i = 0; i <= 3; i++) {
-      canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
-    }
-
-    const xl = ['10', '20', '30', '40', '50', '60'];
-    for (int i = 0; i < xl.length; i++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: xl[i],
-          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
-    }
-
-    final gry = [
-      Offset(0, h * 0.58),
-      Offset(s * 0.65, h * 0.42),
-      Offset(s * 1.25, h * 0.53),
-      Offset(s * 2.0, h * 0.37),
-    ];
-    final grn = [
-      Offset(s * 2.0, h * 0.37),
-      Offset(s * 2.7, h * 0.47),
-      Offset(s * 3.5, h * 0.30),
-      Offset(s * 4.2, h * 0.18),
-      Offset(s * 5.0, h * 0.04),
-    ];
-
-    final fill = _sp(grn)
-      ..lineTo(grn.last.dx, h)
-      ..lineTo(grn.first.dx, h)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..color = primaryColor.withValues(alpha: 0.10)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      _sp(gry),
-      Paint()
-        ..color = const Color(0xFFCCCCCC)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.drawPath(
-      _sp(grn),
-      Paint()
-        ..color = primaryColor
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    for (final pt in [gry.last, grn.last]) {
-      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
-      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
-    }
-  }
-
-  Path _sp(List<Offset> pts) {
-    final p = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (int i = 1; i < pts.length; i++) {
-      final a = pts[i - 1], b = pts[i];
-      p.cubicTo(
-          (a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
-    }
-    return p;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
 }

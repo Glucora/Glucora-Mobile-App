@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'admin_models.dart';
+import '../../../core/models/admin_model.dart';
 import 'admin_device_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
 class AdminDeviceListScreen extends StatefulWidget {
   const AdminDeviceListScreen({super.key});

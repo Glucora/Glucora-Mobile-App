@@ -4,7 +4,8 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; 
+import 'package:glucora_ai_companion/core/models/food_entry_model.dart';
 
 class CalorieLogScreen extends StatefulWidget {
   const CalorieLogScreen({super.key});
@@ -24,7 +25,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
   String _selectedMeal = 'Snack';
   static const _mealOptions = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
-  List<_FoodEntry> _entries = [];
+  List<FoodEntry> _entries = [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -73,7 +74,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
 
       setState(() {
         _entries = (response as List)
-            .map((e) => _FoodEntry.fromJson(e))
+            .map((e) => FoodEntry.fromJson(e))
             .toList();
         _loading = false;
       });
@@ -576,7 +577,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
         ),
       );
 
-  Widget _tile(BuildContext context, _FoodEntry e, int i) {
+  Widget _tile(BuildContext context, FoodEntry e, int i) {
     final colors = context.colors;
 
     // Meal icon
@@ -678,51 +679,5 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
     final m = l.minute.toString().padLeft(2, '0');
     final period = l.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';
-  }
-}
-
-// ════════════════════════════════════════════════════
-// MODEL
-// ════════════════════════════════════════════════════
-class _FoodEntry {
-  final int? id;
-  final String name;
-  final int calories;
-  final double? carbsG;
-  final double? proteinG;
-  final double? fatG;
-  final String? mealType;
-  final DateTime? loggedAt;
-
-  const _FoodEntry({
-    this.id,
-    required this.name,
-    required this.calories,
-    this.carbsG,
-    this.proteinG,
-    this.fatG,
-    this.mealType,
-    this.loggedAt,
-  });
-
-  factory _FoodEntry.fromJson(Map<String, dynamic> json) {
-    return _FoodEntry(
-      id: json['id'] as int?,
-      name: json['name'] ?? '',
-      calories: json['calories'] as int,
-      carbsG: json['carbs_g'] != null
-          ? double.tryParse(json['carbs_g'].toString())
-          : null,
-      proteinG: json['protein_g'] != null
-          ? double.tryParse(json['protein_g'].toString())
-          : null,
-      fatG: json['fat_g'] != null
-          ? double.tryParse(json['fat_g'].toString())
-          : null,
-      mealType: json['meal_type'],
-      loggedAt: json['logged_at'] != null
-          ? DateTime.tryParse(json['logged_at'])
-          : null,
-    );
   }
 }

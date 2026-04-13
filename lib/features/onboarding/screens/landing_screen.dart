@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:glucora_ai_companion/features/auth/signup_screen.dart';
+import 'package:glucora_ai_companion/features/auth/screens/signup_screen.dart';
 import 'package:flutter/gestures.dart';
-import 'package:glucora_ai_companion/features/auth/terms_screen.dart';
+import 'package:glucora_ai_companion/features/auth/screens/terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'guardian_patient_model.dart';
+import '../../../core/models/guardian_patient_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/shared/location_view.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/location_widget.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class GuardianPatientDetailScreen extends StatefulWidget {
   final GuardianPatient patient;

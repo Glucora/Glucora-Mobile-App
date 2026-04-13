@@ -68,13 +68,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
 
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.4),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.3, 0.65, curve: Curves.easeOutCubic),
-    ));
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _masterController,
+            curve: const Interval(0.3, 0.65, curve: Curves.easeOutCubic),
+          ),
+        );
     _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
@@ -82,13 +82,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
 
-    _subtitleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.4),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.45, 0.75, curve: Curves.easeOutCubic),
-    ));
+    _subtitleSlide =
+        Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _masterController,
+            curve: const Interval(0.45, 0.75, curve: Curves.easeOutCubic),
+          ),
+        );
     _subtitleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
@@ -103,13 +103,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
 
-    _buttonSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _masterController,
-      curve: const Interval(0.7, 1.0, curve: Curves.easeOutCubic),
-    ));
+    _buttonSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _masterController,
+            curve: const Interval(0.7, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
     _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
@@ -125,9 +125,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _orbit = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      _orbitController,
-    );
+    _orbit = Tween<double>(
+      begin: 0,
+      end: 2 * math.pi,
+    ).animate(_orbitController);
 
     _masterController.forward();
   }
@@ -239,8 +240,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 // Logo with glow ring + float animation
                 AnimatedBuilder(
-                  animation: Listenable.merge(
-                      [_masterController, _floatController, _pulseController]),
+                  animation: Listenable.merge([
+                    _masterController,
+                    _floatController,
+                    _pulseController,
+                  ]),
                   builder: (_, __) => Transform.translate(
                     offset: Offset(0, _float.value),
                     child: FadeTransition(
@@ -259,8 +263,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color:
-                                        colors.accent.withValues(alpha: 0.15),
+                                    color: colors.accent.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     width: 1.5,
                                   ),
                                 ),
@@ -301,10 +306,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     opacity: _titleOpacity,
                     child: ShaderMask(
                       shaderCallback: (bounds) => LinearGradient(
-                        colors: [
-                          colors.accent,
-                          colors.primary,
-                        ],
+                        colors: [colors.accent, colors.primary],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ).createShader(bounds),
@@ -348,11 +350,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 const SizedBox(height: 36),
 
                 // Feature pills
+                // Replace the existing feature pills section with this:
+
+                // Feature pills - now in a column
                 FadeTransition(
                   opacity: _pillsOpacity,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Row(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _FeaturePill(
@@ -360,14 +365,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           label: 'Track',
                           colors: colors,
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(height: 10),
                         _FeaturePill(
                           icon: Icons.psychology_outlined,
                           label: 'AI Insights',
                           colors: colors,
                           isAccent: true,
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(height: 10),
                         _FeaturePill(
                           icon: Icons.trending_up_rounded,
                           label: 'Improve',
@@ -377,7 +382,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ),
                   ),
                 ),
-
                 const Spacer(flex: 2),
 
                 // Get Started button
@@ -395,8 +399,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             'Free to start · No credit card needed',
                             style: TextStyle(
                               fontSize: 12,
-                              color: colors.textSecondary
-                                  .withValues(alpha: 0.6),
+                              color: colors.textSecondary.withValues(
+                                alpha: 0.6,
+                              ),
                               letterSpacing: 0.2,
                             ),
                           ),
@@ -492,9 +497,10 @@ class _GetStartedButtonState extends State<_GetStartedButton>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _pressScale = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
-    );
+    _pressScale = Tween<double>(
+      begin: 1.0,
+      end: 0.96,
+    ).animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
   }
 
   @override
@@ -519,13 +525,16 @@ class _GetStartedButtonState extends State<_GetStartedButton>
                 return FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.06),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    )),
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.06),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
                     child: child,
                   ),
                 );
@@ -544,10 +553,7 @@ class _GetStartedButtonState extends State<_GetStartedButton>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              colors: [
-                widget.colors.accent,
-                widget.colors.primary,
-              ],
+              colors: [widget.colors.accent, widget.colors.primary],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
