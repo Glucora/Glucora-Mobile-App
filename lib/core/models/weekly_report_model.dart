@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../features/patient/screens/history_entry.dart';
+import 'history_entry_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Glucose zone thresholds & colors

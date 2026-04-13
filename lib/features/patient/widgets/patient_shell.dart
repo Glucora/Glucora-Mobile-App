@@ -18,14 +18,14 @@ import 'package:glucora_ai_companion/features/patient/screens/manual_log_screen.
 import 'package:glucora_ai_companion/features/patient/screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/medication_screen.dart';
-import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
+import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
 import 'package:flutter/services.dart';
-import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
+import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
 
 // ✅ NEW IMPORTS
 import 'package:glucora_ai_companion/services/localization_service.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
-import 'package:glucora_ai_companion/shared/language_selection_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/screens/language_selection_screen.dart';
 
 // ─────────────────────────────────────────────────────────────
 // PatientNavigation — unchanged structure, added Directionality

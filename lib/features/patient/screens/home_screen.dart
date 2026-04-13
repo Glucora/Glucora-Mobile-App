@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
-import 'package:glucora_ai_companion/features/patient/screens/iob_card.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/iob_detail_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 
@@ -20,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  
   // Care plan
   String _doctorName = '';
   String _targetRange = '– mg/dL';
@@ -95,34 +96,27 @@ class _HomeScreenState extends State<HomeScreen> {
           : '– mg/dL';
       _nextAppointment = response['next_appointment'] ?? '–';
     });
-  } 
+  }
   // ════════════════════════════════════════════════════
 
   // FETCH: LATEST GLUCOSE
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestGlucose() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
-        setState(() => _glucoseLoading = false);
-        return;
-      }
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _glucoseLoading = false);
+      return;
+    }
 
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) {
-        setState(() => _glucoseLoading = false);
-        return;
-      }
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) {
+      setState(() => _glucoseLoading = false);
+      return;
+    }
 
-      final response = await supabase
-          .from('glucose_readings')
-          .select('value_mg_dl, trend, recorded_at')
-          .eq('patient_id', patientId)
-          .order('recorded_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    final response = await getLatestGlucoseReading(patientId);
 
+    if (mounted) {
       setState(() {
         if (response != null) {
           _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
@@ -131,9 +125,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _glucoseLoading = false;
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch glucose: $e');
-      setState(() => _glucoseLoading = false);
     }
   }
 
@@ -141,31 +132,18 @@ class _HomeScreenState extends State<HomeScreen> {
   // FETCH: LATEST IOB
   // ════════════════════════════════════════════════════
   Future<void> _fetchLatestIOB() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) return;
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) return;
 
-      final response = await supabase
-          .from('insulin_on_board')
-          .select('total_iob_units')
-          .eq('patient_id', patientId)
-          .order('calculated_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
+    final iob = await getLatestIOB(patientId);
+    if (mounted) {
       setState(() {
-        _iobValue = response != null
-            ? double.tryParse(response['total_iob_units'].toString())
-            : null;
+        _iobValue = iob;
         _iobLoading = false;
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch IOB: $e');
-      setState(() => _iobLoading = false);
     }
   }
 
@@ -173,108 +151,30 @@ class _HomeScreenState extends State<HomeScreen> {
   // FETCH: DEVICE BATTERY - FIXED VERSION
   // ════════════════════════════════════════════════════
   Future<void> _fetchDeviceBattery() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _batteryLoading = false);
+      return;
+    }
 
-      if (userId == null) {
-        setState(() => _batteryLoading = false);
-        return;
-      }
+    final battery = await getDeviceBattery(userId);
 
-      // Try multiple approaches to get battery health
-      String? batteryValue;
-
-      // Approach 1: Get active device first
-      final activeDevice = await supabase
-          .from('devices')
-          .select('battery_health, last_sync_at')
-          .eq('patient_id', userId)
-          .eq('is_active', true)
-          .order('last_sync_at', ascending: false)
-          .maybeSingle();
-
-      if (activeDevice != null && activeDevice['battery_health'] != null) {
-        batteryValue = activeDevice['battery_health'].toString();
-      } else {
-        // Approach 2: Get any device (most recent)
-        final device = await supabase
-            .from('devices')
-            .select('battery_health, last_sync_at')
-            .eq('patient_id', userId)
-            .order('last_sync_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-
-        if (device != null && device['battery_health'] != null) {
-          batteryValue = device['battery_health'].toString();
-        }
-      }
-
-      // If still no battery, try to see if there are any devices at all
-      if (batteryValue == null) {
-        final devices = await supabase
-            .from('devices')
-            .select('id')
-            .eq('patient_id', userId);
-
-        if (kDebugMode) {
-          print('Device count for user $userId: ${devices.length}');
-        }
-      }
-
+    if (mounted) {
       setState(() {
-        _batteryHealth = batteryValue;
+        _batteryHealth = battery;
         _batteryLoading = false;
       });
-
-      if (kDebugMode) {
-        print('Battery fetched successfully: $_batteryHealth');
-      }
-
-      // If no battery found after first attempt, try again in 2 seconds
-      // (in case device data is still syncing)
-      if (batteryValue == null && mounted) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            _retryFetchBattery();
-          }
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch battery: $e');
-      setState(() => _batteryLoading = false);
     }
-  }
 
-  // Retry function for battery fetch
-  Future<void> _retryFetchBattery() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-
-      if (userId == null) return;
-
-      final response = await supabase
-          .from('devices')
-          .select('battery_health')
-          .eq('patient_id', userId)
-          .not('battery_health', 'is', null)
-          .order('last_sync_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      if (response != null && response['battery_health'] != null && mounted) {
-        setState(() {
-          _batteryHealth = response['battery_health'].toString();
-        });
-
-        if (kDebugMode) {
-          print('Battery fetched on retry: $_batteryHealth');
+    // Retry once after 2 seconds if nothing found
+    if (battery == null && mounted) {
+      Future.delayed(const Duration(seconds: 2), () async {
+        if (!mounted) return;
+        final retry = await getDeviceBattery(userId);
+        if (retry != null && mounted) {
+          setState(() => _batteryHealth = retry);
         }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Retry battery fetch failed: $e');
+      });
     }
   }
 

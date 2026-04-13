@@ -1,7 +1,7 @@
 // lib\features\patient\screens\manual_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/core/models/glucose_log_model.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 

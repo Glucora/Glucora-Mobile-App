@@ -5,7 +5,7 @@ import 'role_selection_screen.dart';
 import 'terms_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'login_screen.dart'; 
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

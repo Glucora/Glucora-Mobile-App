@@ -3,7 +3,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../services/ai_service.dart';
 import '../../../../services/supabase_service.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
 
 // ─── DISPLAY MODEL ────────────────────────────────────────────────────────────

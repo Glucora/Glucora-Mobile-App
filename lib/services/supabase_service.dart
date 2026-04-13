@@ -244,3 +244,63 @@ Future<Map<String, dynamic>?> getCarePlanSummary(int patientProfileId) async {
     return null;
   }
 }
+
+// ─── IOB ──────────────────────────────────────────────────────────────────────
+
+/// Returns the latest insulin on board value for this patient.
+Future<double?> getLatestIOB(int patientProfileId) async {
+  try {
+    final response = await _db
+        .from('insulin_on_board')
+        .select('total_iob_units')
+        .eq('patient_id', patientProfileId)
+        .order('calculated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return double.tryParse(response['total_iob_units'].toString());
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getLatestIOB error: $e');
+    return null;
+  }
+}
+
+
+// ─── DEVICE BATTERY ───────────────────────────────────────────────────────────
+
+/// Returns battery health string for the active device of this user.
+Future<String?> getDeviceBattery(String userId) async {
+  try {
+    // Try active device first
+    final activeDevice = await _db
+        .from('devices')
+        .select('battery_health')
+        .eq('patient_id', userId)
+        .eq('is_active', true)
+        .order('last_sync_at', ascending: false)
+        .maybeSingle();
+
+    if (activeDevice != null && activeDevice['battery_health'] != null) {
+      return activeDevice['battery_health'].toString();
+    }
+
+    // Fall back to most recent device
+    final anyDevice = await _db
+        .from('devices')
+        .select('battery_health')
+        .eq('patient_id', userId)
+        .order('last_sync_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (anyDevice != null && anyDevice['battery_health'] != null) {
+      return anyDevice['battery_health'].toString();
+    }
+
+    return null;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] getDeviceBattery error: $e');
+    return null;
+  }
+}

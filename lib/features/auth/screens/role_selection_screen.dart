@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/features/doctor/screens/doctor_main_screen.dart';
-import 'package:glucora_ai_companion/features/guardian/screens/guardian_main_screen.dart';
-import 'package:glucora_ai_companion/features/patient/screens/patient_navigation.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
+import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
+import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 
 class RoleSelectionScreen extends StatefulWidget {

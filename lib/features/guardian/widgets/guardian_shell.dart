@@ -1,15 +1,15 @@
 // lib\features\guardian\screens\guardian_main_screen.dart
 import 'package:flutter/material.dart';
-import 'guardian_home_screen.dart';
-import 'package:glucora_ai_companion/shared/connection_requests_screen.dart';
+import '../screens/guardian_home_screen.dart';
+import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/features/patient/screens/patient_navigation.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/translated_text.dart';
-import 'package:glucora_ai_companion/shared/language_selection_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/screens/language_selection_screen.dart';
 
 class GuardianMainScreen extends StatefulWidget {
   const GuardianMainScreen({super.key});
