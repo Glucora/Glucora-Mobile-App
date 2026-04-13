@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/services/notification_service.dart';
+import 'package:glucora_ai_companion/services/notifications_service.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
@@ -21,21 +21,28 @@ class _MedicationScreenState extends State<MedicationScreen> {
   final _notesCtrl = TextEditingController();
   final _freqCtrl = TextEditingController();
 
+  // FIX: track saving state separately so the sheet can read it via ValueNotifier
+  // (avoids calling setState on a closed sheet)
+  final _savingNotifier = ValueNotifier<bool>(false);
+
   List<Medication> _medications = [];
   bool _loading = true;
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _loadMedications();
+  void dispose() {
+    _nameCtrl.dispose();
+    _notesCtrl.dispose();
+    _freqCtrl.dispose();
+    _savingNotifier.dispose();
+    super.dispose();
   }
 
   // ════════════════════════════════════════════════════
   // FETCH
   // ════════════════════════════════════════════════════
   Future<void> _loadMedications() async {
-    if (!mounted) return; // ✅ add at very top
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -58,7 +65,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
       if (kDebugMode) print('Meds response: $medsResponse');
 
-      if (!mounted) return; // ✅ check again after await
+      if (!mounted) return;
       setState(() {
         _medications = (medsResponse as List)
             .map((e) => Medication.fromJson(e))
@@ -68,9 +75,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
       if (kDebugMode) print('Loaded ${_medications.length} medications');
     } catch (e, stack) {
-      if (kDebugMode) print('LOAD ERROR: $e');
-      if (kDebugMode) print('STACK: $stack');
-      if (!mounted) return; // ✅ check before setState in catch
+      if (kDebugMode) print('LOAD ERROR: $e\nSTACK: $stack');
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = 'Failed to load medications: $e';
@@ -81,19 +87,24 @@ class _MedicationScreenState extends State<MedicationScreen> {
   // ════════════════════════════════════════════════════
   // ADD MEDICATION
   // ════════════════════════════════════════════════════
-  Future<void> _saveMedication(List<TimeOfDay> reminders) async {
+  Future<void> _saveMedication(
+    List<TimeOfDay> reminders,
+    BuildContext
+    sheetContext, // FIX: receive sheet's context to pop it correctly
+  ) async {
+    if (_savingNotifier.value) return; // guard against double-tap
+
+    // FIX: dismiss keyboard immediately when save is tapped
+    FocusScope.of(sheetContext).unfocus();
+
     final name = _nameCtrl.text.trim();
-    final freq = int.tryParse(_freqCtrl.text.trim());
     if (name.isEmpty) return;
 
-    // ✅ Show loading on button
-    setState(() => _error = null);
+    _savingNotifier.value = true;
 
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
-
-      // ✅ if (kDebugMode) print every step
       if (kDebugMode) print('USER ID: $userId');
       if (userId == null) throw Exception('Not logged in');
 
@@ -110,7 +121,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
             'notes': _notesCtrl.text.trim().isEmpty
                 ? null
                 : _notesCtrl.text.trim(),
-            'frequency': freq,
+            'frequency': int.tryParse(_freqCtrl.text.trim()),
             'is_active': true,
           })
           .select()
@@ -137,26 +148,34 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
         if (kDebugMode) print('Reminder inserted: $reminderResponse');
         final reminderId = reminderResponse['id'] as int;
-        final notificationId = (medId * 1000) + reminderId; // ✅ always unique
+        final notificationId = (medId * 1000) + reminderId;
+
+        if (kDebugMode)
+          print('Scheduling notification id=$notificationId for $remindAt');
+
+        // FIX: scheduleReminder now handles the exact-alarm exception gracefully
         await NotificationService.scheduleReminder(
           id: notificationId,
           medName: name,
           remindAt: remindAt,
         );
+        if (kDebugMode) print('Notification scheduled OK');
       }
 
+      // Clear controllers
       _nameCtrl.clear();
       _notesCtrl.clear();
       _freqCtrl.clear();
 
-      if (mounted) Navigator.pop(context);
+      // FIX: close the sheet AFTER all DB work is done, using the Navigator
+      // attached to the sheet's context (not the screen's context).
+      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+
+      // Reload list on the main screen
       await _loadMedications();
     } catch (e, stack) {
-      // ✅ if (kDebugMode) print full error + stack trace
-      if (kDebugMode) print('SAVE ERROR: $e');
-      if (kDebugMode) print('STACK: $stack');
+      if (kDebugMode) print('SAVE ERROR: $e\nSTACK: $stack');
       if (mounted) {
-        setState(() => _error = e.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('Error: $e'),
@@ -165,6 +184,10 @@ class _MedicationScreenState extends State<MedicationScreen> {
           ),
         );
       }
+    } finally {
+      // FIX: always reset saving flag; safe because it's a ValueNotifier,
+      // not a setState call — no risk of "setState called after dispose"
+      _savingNotifier.value = false;
     }
   }
 
@@ -178,23 +201,23 @@ class _MedicationScreenState extends State<MedicationScreen> {
           .update({'is_active': !current})
           .eq('id', medId);
 
-      // If deactivating, cancel all its notifications
       if (current) {
+        // Deactivating — cancel all notifications
         final reminders = await Supabase.instance.client
             .from('medication_reminder')
             .select('id')
             .eq('medication_id', medId);
 
         final ids = (reminders as List)
-            .map((r) => (medId * 1000) + (r['id'] as int)) // ✅ same formula
+            .map((r) => (medId * 1000) + (r['id'] as int))
             .toList();
         await NotificationService.cancelAll(ids);
       } else {
-        // Re-schedule if reactivating
+        // Reactivating — reschedule
         final med = _medications.firstWhere((m) => m.id == medId);
         for (final r in med.reminders) {
           await NotificationService.scheduleReminder(
-            id: r.id,
+            id: (med.id * 1000) + r.id,
             medName: med.name,
             remindAt: r.remindAt,
           );
@@ -212,18 +235,16 @@ class _MedicationScreenState extends State<MedicationScreen> {
   // ════════════════════════════════════════════════════
   Future<void> _deleteMedication(int medId) async {
     try {
-      // Get reminder ids before deleting so we can cancel notifications
       final reminders = await Supabase.instance.client
           .from('medication_reminder')
           .select('id')
           .eq('medication_id', medId);
 
       final ids = (reminders as List)
-          .map((r) => (medId * 1000) + (r['id'] as int)) // ✅ same formula
+          .map((r) => (medId * 1000) + (r['id'] as int))
           .toList();
       await NotificationService.cancelAll(ids);
 
-      // Delete from DB
       await Supabase.instance.client
           .from('medication_reminder')
           .delete()
@@ -242,291 +263,331 @@ class _MedicationScreenState extends State<MedicationScreen> {
 
   // ════════════════════════════════════════════════════
   // ADD SHEET
+  // FIX: uses Builder / MediaQuery inside the sheet itself so the padding
+  //      responds to the keyboard appearing/disappearing in real-time.
   // ════════════════════════════════════════════════════
   void _showAddSheet(BuildContext context) {
     final colors = context.colors;
     List<TimeOfDay> reminders = [];
-    // Get frequency value inside the sheet
-    final freq = int.tryParse(_freqCtrl.text.trim()) ?? 0;
+
+    // Clear controllers when opening the sheet so old data doesn't linger
+    _nameCtrl.clear();
+    _notesCtrl.clear();
+    _freqCtrl.clear();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheet) => Container(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+      // FIX: use a Builder inside the sheet so MediaQuery.of(ctx) gives the
+      //      sheet's own insets (which update when the keyboard opens).
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          // FIX: read viewInsets from the sheet's own context — this is what
+          //      makes the sheet push up when the keyboard appears.
+          final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
 
-                TranslatedText(
-                  'Add Medication',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                _field(
-                  context,
-                  _nameCtrl,
-                  'Medication name',
-                  Icons.medication_rounded,
-                ),
-                const SizedBox(height: 12),
-                _field(
-                  context,
-                  _notesCtrl,
-                  'Notes (optional)',
-                  Icons.notes_rounded,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _freqCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ], // ✅ numbers only
-                  style: TextStyle(fontSize: 14, color: colors.textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Frequency (times/day)',
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.repeat_rounded,
-                      size: 20,
-                      color: colors.primary,
-                    ),
-                    filled: true,
-                    fillColor: colors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.primary, width: 1.5),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Reminders
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TranslatedText(
-                      'Reminders',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
+          return Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 24,
+              bottom: bottomInset + 24, // FIX: correct inset source
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    // Replace the "Add time" GestureDetector:
-                    GestureDetector(
-                      onTap: () async {
-                        final currentFreq =
-                            int.tryParse(_freqCtrl.text.trim()) ?? 0;
-                        if (currentFreq <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Enter frequency first'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                          return;
-                        }
-                        if (reminders.length >= currentFreq) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Max $currentFreq reminder${currentFreq > 1 ? 's' : ''} for this frequency',
-                              ),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                          return;
-                        }
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (picked != null) {
-                          setSheet(() => reminders.add(picked));
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.add_alarm_rounded,
-                              size: 14,
-                              color: colors.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Builder(
-                              builder: (context) {
-                                final currentFreq =
-                                    int.tryParse(_freqCtrl.text.trim()) ?? 0;
-                                final remaining =
-                                    currentFreq - reminders.length;
-                                return Text(
-                                  currentFreq > 0
-                                      ? 'Add time (${reminders.length}/$currentFreq)'
-                                      : 'Add time',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: colors.primary,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                  ),
+                  const SizedBox(height: 20),
 
-                if (reminders.isEmpty)
                   TranslatedText(
-                    'No reminders added yet',
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: reminders.asMap().entries.map((entry) {
-                      final i = entry.key;
-                      final t = entry.value;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
+                    'Add Medication',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  _field(
+                    ctx,
+                    _nameCtrl,
+                    'Medication name',
+                    Icons.medication_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    ctx,
+                    _notesCtrl,
+                    'Notes (optional)',
+                    Icons.notes_rounded,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Frequency field
+                  TextField(
+                    controller: _freqCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Frequency (times/day)',
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.repeat_rounded,
+                        size: 20,
+                        color: colors.primary,
+                      ),
+                      filled: true,
+                      fillColor: colors.background,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
                           color: colors.primary,
-                          borderRadius: BorderRadius.circular(20),
+                          width: 1.5,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.alarm_rounded,
-                              size: 13,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            TranslatedText(
-                              t.format(context),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Reminders row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TranslatedText(
+                        'Reminders',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          final currentFreq =
+                              int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                          if (currentFreq <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Enter frequency first'),
+                                duration: Duration(seconds: 2),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () =>
-                                  setSheet(() => reminders.removeAt(i)),
-                              child: const Icon(
-                                Icons.close_rounded,
+                            );
+                            return;
+                          }
+                          if (reminders.length >= currentFreq) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Max $currentFreq reminder${currentFreq > 1 ? 's' : ''} for this frequency',
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                            return;
+                          }
+                          final picked = await showTimePicker(
+                            context: ctx,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (picked != null) {
+                            setSheet(() => reminders.add(picked));
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.add_alarm_rounded,
+                                size: 14,
+                                color: colors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Builder(
+                                builder: (context) {
+                                  final currentFreq =
+                                      int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                                  return Text(
+                                    currentFreq > 0
+                                        ? 'Add time (${reminders.length}/$currentFreq)'
+                                        : 'Add time',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.primary,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Reminder chips
+                  if (reminders.isEmpty)
+                    TranslatedText(
+                      'No reminders added yet',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: reminders.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final t = entry.value;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.alarm_rounded,
                                 size: 13,
                                 color: Colors.white,
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final currentFreq =
-                          int.tryParse(_freqCtrl.text.trim()) ?? 0;
-                      if (currentFreq > 0 && reminders.length != currentFreq) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}',
-                            ),
-                            backgroundColor: Colors.orange,
-                            duration: const Duration(seconds: 3),
+                              const SizedBox(width: 4),
+                              TranslatedText(
+                                t.format(ctx),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () =>
+                                    setSheet(() => reminders.removeAt(i)),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         );
-                        return;
-                      }
-                      _saveMedication(reminders);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                      }).toList(),
                     ),
-                    child: const Text(
-                      'Save Medication',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+
+                  const SizedBox(height: 24),
+
+                  // Save button — uses ValueListenableBuilder so it reacts to
+                  // _savingNotifier without needing setState on the main widget
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _savingNotifier,
+                    builder: (_, saving, __) => SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        // FIX: onPressed is null while saving (disables button)
+                        onPressed: saving
+                            ? null
+                            : () {
+                                final currentFreq =
+                                    int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                                if (currentFreq > 0 &&
+                                    reminders.length != currentFreq) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}',
+                                      ),
+                                      backgroundColor: Colors.orange,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                // FIX: pass sheetCtx so _saveMedication can
+                                //      dismiss the keyboard & pop the sheet
+                                //      from the correct Navigator.
+                                _saveMedication(reminders, ctx);
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Save Medication',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -534,6 +595,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
   // ════════════════════════════════════════════════════
   // BUILD
   // ════════════════════════════════════════════════════
+  @override
+  void initState() {
+    super.initState();
+    _loadMedications();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
