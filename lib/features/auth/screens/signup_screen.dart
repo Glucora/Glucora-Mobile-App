@@ -272,7 +272,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   final numberRegex = RegExp(r'^[0-9]+$');
                   if (!numberRegex.hasMatch(value)) return 'Please enter a valid number (numbers only)';
                   if (value.length < 10) return 'Please enter a valid phone number';
-                  if (_phoneError != null) return _phoneError; // ← reads class-level variable
+                  if (_phoneError != null) return _phoneError; 
                   return null;
                 },
               ),
