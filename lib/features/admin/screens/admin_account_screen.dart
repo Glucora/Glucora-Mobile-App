@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
+import 'package:glucora_ai_companion/services/profile_picture_service.dart';
 
 class AdminAccountScreen extends StatefulWidget {
   const AdminAccountScreen({super.key});
@@ -17,6 +21,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   String _email = "";
   String _phone = "";
   String _address = "";
+  String _profilePictureUrl = "";
   bool _loading = true;
   String? _error;
 
@@ -62,7 +67,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
       final response = await Supabase.instance.client
           .from('users')
-          .select('id, full_name, email, role, is_active, created_at, phone_no, age, address')
+          .select('id, full_name, email, role, is_active, created_at, phone_no, age, address, profile_picture_url')
           .eq('id', session.user.id)
           .single();
 
@@ -72,6 +77,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         _phone = response['phone_no'] as String? ?? '';
         _age = response['age'] as int? ?? 0;
         _address = response['address'] as String? ?? '';
+        _profilePictureUrl = response['profile_picture_url'] as String? ?? '';
         _loading = false;
       });
     } catch (e) {
@@ -144,14 +150,50 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: TranslatedText('Profile updated'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: TranslatedText('Profile updated'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: TranslatedText('Failed to update: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
+      }
+    }
+  }
+
+  void _editProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _EditAdminProfileScreen(
+          name: _name,
+          age: _age,
+          email: _email,
+          phone: _phone,
+          address: _address,
+          profilePictureUrl: _profilePictureUrl,
+        ),
+      ),
+    );
+    if (result != null) {
+      await _saveUserEdits(
+        result['name'],
+        result['email'],
+        result['phone'],
+        result['address'],
+        result['age'],
+      );
+      if (result['profile_picture_url'] != null) {
+        setState(() {
+          _profilePictureUrl = result['profile_picture_url'];
+        });
       }
     }
   }
@@ -195,11 +237,18 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TranslatedText(
-                  "My Account",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  "Profile",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: colors.textSecondary,
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -220,11 +269,13 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
             Center(
               child: Column(
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-                    child: const Icon(Icons.admin_panel_settings_rounded, size: 48, color: Colors.white),
+                  ProfilePicture(
+                    userId: Supabase.instance.client.auth.currentUser!.id,
+                    imageUrl: _profilePictureUrl,
+                    size: 90,
+                    isEditable: true,
+                    onPictureChanged: () => _fetchUserData(),
+                    displayName: _name,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -232,30 +283,45 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                     children: [
                       TranslatedText(
                         _name,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _editProfile,
-                        child: Icon(Icons.edit, size: 18, color: colors.primary),
+                        child: Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: colors.primary,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   TranslatedText(
-                    _age > 0 ? "$_age years" : "Age not set",
+                    "$_age years",
                     style: TextStyle(fontSize: 14, color: colors.textSecondary),
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: TranslatedText(
                       "Administrator",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
                     ),
                   ),
                 ],
@@ -267,9 +333,15 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                ),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Column(
@@ -278,14 +350,23 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
                   _infoRow(context, Icons.phone_outlined, "Phone", _phone.isNotEmpty ? _phone : "Not set"),
                   Divider(height: 16, color: colors.textSecondary.withValues(alpha: 0.3)),
-                  _infoRow(context, Icons.location_on_outlined, "Address", _address.isNotEmpty ? _address : "Not set"),
+                  _infoRow(
+                    context,
+                    Icons.location_on_outlined,
+                    "Address",
+                    _address.isNotEmpty ? _address : "Not set",
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
             TranslatedText(
               "FAQs",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
             const SizedBox(height: 12),
             for (int i = 0; i < _faqs.length; i++)
@@ -299,11 +380,17 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                   onPressed: () => _showLogoutDialog(context),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: colors.error),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: TranslatedText(
                     "Log Out",
-                    style: TextStyle(color: colors.error, fontSize: 15, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: colors.error,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -323,19 +410,31 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         const SizedBox(width: 12),
         SizedBox(
           width: 70,
-          child: TranslatedText(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+          child: TranslatedText(
+            label,
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
+          ),
         ),
         Expanded(
           child: TranslatedText(
             value,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _faqItem(BuildContext context, int index, String question, String answer) {
+  Widget _faqItem(
+    BuildContext context,
+    int index,
+    String question,
+    String answer,
+  ) {
     final colors = context.colors;
     final isExpanded = _expandedFaqIndex == index;
     
@@ -369,7 +468,10 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
                 AnimatedRotation(
                   turns: isExpanded ? 0.25 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -385,30 +487,6 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
       ),
     );
   }
-
-  void _editProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _EditAdminProfileScreen(
-          name: _name,
-          age: _age,
-          email: _email,
-          phone: _phone,
-          address: _address,
-        ),
-      ),
-    );
-    if (result != null) {
-      await _saveUserEdits(
-        result['name'],
-        result['email'],
-        result['phone'],
-        result['address'],
-        result['age'],
-      );
-    }
-  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -420,6 +498,7 @@ class _EditAdminProfileScreen extends StatefulWidget {
   final String email;
   final String phone;
   final String address;
+  final String? profilePictureUrl;
 
   const _EditAdminProfileScreen({
     required this.name,
@@ -427,6 +506,7 @@ class _EditAdminProfileScreen extends StatefulWidget {
     required this.email,
     required this.phone,
     required this.address,
+    this.profilePictureUrl,
   });
 
   @override
@@ -439,6 +519,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
+  String _profilePictureUrl = "";
 
   @override
   void initState() {
@@ -448,6 +529,29 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
     _emailController = TextEditingController(text: widget.email);
     _phoneController = TextEditingController(text: widget.phone);
     _addressController = TextEditingController(text: widget.address);
+    _profilePictureUrl = widget.profilePictureUrl ?? "";
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  void _onPictureChanged() {
+    // Refresh the profile picture URL after upload
+    final userId = Supabase.instance.client.auth.currentUser!.id;
+    ProfilePictureService.getProfilePictureUrl(userId).then((url) {
+      if (mounted) {
+        setState(() {
+          _profilePictureUrl = url ?? "";
+        });
+      }
+    });
   }
 
   @override
@@ -482,6 +586,29 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    ProfilePicture(
+                      userId: Supabase.instance.client.auth.currentUser!.id,
+                      imageUrl: _profilePictureUrl,
+                      size: 100,
+                      isEditable: true,
+                      onPictureChanged: _onPictureChanged,
+                      displayName: _nameController.text,
+                    ),
+                    const SizedBox(height: 8),
+                    TranslatedText(
+                      'Tap to change profile picture',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               _buildField(context, 'Name', _nameController, Icons.person_outline),
               const SizedBox(height: 16),
               _buildField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
@@ -547,16 +674,7 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
       'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
       'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
       'address': updatedAddress.isEmpty ? widget.address : updatedAddress,
+      'profile_picture_url': _profilePictureUrl,
     });
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _ageController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    super.dispose();
   }
 }
