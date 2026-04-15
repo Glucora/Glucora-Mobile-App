@@ -1,9 +1,8 @@
-// lib\shared\connection_requests_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 final supabase = Supabase.instance.client;
 
@@ -53,8 +52,10 @@ enum RequestStatus { pending, accepted, declined }
 class ConnectionRequest {
   final String id;
   final String personName;
+  final String personId;
   final String sentAgo;
   final String avatarInitials;
+  final String? profilePictureUrl;
   final String requestedBy;
   final String sourceTable;
   RequestStatus status;
@@ -62,8 +63,10 @@ class ConnectionRequest {
   ConnectionRequest({
     required this.id,
     required this.personName,
+    required this.personId,
     required this.sentAgo,
     required this.avatarInitials,
+    this.profilePictureUrl,
     required this.requestedBy,
     required this.sourceTable,
     this.status = RequestStatus.pending,
@@ -130,14 +133,14 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         final doctorRows = await supabase
             .from('doctor_patient_connections')
             .select(
-              'id, status, requested_by, requested_at, users!doctor_patient_connections_doctor_id_fkey(full_name)',
+              'id, status, requested_by, requested_at, users!doctor_patient_connections_doctor_id_fkey(full_name, profile_picture_url, id)',
             )
             .eq('patient_id', userId);
 
         final guardianRows = await supabase
             .from('guardian_patient_connections')
             .select(
-              'id, status, requested_by, requested_at, users!guardian_patient_connections_guardian_id_fkey(full_name)',
+              'id, status, requested_by, requested_at, users!guardian_patient_connections_guardian_id_fkey(full_name, profile_picture_url, id)',
             )
             .eq('patient_id', userId);
 
@@ -145,13 +148,18 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
 
         void addRequests(List rows, String table) {
           for (final row in rows) {
-            final fullName = row['users']?['full_name'] ?? 'Unknown User';
+            final userData = row['users'] as Map<String, dynamic>?;
+            final fullName = userData?['full_name'] ?? 'Unknown User';
+            final personId = userData?['id'] as String? ?? '';
+            final profilePictureUrl = userData?['profile_picture_url'] as String?;
             all.add(
               ConnectionRequest(
                 id: row['id'].toString(),
                 personName: fullName,
+                personId: personId,
                 sentAgo: _timeAgo(row['requested_at']),
                 avatarInitials: _initials(fullName),
+                profilePictureUrl: profilePictureUrl,
                 requestedBy: row['requested_by'],
                 sourceTable: table,
                 status: _parseStatus(row['status']),
@@ -170,17 +178,22 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         final response = await supabase
             .from(_config.connectionsTable)
             .select(
-              'id, status, requested_by, requested_at, users!${_config.connectionsTable}_patient_id_fkey(full_name)',
+              'id, status, requested_by, requested_at, users!${_config.connectionsTable}_patient_id_fkey(full_name, profile_picture_url, id)',
             )
             .eq(_config.profileIdField, userId);
 
         final List<ConnectionRequest> all = (response as List).map((row) {
-          final fullName = row['users']?['full_name'] ?? 'Unknown User';
+          final userData = row['users'] as Map<String, dynamic>?;
+          final fullName = userData?['full_name'] ?? 'Unknown User';
+          final personId = userData?['id'] as String? ?? '';
+          final profilePictureUrl = userData?['profile_picture_url'] as String?;
           return ConnectionRequest(
             id: row['id'].toString(),
             personName: fullName,
+            personId: personId,
             sentAgo: _timeAgo(row['requested_at']),
             avatarInitials: _initials(fullName),
+            profilePictureUrl: profilePictureUrl,
             requestedBy: row['requested_by'] ?? widget.role,
             sourceTable: _config.connectionsTable,
             status: _parseStatus(row['status']),
@@ -452,9 +465,9 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
         dividerColor: Colors.transparent,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         tabs: [
-          Tab(child: TranslatedText('Incoming')), // Changed
-          Tab(child: TranslatedText('Sent')), // Changed
-          Tab(child: TranslatedText('Declined')), // Changed
+          Tab(child: TranslatedText('Incoming')),
+          Tab(child: TranslatedText('Sent')),
+          Tab(child: TranslatedText('Declined')),
         ],
       ),
     );
@@ -542,17 +555,14 @@ class _RequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: colors.accent.withValues(alpha: 0.12),
-                child: TranslatedText(
-                  request.avatarInitials,
-                  style: TextStyle(
-                    color: colors.primaryDark,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
-                ),
+              // ✅ Profile Picture instead of CircleAvatar
+              ProfilePicture(
+                userId: request.personId,
+                imageUrl: request.profilePictureUrl,
+                size: 52,
+                isEditable: false,
+                showInitials: true,
+                displayName: request.personName,
               ),
               const SizedBox(width: 15),
               Expanded(
@@ -718,7 +728,7 @@ class _SearchSheetState extends State<_SearchSheet> {
     try {
       final query = supabase
           .from('users')
-          .select('id, full_name, phone_no, role')
+          .select('id, full_name, phone_no, role, profile_picture_url')
           .eq('phone_no', phone);
 
       if (widget.role == 'patient') {
@@ -772,6 +782,7 @@ class _SearchSheetState extends State<_SearchSheet> {
           'targetId': targetUserId,
           'full_name': user['full_name'],
           'phone_no': user['phone_no'],
+          'profile_picture_url': user['profile_picture_url'],
           'table': table,
           'foreignKey': foreignKey,
           'status': (connCheck as List).isNotEmpty
@@ -915,15 +926,14 @@ class _SearchSheetState extends State<_SearchSheet> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: colors.accent.withValues(alpha: 0.1),
-            child: TranslatedText(
-              p['full_name'][0],
-              style: TextStyle(
-                color: colors.primaryDark,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          // ✅ Profile Picture in search results
+          ProfilePicture(
+            userId: p['targetId'],
+            imageUrl: p['profile_picture_url'],
+            size: 44,
+            isEditable: false,
+            showInitials: true,
+            displayName: p['full_name'],
           ),
           const SizedBox(width: 12),
           Expanded(
