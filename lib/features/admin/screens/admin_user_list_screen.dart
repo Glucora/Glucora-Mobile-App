@@ -122,10 +122,10 @@ Future<void> _deleteUser(AdminUser user) async {
     } else if (user.role == 'norole' || user.role == 'admin') {
     }
 
-    await supabase.from('users').delete().eq('id', user.id);
+    await supabase.rpc('delete_user_by_id', params: {'user_id': user.id});
 
     if (mounted) {
-      setState(() => _allUsers.removeWhere((u) => u.id == user.id));
+      await _fetchUsers(); 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: TranslatedText('${user.name} deleted'),
