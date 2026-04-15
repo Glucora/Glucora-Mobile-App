@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; 
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
+
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});
 
@@ -39,7 +41,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     try {
       final response = await Supabase.instance.client
           .from('users')
-          .select('id, full_name, email, role, is_active, created_at')
+          .select('id, full_name, email, role, is_active, created_at, profile_picture_url')
           .order('created_at', ascending: false);
 
       final users = (response as List)
@@ -66,84 +68,84 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     }).toList();
   }
 
-Future<void> _deleteUser(AdminUser user) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const TranslatedText('Delete User'),
-      content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const TranslatedText('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
+  Future<void> _deleteUser(AdminUser user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const TranslatedText('Delete User'),
+        content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const TranslatedText('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
 
-  if (confirmed != true) return;
+    if (confirmed != true) return;
 
-  final supabase = Supabase.instance.client;
+    final supabase = Supabase.instance.client;
 
-  try {
-    if (user.role == 'doctor') {
-      try { await supabase.from('care_plans').delete().eq('doctor_id', user.id); } catch (_) {}
-      try { await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id); } catch (_) {}
-      try { await supabase.from('doctor_profile').delete().eq('user_id', user.id); } catch (_) {}
+    try {
+      if (user.role == 'doctor') {
+        try { await supabase.from('care_plans').delete().eq('doctor_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_profile').delete().eq('user_id', user.id); } catch (_) {}
 
-    } else if (user.role == 'patient') {
-      // Get bigint profile id for glucose/insulin
-      try {
-        final profileResponse = await supabase
-            .from('patient_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+      } else if (user.role == 'patient') {
+        // Get bigint profile id for glucose/insulin
+        try {
+          final profileResponse = await supabase
+              .from('patient_profile')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-        if (profileResponse != null) {
-          try { await supabase.from('glucose_readings').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
-          try { await supabase.from('insulin_doses').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
-        }
-      } catch (_) {}
+          if (profileResponse != null) {
+            try { await supabase.from('glucose_readings').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('insulin_doses').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+          }
+        } catch (_) {}
 
-      try { await supabase.from('patient_profile').delete().eq('user_id', user.id); } catch (_) {}
-      try { await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
-      try { await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
-      try { await supabase.from('patient_locations').delete().eq('patient_id', user.id); } catch (_) {}
-      try { await supabase.from('devices').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('patient_profile').delete().eq('user_id', user.id); } catch (_) {}
+        try { await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('patient_locations').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('devices').delete().eq('patient_id', user.id); } catch (_) {}
 
-    } else if (user.role == 'guardian') {
-      try { await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id); } catch (_) {}
+      } else if (user.role == 'guardian') {
+        try { await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id); } catch (_) {}
 
-    } else if (user.role == 'norole' || user.role == 'admin') {
-    }
+      } else if (user.role == 'norole' || user.role == 'admin') {
+      }
 
-    await supabase.rpc('delete_user_by_id', params: {'user_id': user.id});
+      await supabase.rpc('delete_user_by_id', params: {'user_id': user.id});
 
-    if (mounted) {
-      await _fetchUsers(); 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText('${user.name} deleted'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText('Failed to delete: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        await _fetchUsers(); 
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('${user.name} deleted'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
 
   void _editUser(AdminUser user) {
     String selectedRole = user.role;
@@ -358,13 +360,14 @@ Future<void> _deleteUser(AdminUser user) async {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: roleColor.withValues(alpha: 0.15),
-                child: TranslatedText(
-                  user.initials,
-                  style: TextStyle(color: roleColor, fontWeight: FontWeight.w600, fontSize: 14),
-                ),
+              // ✅ Profile Picture instead of CircleAvatar
+              ProfilePicture(
+                userId: user.id,
+                imageUrl: user.profilePictureUrl,
+                size: 44,
+                isEditable: false,
+                showInitials: true,
+                displayName: user.name,
               ),
               const SizedBox(width: 12),
               Expanded(
