@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
 class AdminRoleManagementScreen extends StatefulWidget {
   const AdminRoleManagementScreen({super.key});
@@ -38,7 +39,7 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
     try {
       final response = await Supabase.instance.client
           .from('users')
-          .select('id, full_name, email, role, is_active, created_at')
+          .select('id, full_name, email, role, is_active, created_at, profile_picture_url')
           .order('full_name');
 
       final users = (response as List)
@@ -282,13 +283,14 @@ class _AdminRoleManagementScreenState extends State<AdminRoleManagementScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: color.withValues(alpha: 0.15),
-                child: TranslatedText(
-                  user.initials,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14),
-                ),
+              // ✅ Profile Picture instead of CircleAvatar
+              ProfilePicture(
+                userId: user.id,
+                imageUrl: user.profilePictureUrl,
+                size: 44,
+                isEditable: false,
+                showInitials: true,
+                displayName: user.name,
               ),
               const SizedBox(width: 12),
               Expanded(
