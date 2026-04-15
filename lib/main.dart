@@ -11,6 +11,7 @@ import 'package:glucora_ai_companion/services/localization_service.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:glucora_ai_companion/core/utils/app_strings.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
@@ -168,6 +169,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
+      AiPredictionUploadService.instance.startListening();
     }
   }
 

@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:glucora_ai_companion/core/models/glucose_log_model.dart';
 
-
 final _db = Supabase.instance.client;
 
 // ─── PATIENT PROFILE ──────────────────────────────────────────────────────────
@@ -29,7 +28,9 @@ Future<int?> getPatientProfileId(String authUserId) async {
 // ─── GLUCOSE ──────────────────────────────────────────────────────────────────
 
 /// Returns the most recent glucose reading row for this patient.
-Future<Map<String, dynamic>?> getLatestGlucoseReading(int patientProfileId) async {
+Future<Map<String, dynamic>?> getLatestGlucoseReading(
+  int patientProfileId,
+) async {
   try {
     final response = await _db
         .from('glucose_readings')
@@ -39,10 +40,14 @@ Future<Map<String, dynamic>?> getLatestGlucoseReading(int patientProfileId) asyn
         .limit(1)
         .maybeSingle();
 
-    if (kDebugMode) print('[SupabaseService] glucose query response: $response');
+    if (kDebugMode) {
+      print('[SupabaseService] glucose query response: $response');
+    }
     return response;
   } catch (e) {
-    if (kDebugMode) print('[SupabaseService] getLatestGlucoseReading error: $e');
+    if (kDebugMode) {
+      print('[SupabaseService] getLatestGlucoseReading error: $e');
+    }
     return null;
   }
 }
@@ -66,6 +71,50 @@ Future<Map<String, dynamic>?> getLatestPrediction(int patientProfileId) async {
     return null;
   }
 }
+
+/// Inserts a new AI predicted glucose value from the BLE hardware.
+/// [predictedValue] - The raw value predicted by the hardware's AI model.
+/// Uses the Supabase Auth UUID as the `patient_id`.
+Future<bool> insertAiPrediction(double predictedValue) async {
+  try {
+    final user = _db.auth.currentUser;
+    if (user == null) {
+      if (kDebugMode) {
+        print(
+          '[SupabaseService] check failed: No user found for insertAiPrediction.',
+        );
+      }
+      return false;
+    }
+
+    String riskLevel = 'IN_RANGE';
+    if (predictedValue < 70) {
+      riskLevel = 'LOW';
+    } else if (predictedValue > 180) {
+      riskLevel = 'HIGH';
+    }
+
+    final createdAt = DateTime.now().toUtc();
+    final predictedFor = createdAt.add(const Duration(minutes: 5));
+
+    await _db.from('ai_predictions').insert({
+      'patient_id': user.id, // Supabase Auth UUID as requested
+      'predicted_value': predictedValue,
+      'horizon_minutes': 5,
+      'confidence_score': 100.0,
+      'risk_level': riskLevel,
+      'model_version': '1',
+      'created_at': createdAt.toIso8601String(),
+      'predicted_for': predictedFor.toIso8601String(),
+    });
+
+    return true;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] insertAiPrediction error: $e');
+    return false;
+  }
+}
+
 /// Fetch the latest `limit` recommendations for a patient.
 Future<List<Map<String, dynamic>>> getLatestRecommendations({
   required int patientProfileId,
@@ -81,7 +130,9 @@ Future<List<Map<String, dynamic>>> getLatestRecommendations({
 
     return List<Map<String, dynamic>>.from(response);
   } catch (e) {
-    if (kDebugMode) print('[SupabaseService] getLatestRecommendations error: $e');
+    if (kDebugMode) {
+      print('[SupabaseService] getLatestRecommendations error: $e');
+    }
     return [];
   }
 }
@@ -113,7 +164,9 @@ Future<Map<String, dynamic>?> saveRecommendation({
         .select()
         .single();
 
-    if (kDebugMode) print('[SupabaseService] Saved recommendation: ${response['id']}');
+    if (kDebugMode) {
+      print('[SupabaseService] Saved recommendation: ${response['id']}');
+    }
     return response;
   } catch (e) {
     if (kDebugMode) print('[SupabaseService] saveRecommendation error: $e');
@@ -136,7 +189,9 @@ Future<List<Map<String, dynamic>>> getLatestRecommendation({
 
     return List<Map<String, dynamic>>.from(response);
   } catch (e) {
-    if (kDebugMode) print('[SupabaseService] getLatestRecommendations error: $e');
+    if (kDebugMode) {
+      print('[SupabaseService] getLatestRecommendations error: $e');
+    }
     return [];
   }
 }
@@ -151,7 +206,9 @@ Future<bool> markRecommendationAsRead(String recommendationId) async {
 
     return true;
   } catch (e) {
-    if (kDebugMode) print('[SupabaseService] markRecommendationAsRead error: $e');
+    if (kDebugMode) {
+      print('[SupabaseService] markRecommendationAsRead error: $e');
+    }
     return false;
   }
 }
@@ -159,10 +216,7 @@ Future<bool> markRecommendationAsRead(String recommendationId) async {
 /// Delete recommendation.
 Future<bool> deleteRecommendation(String recommendationId) async {
   try {
-    await _db
-        .from('ai_recommendations')
-        .delete()
-        .eq('id', recommendationId);
+    await _db.from('ai_recommendations').delete().eq('id', recommendationId);
 
     return true;
   } catch (e) {
@@ -205,7 +259,11 @@ Future<List<GlucoseLog>> fetchGlucoseLogs() async {
 }
 
 /// Insert a manual glucose reading for the current patient.
-Future<void> insertGlucoseLog(double value, String? notes, String mealTime) async {
+Future<void> insertGlucoseLog(
+  double value,
+  String? notes,
+  String mealTime,
+) async {
   final userId = _db.auth.currentUser!.id;
   final patientId = await getPatientProfileId(userId);
   if (patientId == null) return;
@@ -220,7 +278,7 @@ Future<void> insertGlucoseLog(double value, String? notes, String mealTime) asyn
     if (notes != null && notes.isNotEmpty) 'notes': notes,
     'recorded_at': DateTime.now().toIso8601String(),
   });
-} 
+}
 
 // ─── CARE PLAN ────────────────────────────────────────────────────────────────
 
@@ -265,7 +323,6 @@ Future<double?> getLatestIOB(int patientProfileId) async {
     return null;
   }
 }
-
 
 // ─── DEVICE BATTERY ───────────────────────────────────────────────────────────
 
