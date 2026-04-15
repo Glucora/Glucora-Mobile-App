@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
-
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; 
 class AdminUserListScreen extends StatefulWidget {
   const AdminUserListScreen({super.key});
 
@@ -67,97 +66,84 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
     }).toList();
   }
 
-  Future<void> _deleteUser(AdminUser user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const TranslatedText('Delete User'),
-        content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const TranslatedText('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+Future<void> _deleteUser(AdminUser user) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const TranslatedText('Delete User'),
+      content: TranslatedText('Are you sure you want to delete "${user.name}"? This cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const TranslatedText('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
 
-    if (confirmed != true) return;
+  if (confirmed != true) return;
 
-    try {
-      if (user.role == 'doctor') {
-        // Get doctor_profile.id (bigint) for this user
-        final profileResponse = await Supabase.instance.client
-            .from('doctor_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+  final supabase = Supabase.instance.client;
 
-        if (profileResponse != null) {
-          final profileId = profileResponse['id'];
-          // Delete connections using the bigint profile id
-          await Supabase.instance.client
-              .from('doctor_patient_connections')
-              .delete()
-              .eq('doctor_id', profileId);
-          // Delete doctor profile
-          await Supabase.instance.client
-              .from('doctor_profile')
-              .delete()
-              .eq('user_id', user.id);
-        }
-      } else if (user.role == 'patient') {
-        // Get patient_profile.id (bigint) for this user
-        final profileResponse = await Supabase.instance.client
+  try {
+    if (user.role == 'doctor') {
+      try { await supabase.from('care_plans').delete().eq('doctor_id', user.id); } catch (_) {}
+      try { await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id); } catch (_) {}
+      try { await supabase.from('doctor_profile').delete().eq('user_id', user.id); } catch (_) {}
+
+    } else if (user.role == 'patient') {
+      // Get bigint profile id for glucose/insulin
+      try {
+        final profileResponse = await supabase
             .from('patient_profile')
             .select('id')
             .eq('user_id', user.id)
             .maybeSingle();
 
         if (profileResponse != null) {
-          final profileId = profileResponse['id'];
-          // Delete glucose readings first
-          await Supabase.instance.client
-              .from('glucose_readings')
-              .delete()
-              .eq('patient_id', profileId);
-          // Delete doctor_patient_connections
-          await Supabase.instance.client
-              .from('doctor_patient_connections')
-              .delete()
-              .eq('patient_id', profileId);
-          // Delete patient profile
-          await Supabase.instance.client
-              .from('patient_profile')
-              .delete()
-              .eq('user_id', user.id);
+          try { await supabase.from('glucose_readings').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+          try { await supabase.from('insulin_doses').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
         }
-      }
+      } catch (_) {}
 
-      // Finally delete the user row
-      await Supabase.instance.client
-          .from('users')
-          .delete()
-          .eq('id', user.id);
+      try { await supabase.from('patient_profile').delete().eq('user_id', user.id); } catch (_) {}
+      try { await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+      try { await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+      try { await supabase.from('patient_locations').delete().eq('patient_id', user.id); } catch (_) {}
+      try { await supabase.from('devices').delete().eq('patient_id', user.id); } catch (_) {}
 
-      if (mounted) {
-        setState(() => _allUsers.removeWhere((u) => u.id == user.id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('${user.name} deleted'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('Failed to delete: $e'), backgroundColor: Colors.red),
-        );
-      }
+    } else if (user.role == 'guardian') {
+      try { await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id); } catch (_) {}
+
+    } else if (user.role == 'norole' || user.role == 'admin') {
+    }
+
+    await supabase.from('users').delete().eq('id', user.id);
+
+    if (mounted) {
+      setState(() => _allUsers.removeWhere((u) => u.id == user.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: TranslatedText('${user.name} deleted'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: TranslatedText('Failed to delete: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+}
 
   void _editUser(AdminUser user) {
     String selectedRole = user.role;
