@@ -236,7 +236,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
                   final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
                   final hasDigit = RegExp(r'[0-9]').hasMatch(value);
-                  final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value);
+                  final hasSpecial = RegExp(r'[!_@#\$%^&*(),.?":{}|<>]').hasMatch(value);
                   if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
                     return 'Password must include uppercase, lowercase,\nnumber, and special character';
                   }
