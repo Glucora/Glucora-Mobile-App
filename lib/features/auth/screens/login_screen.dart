@@ -39,10 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (event.event == AuthChangeEvent.passwordRecovery) return;
 
-      if ((event.event == AuthChangeEvent.signedIn ||
-              event.event == AuthChangeEvent.initialSession ||
-              event.event == AuthChangeEvent.tokenRefreshed) &&
-          event.session != null) {
+      if (event.event == AuthChangeEvent.signedIn && event.session != null) {
         await _navigateByRole(event.session?.user);
       }
     });
