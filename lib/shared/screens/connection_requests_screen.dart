@@ -127,9 +127,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   }
 
   Future<void> _fetchRequests() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-    final userId = user.id;
+    final userId = supabase.auth.currentUser!.id;
     try {
       if (widget.role == 'patient') {
         final doctorRows = await supabase
@@ -153,8 +151,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
             final userData = row['users'] as Map<String, dynamic>?;
             final fullName = userData?['full_name'] ?? 'Unknown User';
             final personId = userData?['id'] as String? ?? '';
-            final profilePictureUrl =
-                userData?['profile_picture_url'] as String?;
+            final profilePictureUrl = userData?['profile_picture_url'] as String?;
             all.add(
               ConnectionRequest(
                 id: row['id'].toString(),

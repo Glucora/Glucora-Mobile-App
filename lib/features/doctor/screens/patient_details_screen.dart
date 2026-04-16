@@ -281,10 +281,16 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       ),
       actions: [
         IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {},
+          tooltip: 'Alerts',
+        ),
+        IconButton(
           icon: const Icon(Icons.location_on_outlined),
           onPressed: () => _openLocationView(context),
           tooltip: 'Location',
         ),
+        IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
       ],
     );
   }

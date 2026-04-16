@@ -12,7 +12,7 @@ final _supabase = Supabase.instance.client;
 
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
-
+  
   @override
   State<GuardianHomeScreen> createState() => _GuardianHomeScreenState();
 }
@@ -27,9 +27,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchPatients();
-    });
+    _fetchPatients();
   }
 
   @override
@@ -41,7 +39,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   Future<void> _fetchPatients() async {
     try {
       setState(() => _isLoading = true);
-
+      
       final userId = _supabase.auth.currentUser!.id;
       print('👤 Current Guardian User ID: $userId');
 
@@ -63,7 +61,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
       final connections = connectionsResp as List;
       print('📱 Found ${connections.length} connections');
-
+      
       if (connections.isEmpty) {
         if (!mounted) return;
         setState(() {
@@ -77,7 +75,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       final patientUserIds = connections
           .map((r) => r['patient_id'] as String)
           .toList();
-
+      
       print('📋 Patient UUIDs: $patientUserIds');
 
       final profilesResp = await _supabase
@@ -106,11 +104,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
       // Step 4: Fetch insulin doses for today
       final today = DateTime.now();
-      final startOfDay = DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ).toUtc().toIso8601String();
+      final startOfDay = DateTime(today.year, today.month, today.day)
+          .toUtc()
+          .toIso8601String();
 
       final dosesResp = await _supabase
           .from('insulin_doses')
@@ -130,12 +126,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         final uuid = d['patient_id'] as String;
         final type = (d['device_type'] as String? ?? '').toLowerCase();
         final active = d['is_active'] as bool? ?? false;
-
-        deviceStatusByUuid.putIfAbsent(
-          uuid,
-          () => {'sensor': false, 'pump': false},
-        );
-
+        
+        deviceStatusByUuid.putIfAbsent(uuid, () => {'sensor': false, 'pump': false});
+        
         if (type.contains('cgm') || type.contains('sensor')) {
           if (active) deviceStatusByUuid[uuid]!['sensor'] = true;
         }
@@ -161,92 +154,88 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       }
 
       if (!mounted) return;
-
+      
       // Build patient list with CORRECT data mapping
       final List<GuardianPatient> builtPatients = [];
-
+      
       for (final row in connections) {
         final user = row['users'] as Map<String, dynamic>?;
         final patientUuid = row['patient_id'] as String;
         final profileId = uuidToProfileId[patientUuid];
-
+        
         // Skip if no profile ID found (shouldn't happen)
         if (profileId == null) {
           print('❌ ERROR: No profile ID for UUID: $patientUuid');
           continue;
         }
-
+        
         final name = user?['full_name'] as String? ?? 'Unknown';
         final age = (user?['age'] as num?)?.toInt() ?? 0;
         final phone = user?['phone_no'] as String? ?? '';
         final profilePictureUrl = user?['profile_picture_url'] as String?;
         final relationship = row['relationship'] as String? ?? 'Guardian';
-
+        
         // Get readings for THIS SPECIFIC patient using their profile ID
         final patientReadings = readingsByPatient[profileId] ?? [];
-
+        
         // Get the latest reading
         Map<String, dynamic>? latestReading;
         int glucose = 0;
         String trend = 'stable';
-
+        
         if (patientReadings.isNotEmpty) {
           // Readings are already ordered by recorded_at descending from the query
           latestReading = patientReadings.first;
           glucose = (latestReading['value_mg_dl'] as num?)?.toInt() ?? 0;
           trend = latestReading['trend'] as String? ?? 'stable';
         }
-
+        
         final lastSeen = latestReading != null
             ? _timeAgo(latestReading['recorded_at'] as String)
             : 'No readings';
-
+        
         // Get doses for THIS SPECIFIC patient
         final patientDoses = dosesByPatient[profileId] ?? [];
-        final allAutomatic =
-            patientDoses.isNotEmpty &&
+        final allAutomatic = patientDoses.isNotEmpty &&
             patientDoses.every((d) => d['delivery_method'] == 'Pump');
-
+        
         // Get device status for THIS SPECIFIC patient
         final deviceStatus = deviceStatusByUuid[patientUuid];
         final sensorConnected = deviceStatus?['sensor'] ?? false;
         final pumpActive = deviceStatus?['pump'] ?? false;
-
+        
         print('✅ Building patient: $name');
         print('   UUID: $patientUuid -> Profile ID: $profileId');
-        print(
-          '   Glucose: $glucose mg/dL (from ${patientReadings.length} readings)',
-        );
+        print('   Glucose: $glucose mg/dL (from ${patientReadings.length} readings)');
         print('   Doses today: ${patientDoses.length}');
         print('   Devices: Sensor=$sensorConnected, Pump=$pumpActive');
-
-        builtPatients.add(
-          GuardianPatient(
-            profileId: profileId,
-            id: patientUuid,
-            patientId: patientUuid,
-            name: name,
-            age: age,
-            relationship: relationship,
-            glucoseValue: glucose,
-            glucoseTrend: trend,
-            sensorConnected: sensorConnected,
-            pumpActive: pumpActive,
-            dosesToday: patientDoses.length,
-            allDosesAutomatic: allAutomatic,
-            lastSeenTime: lastSeen,
-            phoneNumber: phone,
-            profilePictureUrl: profilePictureUrl,
-          ),
-        );
+        
+        builtPatients.add(GuardianPatient(
+          profileId: profileId,
+          id: patientUuid,
+          patientId: patientUuid,
+          name: name,
+          age: age,
+          relationship: relationship,
+          glucoseValue: glucose,
+          glucoseTrend: trend,
+          sensorConnected: sensorConnected,
+          pumpActive: pumpActive,
+          dosesToday: patientDoses.length,
+          allDosesAutomatic: allAutomatic,
+          lastSeenTime: lastSeen,
+          phoneNumber: phone,
+          profilePictureUrl: profilePictureUrl,
+        ));
       }
-
+      
       print('🎉 Successfully built ${builtPatients.length} patients');
-
+      
       setState(() {
         _allPatients = builtPatients;
         _isLoading = false;
       });
+      
     } catch (e, stackTrace) {
       print('❌ GUARDIAN FETCH ERROR: $e');
       print('Stack trace: $stackTrace');
@@ -286,32 +275,23 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   List<GuardianPatient> get _filteredPatients {
     final filtered = _allPatients.where((patient) {
       final query = _query.toLowerCase().trim();
-
+      
       if (query.isEmpty) {
         return _filterStatus == null || patient.overallStatus == _filterStatus;
       }
-
+      
       // Search across multiple fields
       final matchesName = patient.name.toLowerCase().contains(query);
-      final matchesRelationship = patient.relationship.toLowerCase().contains(
-        query,
-      );
+      final matchesRelationship = patient.relationship.toLowerCase().contains(query);
       final matchesStatus = patient.overallStatus.toLowerCase().contains(query);
-      final matchesGlucoseLabel = patient.glucoseLabel.toLowerCase().contains(
-        query,
-      );
-
-      final matchesSearch =
-          matchesName ||
-          matchesRelationship ||
-          matchesStatus ||
-          matchesGlucoseLabel;
-      final matchesFilter =
-          _filterStatus == null || patient.overallStatus == _filterStatus;
-
+      final matchesGlucoseLabel = patient.glucoseLabel.toLowerCase().contains(query);
+      
+      final matchesSearch = matchesName || matchesRelationship || matchesStatus || matchesGlucoseLabel;
+      final matchesFilter = _filterStatus == null || patient.overallStatus == _filterStatus;
+      
       return matchesSearch && matchesFilter;
     }).toList();
-
+    
     // Sort by priority: emergency -> attention -> good
     filtered.sort((a, b) {
       const priority = {'emergency': 0, 'attention': 1, 'good': 2};
@@ -319,29 +299,29 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       final priorityB = priority[b.overallStatus] ?? 2;
       return priorityA.compareTo(priorityB);
     });
-
+    
     return filtered;
   }
 
   int get _emergencyCount =>
       _allPatients.where((p) => p.overallStatus == 'emergency').length;
-
+      
   int get _attentionCount =>
       _allPatients.where((p) => p.overallStatus == 'attention').length;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-
+    
     if (_isLoading) {
       return Scaffold(
         backgroundColor: colors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-
+    
     final patients = _filteredPatients;
-
+    
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
@@ -349,10 +329,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           children: [
             // Header Section
             _buildHeader(context),
-
+            
             // Search and Filter Section
             _buildSearchAndFilter(context),
-
+            
             // Patient List Section
             Expanded(
               child: patients.isEmpty
@@ -373,7 +353,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         : hour < 18
         ? 'Good afternoon'
         : 'Good evening';
-
+        
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
       child: Column(
@@ -390,7 +370,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           const SizedBox(height: 4),
           Text(
             'Watching over ${_allPatients.length} ${_allPatients.length == 1 ? 'person' : 'people'}',
-            style: TextStyle(fontSize: 14, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: 12),
           _buildStatusPills(context),
@@ -401,10 +384,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   Widget _buildStatusPills(BuildContext context) {
     final colors = context.colors;
-    final goodCount = _allPatients
-        .where((p) => p.overallStatus == 'good')
-        .length;
-
+    final goodCount = _allPatients.where((p) => p.overallStatus == 'good').length;
+    
     return Row(
       children: [
         _buildPill(
@@ -434,12 +415,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildPill(
-    BuildContext context,
-    String label,
-    Color textColor,
-    Color bgColor,
-  ) {
+  Widget _buildPill(BuildContext context, String label, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -459,7 +435,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   Widget _buildSearchAndFilter(BuildContext context) {
     final colors = context.colors;
-
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Row(
@@ -477,22 +453,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 },
                 decoration: InputDecoration(
                   hintText: 'Search by name, relationship...',
-                  hintStyle: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: colors.textSecondary,
-                    size: 20,
-                  ),
+                  hintStyle: TextStyle(color: colors.textSecondary, fontSize: 14),
+                  prefixIcon: Icon(Icons.search, color: colors.textSecondary, size: 20),
                   suffixIcon: _query.isNotEmpty
                       ? IconButton(
-                          icon: Icon(
-                            Icons.close,
-                            color: colors.textSecondary,
-                            size: 18,
-                          ),
+                          icon: Icon(Icons.close, color: colors.textSecondary, size: 18),
                           onPressed: () {
                             setState(() {
                               _query = '';
@@ -518,9 +483,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ),
               child: Icon(
                 Icons.filter_list,
-                color: _filterStatus != null
-                    ? Colors.white
-                    : colors.textSecondary,
+                color: _filterStatus != null ? Colors.white : colors.textSecondary,
                 size: 20,
               ),
             ),
@@ -530,10 +493,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildPatientList(
-    BuildContext context,
-    List<GuardianPatient> patients,
-  ) {
+  Widget _buildPatientList(BuildContext context, List<GuardianPatient> patients) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       itemCount: patients.length,
@@ -545,7 +505,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   Widget _buildEmptyState(BuildContext context) {
     final colors = context.colors;
-
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -560,7 +520,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             _query.isNotEmpty
                 ? 'No patients match "$_query"'
                 : 'No patients found',
-            style: TextStyle(fontSize: 16, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 16,
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: 8),
           if (_filterStatus != null || _query.isNotEmpty)
@@ -590,7 +553,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     final statusColor = _getStatusColor(patient.overallStatus, colors);
     final statusBgColor = _getStatusBgColor(patient.overallStatus, colors);
     final glucoseColor = _getGlucoseColor(patient, colors);
-
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -651,10 +614,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: statusBgColor,
                     borderRadius: BorderRadius.circular(20),
@@ -671,7 +631,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ],
             ),
           ),
-
+          
           // Glucose Info
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -693,14 +653,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 const SizedBox(width: 4),
                 Text(
                   'mg/dL',
-                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: glucoseColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -746,7 +706,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ],
             ),
           ),
-
+          
           // Device Alerts
           if (!patient.sensorConnected || !patient.pumpActive)
             Padding(
@@ -762,7 +722,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ],
               ),
             ),
-
+          
           // Action Buttons
           Padding(
             padding: const EdgeInsets.all(16),
@@ -813,29 +773,20 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildDeviceStatus(
-    IconData icon,
-    String label,
-    bool isActive,
-    GlucoraColors colors,
-  ) {
+  Widget _buildDeviceStatus(IconData icon, String label, bool isActive, GlucoraColors colors) {
     return Row(
       children: [
         Icon(
           icon,
           size: 12,
-          color: isActive
-              ? colors.accent
-              : colors.textSecondary.withValues(alpha: 0.5),
+          color: isActive ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 4),
         Text(
           isActive ? label : '$label off',
           style: TextStyle(
             fontSize: 10,
-            color: isActive
-                ? colors.accent
-                : colors.textSecondary.withValues(alpha: 0.5),
+            color: isActive ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -912,7 +863,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       _showErrorSnackBar('No phone number available');
       return;
     }
-
+    
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
@@ -926,7 +877,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       _showErrorSnackBar('No phone number available');
       return;
     }
-
+    
     final Uri smsUri = Uri(scheme: 'sms', path: phoneNumber);
     if (await canLaunchUrl(smsUri)) {
       await launchUrl(smsUri);
@@ -947,34 +898,25 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   // Helper methods for styling
   Color _getStatusColor(String status, GlucoraColors colors) {
     switch (status) {
-      case 'emergency':
-        return colors.error;
-      case 'attention':
-        return colors.warning;
-      default:
-        return colors.accent;
+      case 'emergency': return colors.error;
+      case 'attention': return colors.warning;
+      default: return colors.accent;
     }
   }
 
   Color _getStatusBgColor(String status, GlucoraColors colors) {
     switch (status) {
-      case 'emergency':
-        return colors.error.withValues(alpha: 0.1);
-      case 'attention':
-        return colors.warning.withValues(alpha: 0.1);
-      default:
-        return colors.accent.withValues(alpha: 0.1);
+      case 'emergency': return colors.error.withValues(alpha: 0.1);
+      case 'attention': return colors.warning.withValues(alpha: 0.1);
+      default: return colors.accent.withValues(alpha: 0.1);
     }
   }
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'emergency':
-        return 'Check on them';
-      case 'attention':
-        return 'Worth a look';
-      default:
-        return 'Doing well';
+      case 'emergency': return 'Check on them';
+      case 'attention': return 'Worth a look';
+      default: return 'Doing well';
     }
   }
 
@@ -994,12 +936,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
   IconData _getTrendIcon(String trend) {
     switch (trend.toLowerCase()) {
-      case 'up':
-        return Icons.trending_up;
-      case 'down':
-        return Icons.trending_down;
-      default:
-        return Icons.trending_flat;
+      case 'up': return Icons.trending_up;
+      case 'down': return Icons.trending_down;
+      default: return Icons.trending_flat;
     }
   }
 }
@@ -1017,7 +956,7 @@ class _FilterBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<GlucoraColors>()!;
-
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -1130,7 +1069,7 @@ class _FilterBottomSheet extends StatelessWidget {
   ) {
     final colors = Theme.of(context).extension<GlucoraColors>()!;
     final isSelected = currentFilter == value;
-
+    
     return GestureDetector(
       onTap: () {
         onFilterSelected(value);
@@ -1142,9 +1081,7 @@ class _FilterBottomSheet extends StatelessWidget {
           color: isSelected ? bgColor : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? color
-                : colors.textSecondary.withValues(alpha: 0.2),
+            color: isSelected ? color : colors.textSecondary.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -1153,7 +1090,10 @@ class _FilterBottomSheet extends StatelessWidget {
             Container(
               width: 12,
               height: 12,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1171,12 +1111,16 @@ class _FilterBottomSheet extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
+            if (isSelected)
+              Icon(Icons.check_circle, color: color, size: 20),
           ],
         ),
       ),
