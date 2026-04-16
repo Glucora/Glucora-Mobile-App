@@ -26,7 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   bool _isLoading = false;
-  String? _phoneError; 
+  String? _phoneError;
 
   Future<void> _signUp() async {
     setState(() => _phoneError = null);
@@ -94,9 +94,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final response = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': fullName,
-        },
+        data: {'full_name': fullName},
       );
 
       if (!mounted) return;
@@ -104,7 +102,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (response.user != null) {
         // 2. Insert into your custom users table
         final user = response.user!;
-        
+/* 
         final insertData = {
           'id': user.id,
           'full_name': fullName,
@@ -117,15 +115,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'created_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         };
-        
+
         print('Inserting user data: $insertData');
-        
-        final insertResult = await Supabase.instance.client
+ */
+        // update the row the trigger already created
+        await Supabase.instance.client
             .from('users')
-            .insert(insertData)
-            .select();
-        
-        print('Insert result: $insertResult');
+            .update({
+              'full_name': fullName,
+              'email': email,
+              'phone_no': phone,
+              'age': age,
+              'address': address,
+              'role': 'norole',
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', user.id);
 
         if (!mounted) return;
 
@@ -144,13 +149,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      
+
       print('Auth error: ${e.message}');
-      
+
       if (e.message.contains('User already registered')) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: TranslatedText('This email is already registered. Please login.'),
+            content: TranslatedText(
+              'This email is already registered. Please login.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -164,9 +171,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       print('Sign up error: $e');
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: TranslatedText('Sign up failed: ${e.toString()}'),
@@ -192,7 +199,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             );
           },
         ),
-        title: TranslatedText('Sign Up', style: TextStyle(color: colors.textPrimary)),
+        title: TranslatedText(
+          'Sign Up',
+          style: TextStyle(color: colors.textPrimary),
+        ),
         backgroundColor: colors.surface,
         elevation: 0,
       ),
@@ -212,11 +222,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.person_outline, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -247,11 +261,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -261,7 +279,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your email';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter your email';
                   if (!value.contains('@')) return 'Enter a valid email';
                   return null;
                 },
@@ -277,18 +296,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: colors.textSecondary,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -298,13 +324,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your password';
-                  if (value.length < 8) return 'Password must be at least 8 characters';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter your password';
+                  if (value.length < 8)
+                    return 'Password must be at least 8 characters';
                   final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
                   final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
                   final hasDigit = RegExp(r'[0-9]').hasMatch(value);
-                  final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value);
-                  if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+                  final hasSpecial = RegExp(
+                    r'[!@#\$%^&*(),.?":{}|<>]',
+                  ).hasMatch(value);
+                  if (!hasUppercase ||
+                      !hasLowercase ||
+                      !hasDigit ||
+                      !hasSpecial) {
                     return 'Password must include uppercase, lowercase,\nnumber, and special character';
                   }
                   return null;
@@ -321,11 +354,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.phone, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -335,11 +372,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Please enter your phone number';
+                  if (value == null || value.trim().isEmpty)
+                    return 'Please enter your phone number';
                   final numberRegex = RegExp(r'^[0-9]+$');
-                  if (!numberRegex.hasMatch(value)) return 'Please enter a valid number (numbers only)';
-                  if (value.length < 10) return 'Please enter a valid phone number';
-                  if (_phoneError != null) return _phoneError; 
+                  if (!numberRegex.hasMatch(value))
+                    return 'Please enter a valid number (numbers only)';
+                  if (value.length < 10)
+                    return 'Please enter a valid phone number';
+                  if (_phoneError != null) return _phoneError;
                   return null;
                 },
               ),
@@ -354,11 +394,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icon(Icons.cake_outlined, color: colors.primary),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -368,10 +412,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Please enter your age';
+                  if (value == null || value.trim().isEmpty)
+                    return 'Please enter your age';
                   final age = int.tryParse(value);
                   if (age == null) return 'Please enter a valid number';
-                  if (age < 0 || age > 100) return 'Please enter a valid age (0–100)';
+                  if (age < 0 || age > 100)
+                    return 'Please enter a valid age (0–100)';
                   return null;
                 },
               ),
@@ -383,14 +429,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 decoration: InputDecoration(
                   labelText: 'Enter your address',
                   labelStyle: TextStyle(color: colors.textSecondary),
-                  prefixIcon: Icon(Icons.location_on_outlined, color: colors.primary),
+                  prefixIcon: Icon(
+                    Icons.location_on_outlined,
+                    color: colors.primary,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colors.textSecondary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -400,7 +453,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Please enter your address';
+                  if (value == null || value.trim().isEmpty)
+                    return 'Please enter your address';
                   if (value.length < 5) return 'Please enter a valid address';
                   return null;
                 },
@@ -411,14 +465,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   Checkbox(
                     value: _agreeToTerms,
-                    onChanged: (value) => setState(() => _agreeToTerms = value ?? false),
+                    onChanged: (value) =>
+                        setState(() => _agreeToTerms = value ?? false),
                     activeColor: colors.accent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: TextStyle(fontSize: 14, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                        ),
                         children: [
                           const TextSpan(text: 'I agree to the '),
                           TextSpan(
@@ -430,9 +490,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const TermsScreen()),
-                                  ),
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const TermsScreen(),
+                                ),
+                              ),
                           ),
                           const TextSpan(text: ' and '),
                           TextSpan(
@@ -444,9 +506,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             recognizer: TapGestureRecognizer()
                               ..onTap = () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const TermsScreen()),
-                                  ),
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const TermsScreen(),
+                                ),
+                              ),
                           ),
                         ],
                       ),
@@ -462,15 +526,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   backgroundColor: colors.accent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const TranslatedText('Sign Up', style: TextStyle(fontSize: 16)),
+                    : const TranslatedText(
+                        'Sign Up',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
               const SizedBox(height: 16),
               // Link to login
@@ -485,7 +557,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onTap: () => Navigator.pop(context),
                     child: TranslatedText(
                       'Login',
-                      style: TextStyle(color: colors.accent, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: colors.accent,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -526,7 +601,11 @@ class SignUpSuccessScreen extends StatelessWidget {
             const SizedBox(height: 24),
             TranslatedText(
               'Success!',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: colors.accent),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: colors.accent,
+              ),
             ),
             const SizedBox(height: 16),
             const TranslatedText(
@@ -551,9 +630,14 @@ class SignUpSuccessScreen extends StatelessWidget {
                 backgroundColor: colors.accent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const TranslatedText('Go to Login', style: TextStyle(fontSize: 18)),
+              child: const TranslatedText(
+                'Go to Login',
+                style: TextStyle(fontSize: 18),
+              ),
             ),
           ],
         ),
