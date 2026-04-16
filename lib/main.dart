@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/role_selection_screen.dart';
-import 'features/patient/widgets/patient_shell.dart';
+import 'features/patient/widgets/patient_shell.dart' as patientShell;
 import 'features/doctor/widgets/doctor_shell.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/widgets/guardian_shell.dart';
@@ -29,6 +29,7 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
+import 'package:glucora_ai_companion/features/user/patient_navigation.dart'; // Contains BluetoothPairingScreen
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -136,6 +137,7 @@ class GlucoraApp extends StatelessWidget {
               '/login-screen': (context) => const LoginScreen(),
               '/sign-up': (context) => const SignUpScreen(),
               '/role-selection': (context) => const RoleSelectionScreen(),
+              '/bluetooth-pairing': (context) => const BluetoothPairingScreen(),
             },
           );
         },
@@ -184,11 +186,17 @@ class _StartupGateState extends State<_StartupGate> {
       final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
           .trim()
           .toLowerCase();
-      if (normalizedRole == 'patient') return const PatientNavigation();
-      if (normalizedRole == 'doctor') return const DoctorMainScreen();
-      if (normalizedRole == 'guardian') return const GuardianMainScreen();
-      if (normalizedRole == 'admin') return const AdminMainScreen();
-      return const RoleSelectionScreen();
+      if (normalizedRole == 'patient') {
+        return const patientShell.PatientNavigation();
+      } else if (normalizedRole == 'doctor') {
+        return const DoctorMainScreen();
+      } else if (normalizedRole == 'guardian') {
+        return const GuardianMainScreen();
+      } else if (normalizedRole == 'admin') {
+        return const AdminMainScreen();
+      } else {
+        return const RoleSelectionScreen();
+      }
     }
 
     return const WelcomeScreen();

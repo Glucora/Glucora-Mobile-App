@@ -1,12 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/iob_detail_sheet.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
+import 'manual_log_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
@@ -32,17 +36,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Glucose
   double? _glucoseValue;
+  double? _backendGlucoseValue;
   String _glucoseTrend = 'stable';
+  String _backendGlucoseTrend = 'stable';
   DateTime? _glucoseUpdatedAt;
+  DateTime? _backendGlucoseUpdatedAt;
   bool _glucoseLoading = true;
 
   // IOB
   double? _iobValue;
+  double? _backendIobValue;
   bool _iobLoading = true;
 
   // Battery
   String? _batteryHealth;
   bool _batteryLoading = true;
+
+  // BLE hardware
+  final BleHardwareService _bleHardwareService = BleHardwareService.instance;
+  StreamSubscription<BleHardwareData>? _bleDataSub;
+  String? _hardwareDeviceName;
+  int? _hardwareBatteryPercent;
+  double? _hardwarePredictionValue;
+  double? _hardwareLatestGlucoseValue;
+  bool _hardwareConnected = false;
+  bool _hardwareLoading = true;
+  String _hardwareStatus = 'Searching for hardware...';
+  bool _hadHardwareConnection = false;
+  bool _disconnectSnackbarShown = false;
+  bool _hideSensorValuesUntilReconnect = false;
 
   @override
   void initState() {
@@ -51,6 +73,126 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchLatestGlucose();
     _fetchLatestIOB();
     _fetchDeviceBattery();
+    _startBleHardwareFeed();
+  }
+
+  @override
+  void dispose() {
+    _bleDataSub?.cancel();
+    _bleHardwareService.stop();
+    super.dispose();
+  }
+
+  Future<void> _startBleHardwareFeed() async {
+    _bleDataSub?.cancel();
+
+    _bleDataSub = _bleHardwareService.dataStream.listen((data) {
+      if (!mounted) return;
+
+      final didJustLoseConnection = _hardwareConnected && !data.isConnected;
+      final shouldShowDisconnectSnackbar =
+          didJustLoseConnection && !_disconnectSnackbarShown;
+
+      if (kDebugMode) {
+        debugPrint(
+          'Home BLE stream -> connected=${data.isConnected}, '
+          'battery=${data.batteryPercent}, prediction=${data.predictionValue}, '
+          'iob=${data.iobValue}, latestGlucose=${data.latestGlucoseValue}, '
+          'status=${data.status}',
+        );
+      }
+
+      setState(() {
+        _hardwareLoading = data.isLoading;
+        _hardwareConnected = data.isConnected;
+        _hardwareDeviceName = data.deviceName;
+        _hardwareBatteryPercent = data.batteryPercent;
+        _hardwarePredictionValue = data.predictionValue;
+        _hardwareLatestGlucoseValue = data.latestGlucoseValue;
+        _hardwareStatus = data.status;
+
+        if (data.latestGlucoseValue != null) {
+          _glucoseValue = data.latestGlucoseValue;
+          _glucoseUpdatedAt = DateTime.now();
+          _glucoseLoading = false;
+        }
+
+        if (data.iobValue != null) {
+          _iobValue = data.iobValue;
+          _iobLoading = false;
+        }
+
+        if (data.isConnected) {
+          _hadHardwareConnection = true;
+          _disconnectSnackbarShown = false;
+        }
+
+        // Once hardware has connected at least once, keep values hidden for
+        // every disconnected/scanning state until a real reconnection happens.
+        _hideSensorValuesUntilReconnect =
+            _hadHardwareConnection && !data.isConnected;
+
+        if (!data.isConnected && _hideSensorValuesUntilReconnect) {
+          // Clear BLE-derived values so the UI does not keep stale connected data.
+          _hardwareBatteryPercent = null;
+          _hardwarePredictionValue = null;
+          _hardwareLatestGlucoseValue = null;
+
+          // Keep UI values empty until reconnection to avoid showing stale data.
+          _glucoseValue = null;
+          _glucoseTrend = 'stable';
+          _glucoseUpdatedAt = null;
+          _iobValue = null;
+          _batteryHealth = null;
+          _glucoseLoading = false;
+          _iobLoading = false;
+          _batteryLoading = false;
+        } else if (!data.isConnected) {
+          // If there has not been a prior active hardware connection,
+          // backend values can still be shown as fallback.
+          _hardwareBatteryPercent = null;
+          _hardwarePredictionValue = null;
+          _hardwareLatestGlucoseValue = null;
+          _glucoseValue = _backendGlucoseValue;
+          _glucoseTrend = _backendGlucoseTrend;
+          _glucoseUpdatedAt = _backendGlucoseUpdatedAt;
+          _iobValue = _backendIobValue;
+        }
+      });
+
+      if (shouldShowDisconnectSnackbar) {
+        _disconnectSnackbarShown = true;
+        _showHardwareDisconnectedSnackBar();
+      }
+
+      if (data.isConnected) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+    });
+
+    await _bleHardwareService.start();
+  }
+
+  void _showHardwareDisconnectedSnackBar() {
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const TranslatedText(
+          'Hardware connection was lost. Open Bluetooth Pairing to reconnect.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 12),
+        action: SnackBarAction(
+          label: 'Pair now',
+          onPressed: () {
+            Navigator.of(context).pushNamed('/bluetooth-pairing');
+          },
+        ),
+      ),
+    );
     _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) {
         setState(() {}); // just rebuild to update timeAgo
@@ -73,6 +215,7 @@ void dispose() {
           .select('id')
           .eq('user_id', userId)
           .maybeSingle();
+
 
       if (response != null && response['id'] != null) {
         return response['id'] as int;
@@ -132,9 +275,19 @@ void dispose() {
     if (mounted) {
       setState(() {
         if (response != null) {
-          _glucoseValue = double.tryParse(response['value_mg_dl'].toString());
-          _glucoseTrend = response['trend'] ?? 'stable';
-          _glucoseUpdatedAt = DateTime.tryParse(response['recorded_at']);
+          final value = double.tryParse(response['value_mg_dl'].toString());
+          final trend = response['trend'] ?? 'stable';
+          final updatedAt = DateTime.tryParse(response['recorded_at']);
+
+          _backendGlucoseValue = value;
+          _backendGlucoseTrend = trend;
+          _backendGlucoseUpdatedAt = updatedAt;
+
+          if (!_hardwareConnected && !_hideSensorValuesUntilReconnect) {
+            _glucoseValue = value;
+            _glucoseTrend = trend;
+            _glucoseUpdatedAt = updatedAt;
+          }
         }
         _glucoseLoading = false;
       });
@@ -164,46 +317,131 @@ void dispose() {
   // FETCH: DEVICE BATTERY - FIXED VERSION
   // ════════════════════════════════════════════════════
   Future<void> _fetchDeviceBattery() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) {
-      setState(() => _batteryLoading = false);
-      return;
-    }
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
 
-    final battery = await getDeviceBattery(userId);
+      if (userId == null) {
+        setState(() => _batteryLoading = false);
+        return;
+      }
 
-    if (mounted) {
-      setState(() {
+      final patientProfileId = await getPatientProfileId(userId);
+      if (patientProfileId == null) {
+        if (kDebugMode) {
+          debugPrint('Battery fetch skipped: patient profile not found.');
+        }
+        setState(() => _batteryLoading = false);
+        return;
+      }
+
+      // Try multiple approaches to get battery health
+      String? batteryValue;
+
+      // Approach 1: Get active device first
+      final activeDevice = await supabase
+          .from('devices')
+          .select('battery_health, last_sync_at')
+          .eq('patient_id', patientProfileId)
+          .eq('is_active', true)
+          .order('last_sync_at', ascending: false)
+          .maybeSingle();
+
+      if (activeDevice != null && activeDevice['battery_health'] != null) {
+        batteryValue = activeDevice['battery_health'].toString();
+      } else {
+        // Approach 2: Get any device (most recent)
+        final device = await supabase
+            .from('devices')
+            .select('battery_health, last_sync_at')
+            .eq('patient_id', patientProfileId)
+            .order('last_sync_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        if (device != null && device['battery_health'] != null) {
+          batteryValue = device['battery_health'].toString();
+        }
+      }
+
+      // If still no battery, try to see if there are any devices at all
+      if (batteryValue == null) {
+        final devices = await supabase
+            .from('devices')
+            .select('id')
+            .eq('patient_id', patientProfileId);
+
+        if (kDebugMode) {
+          debugPrint(
+            'Device count for patientProfileId $patientProfileId: ${devices.length}',
+          );
+        }
+      }
+
+      final battery = await getDeviceBattery(userId);
+
+      if (mounted) {
+        setState(() {
+        _batteryHealth = _hideSensorValuesUntilReconnect ? null : batteryValue;
         _batteryHealth = battery;
         _batteryLoading = false;
       });
-    }
 
-    // Retry once after 2 seconds if nothing found
-    if (battery == null && mounted) {
-      Future.delayed(const Duration(seconds: 2), () async {
-        if (!mounted) return;
-        final retry = await getDeviceBattery(userId);
-        if (retry != null && mounted) {
-          setState(() => _batteryHealth = retry);
-        }
-      });
+      if (kDebugMode) {
+        debugPrint('Battery fetched successfully: $_batteryHealth');
+      }
+
+      // If no battery found after first attempt, try again in 2 seconds
+      // (in case device data is still syncing)
+      if (batteryValue == null && mounted) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            _retryFetchBattery();
+          }
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print('Failed to fetch battery: $e');
+      setState(() => _batteryLoading = false);
     }
   }
 
-Future<void> _onRefresh() async {
-  await Future.wait([
-    _fetchLatestGlucose(),
-    _fetchLatestIOB(),
-    _fetchDeviceBattery(),
-    _fetchCarePlanSummary(),
-  ]);
-}
+  // Retry function for battery fetch
+  Future<void> _retryFetchBattery() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
 
+      if (userId == null) return;
 
+      final patientProfileId = await getPatientProfileId(userId);
+      if (patientProfileId == null) return;
 
+      final response = await supabase
+          .from('devices')
+          .select('battery_health')
+          .eq('patient_id', patientProfileId)
+          .not('battery_health', 'is', null)
+          .order('last_sync_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
 
+      if (response != null &&
+          response['battery_health'] != null &&
+          mounted &&
+          !_hideSensorValuesUntilReconnect) {
+        setState(() {
+          _batteryHealth = response['battery_health'].toString();
+        });
 
+        if (kDebugMode) {
+          print('Battery fetched on retry: $_batteryHealth');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Retry battery fetch failed: $e');
+    }
+  }
 
   // ════════════════════════════════════════════════════
   // HELPERS
@@ -294,7 +532,13 @@ return SafeArea(
                           children: [
                             _glucoseCard(context),
                             const SizedBox(height: 12),
-                            _statusIndicatorsRow(context),
+                            if (!_hardwareConnected)
+                              _disconnectedHardwarePlaceholder(context)
+                            else ...[
+                              _statusIndicatorsRow(context),
+                              const SizedBox(height: 12),
+                              _hardwareSnapshotCard(context),
+                            ],
                           ],
                         ),
                       ),
@@ -340,7 +584,13 @@ return SafeArea(
                     children: [
                       _glucoseCard(context),
                       const SizedBox(height: 12),
-                      _statusIndicatorsRow(context),
+                      if (!_hardwareConnected)
+                        _disconnectedHardwarePlaceholder(context)
+                      else ...[
+                        _statusIndicatorsRow(context),
+                        const SizedBox(height: 12),
+                        _hardwareSnapshotCard(context),
+                      ],
                       const SizedBox(height: 16),
                       GestureDetector(
                         onTap: () => Navigator.push(
@@ -383,11 +633,130 @@ return SafeArea(
   }
 
   // ════════════════════════════════════════════════════
+  // DISCONNECTED HARDWARE PLACEHOLDER
+  // ════════════════════════════════════════════════════
+  Widget _disconnectedHardwarePlaceholder(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 34),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TranslatedText(
+            "No Hardware connected!",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed('/bluetooth-pairing');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            child: const TranslatedText("Get started"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // DISCONNECTED HARDWARE PLACEHOLDER
+  // ════════════════════════════════════════════════════
+  Widget _disconnectedHardwarePlaceholder(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 34),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TranslatedText(
+            "No Hardware connected!",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed('/bluetooth-pairing');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            child: const TranslatedText("Get started"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════
   // GLUCOSE CARD — live data
   // ════════════════════════════════════════════════════
   Widget _glucoseCard(BuildContext context) {
     final colors = context.colors;
-    final dotColor = _glucoseColor(colors);
+    final suppressValues =
+        _hideSensorValuesUntilReconnect && !_hardwareConnected;
+    final dotColor = suppressValues
+        ? colors.textSecondary
+        : _glucoseColor(colors);
+    final showSpinner = _glucoseLoading && !suppressValues;
+    final isOldOrNull =
+        _glucoseUpdatedAt == null ||
+        DateTime.now().difference(_glucoseUpdatedAt!) >
+            const Duration(hours: 12);
+    final showLinks = isOldOrNull && !showSpinner && !_hardwareConnected;
+
+    final glucoseDisplay = (showSpinner || suppressValues)
+        ? '– mg/dL'
+        : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL';
+    final updatedDisplay = suppressValues ? '–' : _timeAgo(_glucoseUpdatedAt);
 
     IconData trendIcon;
     switch (_glucoseTrend.toLowerCase()) {
@@ -426,10 +795,12 @@ return SafeArea(
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: dotColor,
+                  color: showLinks
+                      ? colors.primary.withValues(alpha: 0.6)
+                      : dotColor,
                   shape: BoxShape.circle,
                 ),
-                child: _glucoseLoading
+                child: showSpinner
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: CircularProgressIndicator(
@@ -437,7 +808,15 @@ return SafeArea(
                           strokeWidth: 2,
                         ),
                       )
-                    : Icon(trendIcon, color: Colors.white, size: 22),
+                    : Icon(
+                        showLinks
+                            ? Icons.edit_note_rounded
+                            : suppressValues
+                            ? Icons.bluetooth_disabled_rounded
+                            : trendIcon,
+                        color: Colors.white,
+                        size: 22,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -453,33 +832,81 @@ return SafeArea(
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          _glucoseLoading
-                              ? '– mg/dL'
-                              : '${_glucoseValue?.toStringAsFixed(0) ?? '–'} mg/dL',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: dotColor,
+                    if (showLinks)
+                      Wrap(
+                        spacing: 6.0,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ManualLogScreen(),
+                                ),
+                              );
+                            },
+                            child: TranslatedText(
+                              "Log Manually",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: colors.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'Last updated: ${_timeAgo(_glucoseUpdatedAt)}',
+                          TranslatedText(
+                            "or",
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 12,
                               color: colors.textSecondary,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(
+                                context,
+                              ).pushNamed('/bluetooth-pairing');
+                            },
+                            child: TranslatedText(
+                              "Connect Hardware",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: colors.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            glucoseDisplay,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: dotColor,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Last updated: $updatedDisplay',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.textSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -528,17 +955,26 @@ return SafeArea(
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
 
-    final String iobDisplay = _iobLoading
+    final suppressValues =
+        _hideSensorValuesUntilReconnect && !_hardwareConnected;
+
+    final String iobDisplay = (_iobLoading || suppressValues)
         ? '–'
         : (_iobValue?.toStringAsFixed(1) ?? '–');
 
-    // Battery - parse the percentage
-    final double? batteryPercent = _parseBatteryPercent(_batteryHealth);
+    // Prefer hardware battery value; fallback to backend battery health.
+    final double? batteryPercent = suppressValues
+        ? null
+        : _hardwareBatteryPercent != null
+        ? (_hardwareBatteryPercent!.clamp(0, 100) / 100.0)
+        : _parseBatteryPercent(_batteryHealth);
 
     // Display: use numeric value if parseable, otherwise show the raw string
-    final String batteryDisplay = batteryPercent != null
+    final String batteryDisplay = suppressValues
+        ? '–'
+        : batteryPercent != null
         ? '${(batteryPercent * 100).toInt()}'
-        : (_batteryLoading ? '–' : (_batteryHealth ?? '–'));
+        : (_batteryLoading && _hardwareLoading ? '–' : (_batteryHealth ?? '–'));
 
     final Color batteryColor = batteryPercent == null
         ? const Color(0xFF4CAF50) // default to green when unknown
@@ -756,7 +1192,7 @@ return SafeArea(
                             color: colors.textSecondary,
                           ),
                         )
-                      else if (_batteryLoading)
+                      else if (_batteryLoading && _hardwareLoading)
                         const SizedBox.shrink()
                       else
                         TranslatedText(
@@ -774,6 +1210,137 @@ return SafeArea(
           ),
         ),
       ],
+    );
+  }
+
+  Widget _hardwareSnapshotCard(BuildContext context) {
+    final colors = context.colors;
+    final suppressValues =
+        _hideSensorValuesUntilReconnect && !_hardwareConnected;
+    final String hardwareStatusText = _hardwareConnected
+        ? (_hardwareLoading ? 'Reading advertised values...' : _hardwareStatus)
+        : _hardwareStatus;
+    final String hardwareDeviceLabel = suppressValues
+        ? 'No hardware connected'
+        : (_hardwareDeviceName ?? 'No hardware connected');
+
+    final predictionValue = !suppressValues && _hardwarePredictionValue != null
+        ? _hardwarePredictionValue!.toStringAsFixed(2)
+        : '–';
+    final latestGlucoseValue =
+        !suppressValues && _hardwareLatestGlucoseValue != null
+        ? _hardwareLatestGlucoseValue!.toStringAsFixed(2)
+        : '–';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _hardwareConnected
+                    ? Icons.bluetooth_connected_rounded
+                    : Icons.bluetooth_searching_rounded,
+                size: 18,
+                color: _hardwareConnected
+                    ? colors.primary
+                    : colors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hardwareDeviceLabel,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hardwareStatusText,
+            style: TextStyle(fontSize: 11, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _hardwareMetricTile(
+                  context,
+                  title: 'Prediction',
+                  value: predictionValue,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _hardwareMetricTile(
+                  context,
+                  title: 'Latest Glucose',
+                  value: latestGlucoseValue,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _hardwareMetricTile(
+    BuildContext context, {
+    required String title,
+    required String value,
+  }) {
+    final colors = context.colors;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1163,4 +1730,99 @@ return SafeArea(
       ),
     );
   }
+}
+
+// ════════════════════════════════════════════════════
+// CHART PAINTER
+// ════════════════════════════════════════════════════
+class _ChartPainter extends CustomPainter {
+  final Color primaryColor;
+  const _ChartPainter({required this.primaryColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const lh = 18.0;
+    final h = size.height - lh;
+    final w = size.width;
+    final s = w / 5;
+
+    final grid = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.15)
+      ..strokeWidth = 1;
+    for (int i = 0; i <= 3; i++) {
+      canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
+    }
+
+    const xl = ['10', '20', '30', '40', '50', '60'];
+    for (int i = 0; i < xl.length; i++) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: xl[i],
+          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
+    }
+
+    final gry = [
+      Offset(0, h * 0.58),
+      Offset(s * 0.65, h * 0.42),
+      Offset(s * 1.25, h * 0.53),
+      Offset(s * 2.0, h * 0.37),
+    ];
+    final grn = [
+      Offset(s * 2.0, h * 0.37),
+      Offset(s * 2.7, h * 0.47),
+      Offset(s * 3.5, h * 0.30),
+      Offset(s * 4.2, h * 0.18),
+      Offset(s * 5.0, h * 0.04),
+    ];
+
+    final fill = _sp(grn)
+      ..lineTo(grn.last.dx, h)
+      ..lineTo(grn.first.dx, h)
+      ..close();
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..color = primaryColor.withValues(alpha: 0.10)
+        ..style = PaintingStyle.fill,
+    );
+
+    canvas.drawPath(
+      _sp(gry),
+      Paint()
+        ..color = const Color(0xFFCCCCCC)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    canvas.drawPath(
+      _sp(grn),
+      Paint()
+        ..color = primaryColor
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    for (final pt in [gry.last, grn.last]) {
+      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
+      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
+    }
+  }
+
+  Path _sp(List<Offset> pts) {
+    final p = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (int i = 1; i < pts.length; i++) {
+      final a = pts[i - 1], b = pts[i];
+      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+    }
+    return p;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter o) => false;
 }
