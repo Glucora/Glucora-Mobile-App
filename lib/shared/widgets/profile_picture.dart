@@ -38,14 +38,19 @@ class _ProfilePictureState extends State<ProfilePicture> {
     _imageUrl = widget.imageUrl;
   }
 
-  String get _initials {
-    if (!widget.showInitials || widget.displayName == null) return '';
-    final nameParts = widget.displayName!.trim().split(' ');
-    if (nameParts.length >= 2) {
-      return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
-    }
-    return widget.displayName![0].toUpperCase();
+String get _initials {
+  if (!widget.showInitials || widget.displayName == null || widget.displayName!.isEmpty) {
+    return '';
   }
+  final nameParts = widget.displayName!.trim().split(' ');
+  if (nameParts.isEmpty || nameParts[0].isEmpty) {
+    return '';
+  }
+  if (nameParts.length >= 2 && nameParts[1].isNotEmpty) {
+    return '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+  }
+  return nameParts[0][0].toUpperCase();
+}
 
   @override
   Widget build(BuildContext context) {
