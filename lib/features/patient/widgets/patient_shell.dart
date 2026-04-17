@@ -12,11 +12,6 @@ import 'package:glucora_ai_companion/features/patient/screens/weekly_report_scre
 import 'package:glucora_ai_companion/features/patient/screens/patient_history_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/medication_screen.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
-import 'package:flutter/services.dart';
-import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
-import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 import 'package:glucora_ai_companion/shared/widgets/base_profile_tab.dart';
 import 'package:glucora_ai_companion/shared/widgets/shared_profile_field.dart';
 import 'package:glucora_ai_companion/services/localization_service.dart';
@@ -540,47 +535,6 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     );
   }
 
-  Widget _buildField(
-    BuildContext context,
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    String? suffix,
-  }) {
-    final colors = context.colors;
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
-        suffixText: suffix,
-        suffixStyle: TextStyle(color: colors.textSecondary, fontSize: 12),
-        prefixIcon: Icon(icon, size: 20, color: colors.primary),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: colors.surface, // ✅ NOW USES THEME COLOR
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
-    );
-  }
-
   Future<void> _save() async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
@@ -638,18 +592,15 @@ class BluetoothPairingScreen extends StatefulWidget {
   State<BluetoothPairingScreen> createState() => _BluetoothPairingScreenState();
 }
 
-class _ProfileTabState extends State<_ProfileTab> {
-  String _name = "";
-  int _age = 0;
-  String _height = "";
-  String _phone = "";
-  String _email = "";
-  String _weight = "";
-  String _profilePictureUrl = "";
-  bool _isLoading = true;
-  bool _notificationsEnabled = true;
-  final supabase = Supabase.instance.client;
-  int? _openFaqIndex;
+class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
+  StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<bool>? _isScanningSub;
+
+  List<ScanResult> _scanResults = [];
+  List<BluetoothDevice> _connectedDevices = [];
+  bool _isScanning = false;
+  bool _isBusy = false;
+  String? _status;
 
   @override
   void initState() {
@@ -703,14 +654,6 @@ class _ProfileTabState extends State<_ProfileTab> {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
       if (!mounted) return;
       setState(() {
-        _name = userData?['full_name'] ?? "No Name";
-        _phone = userData?['phone_no'] ?? "";
-        _email = userData?['email'] ?? "";
-        _age = (userData?['age'] ?? 0).toInt();
-        _height = "${patientData?['height_cm'] ?? 0} cm";
-        _weight = "${patientData?['weight_kg'] ?? 0} kg";
-        _profilePictureUrl = userData?['profile_picture_url'] ?? "";
-        _isLoading = false;
         _status = _scanResults.isEmpty
             ? 'Scan finished. No BLE advertisements found yet.'
             : 'Found ${_scanResults.length} device(s). Tap one to connect.';
@@ -747,13 +690,6 @@ class _ProfileTabState extends State<_ProfileTab> {
     }
   }
 
-  Widget _buildSettingsCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
   Future<void> _disconnectDevice(BluetoothDevice device) async {
     setState(() => _isBusy = true);
     try {
@@ -797,19 +733,8 @@ class _ProfileTabState extends State<_ProfileTab> {
             children: [
               Row(
                 children: [
-                  TranslatedText(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  TranslatedText(
-                    subtitle,
-                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                  ),
+                  Expanded(child: TranslatedText('Connected Devices', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary))),
+                  IconButton(tooltip: 'Refresh', onPressed: _isBusy ? null : _refreshConnectedDevices, icon: Icon(Icons.refresh_rounded, color: colors.primary)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -861,136 +786,40 @@ class _ProfileTabState extends State<_ProfileTab> {
 
   Widget _emptyStateCard(BuildContext context, String message) {
     final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2))),
+      child: TranslatedText(message, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+    );
+  }
 
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+  Widget _connectedDeviceTile(BuildContext context, BluetoothDevice device) => _deviceTile(context, name: _deviceLabel(device), status: 'Connected', isConnected: true, actionLabel: 'Disconnect', onAction: _isBusy ? null : () => _disconnectDevice(device));
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _scanResultTile(BuildContext context, {required String name, required String signal, required bool connected, required VoidCallback? onConnect}) =>
+      _deviceTile(context, name: name, status: connected ? 'Connected' : signal, isConnected: connected, actionLabel: connected ? 'Connected' : 'Connect', onAction: connected ? null : onConnect);
+
+  Widget _deviceTile(BuildContext context, {required String name, required String status, required bool isConnected, required String actionLabel, required VoidCallback? onAction}) {
+    final colors = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2))),
+      child: Row(
+        children: [
+          Icon(Icons.bluetooth_rounded, size: 24, color: isConnected ? colors.primary : colors.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TranslatedText(
-                  'Profile',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.settings_outlined,
-                    color: colors.textSecondary,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SettingsScreen(
-                          notificationsEnabled: _notificationsEnabled,
-                          onNotificationsChanged: (notifications) {
-                            setState(
-                              () => _notificationsEnabled = notifications,
-                            );
-                          },
-                          additionalSettings: [
-                            _buildSettingsCard(
-                              context,
-                              icon: Icons.bluetooth_rounded,
-                              title: 'Bluetooth Pairing',
-                              subtitle: 'Connect your CGM sensor or pump',
-                              onTap: () => Navigator.of(
-                                context,
-                              ).pushNamed('/bluetooth-pairing'),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildSettingsCard(
-                              context,
-                              icon: Icons.people_outline_rounded,
-                              title: 'My Connections & Sharing',
-                              subtitle: 'Doctors, guardians & location sharing',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const _ConnectionsScreen(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildSettingsCard(
-                              context,
-                              icon: Icons.person_add_alt_1_rounded,
-                              title: 'Connect with Care Team',
-                              subtitle:
-                                  'Find and connect with doctors & guardians',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ConnectionRequestsScreen(
-                                        role: 'patient',
-                                      ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                TranslatedText(status, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               ],
             ),
-            const SizedBox(height: 24),
-            Center(
-              child: Column(
-                children: [
-                  ProfilePicture(
-                    userId: supabase.auth.currentUser!.id,
-                    imageUrl: _profilePictureUrl,
-                    size: 90,
-                    isEditable: true,
-                    onPictureChanged: () => _loadProfile(),
-                    displayName: _name,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TranslatedText(
-                        _name,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: _editProfile,
-                        child: Icon(
-                          Icons.edit,
-                          size: 18,
-                          color: colors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  TranslatedText(
-                    '$_age years',
-                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
+          ),
+          if (isConnected)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),

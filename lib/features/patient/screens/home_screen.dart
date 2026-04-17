@@ -4,9 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:glucora_ai_companion/core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
-import 'package:intl/intl.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/iob_detail_sheet.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
@@ -74,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hadHardwareConnection = false;
   bool _disconnectSnackbarShown = false;
   bool _hideSensorValuesUntilReconnect = false;
-  final List<double> _liveGlucoseHistory = [];
 
   @override
   void initState() {
@@ -125,17 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _hardwareDeviceName = data.deviceName;
         _hardwareBatteryPercent = data.batteryPercent;
         _hardwarePredictionValue = data.predictionValue;
-
-        if (data.latestGlucoseValue != null &&
-            data.latestGlucoseValue != _hardwareLatestGlucoseValue) {
-          if (_liveGlucoseHistory.isEmpty ||
-              _liveGlucoseHistory.last != data.latestGlucoseValue) {
-            _liveGlucoseHistory.add(data.latestGlucoseValue!);
-            if (_liveGlucoseHistory.length > 20)
-              _liveGlucoseHistory.removeAt(0);
-          }
-        }
-
         _hardwareLatestGlucoseValue = data.latestGlucoseValue;
         _hardwareStatus = data.status;
 
@@ -567,61 +553,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             children: [
                               GestureDetector(
-                                onTap: () {
-                                  final currentGlucose =
-                                      _hardwareLatestGlucoseValue ??
-                                      _glucoseValue ??
-                                      _backendGlucoseValue ??
-                                      0.0;
-                                  double predictedGlucose =
-                                      _hardwarePredictionValue ?? 0.0;
-                                  if (predictedGlucose <= 0.0 &&
-                                      currentGlucose > 0) {
-                                    predictedGlucose = currentGlucose + 25.0;
-                                  }
-                                  final percentageChange = currentGlucose > 0
-                                      ? ((predictedGlucose - currentGlucose) /
-                                                currentGlucose) *
-                                            100
-                                      : 0.0;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => AIPredictionScreen(
-                                        currentGlucose: currentGlucose,
-                                        predictedGlucose: predictedGlucose,
-                                        percentageChange: percentageChange,
-                                        lastReadingTime: _glucoseUpdatedAt,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const AIPredictionScreen(),
+                                  ),
+                                ),
                                 child: _predictionCard(context),
                               ),
                               const SizedBox(height: 16),
                               GestureDetector(
-                                onTap: () {
-                                  final currentGlucose =
-                                      _hardwareLatestGlucoseValue ??
-                                      _glucoseValue ??
-                                      0.0;
-                                  final predictedGlucose =
-                                      _hardwarePredictionValue ??
-                                      currentGlucose;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => RecommendationsScreen(
-                                        currentGlucose: currentGlucose > 0
-                                            ? currentGlucose
-                                            : null,
-                                        predictedGlucose: predictedGlucose > 0
-                                            ? predictedGlucose
-                                            : null,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const RecommendationsScreen(),
+                                  ),
+                                ),
                                 child: _recommendationsCard(context),
                               ),
                               const SizedBox(height: 16),
@@ -652,59 +599,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                         const SizedBox(height: 16),
                         GestureDetector(
-                          onTap: () {
-                            final currentGlucose =
-                                _hardwareLatestGlucoseValue ??
-                                _glucoseValue ??
-                                _backendGlucoseValue ??
-                                0.0;
-                            double predictedGlucose =
-                                _hardwarePredictionValue ?? 0.0;
-                            if (predictedGlucose <= 0.0 && currentGlucose > 0) {
-                              predictedGlucose = currentGlucose + 25.0;
-                            }
-                            final percentageChange = currentGlucose > 0
-                                ? ((predictedGlucose - currentGlucose) /
-                                          currentGlucose) *
-                                      100
-                                : 0.0;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AIPredictionScreen(
-                                  currentGlucose: currentGlucose,
-                                  predictedGlucose: predictedGlucose,
-                                  percentageChange: percentageChange,
-                                  lastReadingTime: _glucoseUpdatedAt,
-                                ),
-                              ),
-                            );
-                          },
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AIPredictionScreen(),
+                            ),
+                          ),
                           child: _predictionCard(context),
                         ),
                         const SizedBox(height: 16),
                         GestureDetector(
-                          onTap: () {
-                            final currentGlucose =
-                                _hardwareLatestGlucoseValue ??
-                                _glucoseValue ??
-                                0.0;
-                            final predictedGlucose =
-                                _hardwarePredictionValue ?? currentGlucose;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RecommendationsScreen(
-                                  currentGlucose: currentGlucose > 0
-                                      ? currentGlucose
-                                      : null,
-                                  predictedGlucose: predictedGlucose > 0
-                                      ? predictedGlucose
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RecommendationsScreen(),
+                            ),
+                          ),
                           child: _recommendationsCard(context),
                         ),
                         const SizedBox(height: 16),
@@ -1386,54 +1296,39 @@ class _HomeScreenState extends State<HomeScreen> {
   // ════════════════════════════════════════════════════
   Widget _predictionCard(BuildContext context) {
     final colors = context.colors;
-    final currentGlucose =
-        _hardwareLatestGlucoseValue ??
-        _glucoseValue ??
-        _backendGlucoseValue ??
-        0.0;
-
-    double predictedGlucose = _hardwarePredictionValue ?? 0.0;
-    if (predictedGlucose <= 0.0 && currentGlucose > 0) {
-      predictedGlucose =
-          currentGlucose + 25.0; // fallback to a positive prediction
+    
+    final displayValue = _aiPredictedGlucose ?? 
+                         _hardwarePredictionValue ??
+                         135.0;
+    
+    final horizonMinutes = _aiHorizonMinutes ?? 30;
+    
+    final currentGlucose = _glucoseValue;
+    double? percentageChange;
+    bool isRising = true;
+    
+    if (currentGlucose != null && displayValue != null && currentGlucose > 0) {
+      percentageChange = ((displayValue - currentGlucose) / currentGlucose) * 100;
+      isRising = percentageChange > 0;
     }
-
-    double percentageChange = 0.0;
-    if (currentGlucose > 0) {
-      percentageChange =
-          ((predictedGlucose - currentGlucose) / currentGlucose) * 100;
+    
+    String getPredictionTime() {
+      if (_aiPredictionTime != null) {
+        final now = DateTime.now();
+        final diff = now.difference(_aiPredictionTime!);
+        if (diff.inMinutes < 1) return "just now";
+        if (diff.inMinutes < 60) return "${diff.inMinutes} min ago";
+        if (diff.inHours < 24) return "${diff.inHours}h ago";
+        return "${diff.inDays}d ago";
+      }
+      return "Waiting for data...";
     }
-
-    final isRising = percentageChange >= 0;
-    final trendColor = isRising ? colors.error : colors.primary;
-    final trendIcon = isRising ? Icons.arrow_upward : Icons.arrow_downward;
-
-    final formattedDate = _glucoseUpdatedAt != null
-        ? DateFormat('h:mma · d MMM, yyyy').format(_glucoseUpdatedAt!)
-        : _backendGlucoseUpdatedAt != null
-        ? DateFormat('h:mma · d MMM, yyyy').format(_backendGlucoseUpdatedAt!)
-        : '--';
-
-    // Get latest glucose history
-    final now = DateTime.now();
-    final cutoff = now.subtract(const Duration(minutes: 60));
-    final recentHistory = patientLogEntries
-        .where(
-          (entry) =>
-              entry.type == HistoryEntryType.cgmReading &&
-              entry.timestamp.isAfter(cutoff) &&
-              entry.glucoseValue != null,
-        )
-        .toList();
-    recentHistory.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    final List<double> combinedHistory = recentHistory
-        .map((e) => e.glucoseValue!.toDouble())
-        .toList();
-    combinedHistory.addAll(_liveGlucoseHistory);
-
-    final historyGlucose = combinedHistory.isNotEmpty
-        ? combinedHistory
-        : (currentGlucose > 0 ? [currentGlucose] : <double>[]);
+    
+    Color getRiskColor() {
+      if (_aiRiskLevel == 'LOW') return const Color(0xFFEFDD16);
+      if (_aiRiskLevel == 'HIGH') return colors.error;
+      return colors.success;
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -1519,10 +1414,8 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              TranslatedText(
-                predictedGlucose > 0
-                    ? predictedGlucose.round().toString()
-                    : "--",
+              Text(
+                displayValue.toStringAsFixed(0),
                 style: TextStyle(
                   fontSize: 46,
                   fontWeight: FontWeight.bold,
@@ -1629,14 +1522,7 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: ChartPainter(
-                primaryColor: colors.primary,
-                currentGlucose: currentGlucose,
-                predictedGlucose: predictedGlucose,
-                historyGlucose: historyGlucose.isNotEmpty
-                    ? historyGlucose
-                    : null,
-              ),
+              painter: ChartPainter(primaryColor: colors.primary),
             ),
           ),
           const SizedBox(height: 10),
