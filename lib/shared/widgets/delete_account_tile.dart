@@ -189,76 +189,84 @@ class DeleteAccountTile extends StatelessWidget {
       
       final role = userData['role'] as String? ?? '';
 
-      // Delete role-specific data first
+      print('Deleting account for role: $role');
+
+      // Delete role-specific data first (using try-catch for each, like your friend's code)
       if (role == 'patient') {
         // Get patient profile id
-        final patientProfile = await supabase
-            .from('patient_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        
-        if (patientProfile != null) {
-          // Delete patient-specific data
-          await supabase.from('glucose_readings').delete().eq('patient_id', patientProfile['id']);
-          await supabase.from('insulin_doses').delete().eq('patient_id', patientProfile['id']);
-          await supabase.from('patient_profile').delete().eq('user_id', user.id);
-        }
-        
-        // Delete connections where user is patient
-        await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id);
-        await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id);
-        await supabase.from('patient_locations').delete().eq('patient_id', user.id);
-        
+        try {
+          final profileResponse = await supabase
+              .from('patient_profile')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+          if (profileResponse != null) {
+            try { await supabase.from('glucose_readings').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('insulin_doses').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('ai_predictions').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('insulin_on_board').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('alerts').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+            try { await supabase.from('care_plans').delete().eq('patient_id', profileResponse['id']); } catch (_) {}
+          }
+        } catch (_) {}
+
+        try { await supabase.from('patient_profile').delete().eq('user_id', user.id); } catch (_) {}
+        try { await supabase.from('guardian_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_patient_connections').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('patient_locations').delete().eq('patient_id', user.id); } catch (_) {}
+        try { await supabase.from('devices').delete().eq('patient_id', user.id); } catch (_) {}
+
       } else if (role == 'guardian') {
-        // Delete connections where user is guardian
-        await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id);
-        
+        try { await supabase.from('guardian_patient_connections').delete().eq('guardian_id', user.id); } catch (_) {}
+        try { await supabase.from('guardian_profile').delete().eq('user_id', user.id); } catch (_) {}
+
       } else if (role == 'doctor') {
-        // Get doctor profile id
-        final doctorProfile = await supabase
-            .from('doctor_profile')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        
-        if (doctorProfile != null) {
-          // Delete doctor-specific data
-          await supabase.from('care_plans').delete().eq('doctor_id', user.id);
-          await supabase.from('doctor_profile').delete().eq('user_id', user.id);
-        }
-        
-        // Delete connections where user is doctor
-        await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id);
+        try { await supabase.from('care_plans').delete().eq('doctor_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_patient_connections').delete().eq('doctor_id', user.id); } catch (_) {}
+        try { await supabase.from('doctor_profile').delete().eq('user_id', user.id); } catch (_) {}
+
+      } else if (role == 'admin') {
+        try { await supabase.from('admin_logs').delete().eq('admin_user_id', user.id); } catch (_) {}
       }
 
-      // Common deletions for all roles
-      await supabase.from('devices').delete().eq('patient_id', user.id);
+      // Delete device tokens
+      try { await supabase.from('device_tokens').delete().eq('user_id', user.id); } catch (_) {}
+
+      // Finally, delete the user from auth using RPC
+      await supabase.rpc('delete_user_by_id', params: {'user_id': user.id});
+
+      // Sign out
+      await supabase.auth.signOut();
       
-      // Call RPC to delete user account
-      final response = await supabase.rpc('delete_user_account');
+      // Dismiss loading dialog
+      if (context.mounted) Navigator.of(context).pop();
       
-      print('Delete response: $response');
-      
-      if (response != null && response['success'] == true) {
-        await supabase.auth.signOut();
-        if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login-screen',
-            (route) => false,
-          );
-        }
-      } else {
-        throw Exception(response?['error'] ?? 'Failed to delete account');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: TranslatedText('Account deleted successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        
+        // Navigate to login
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login-screen',
+          (route) => false,
+        );
       }
     } catch (e) {
       debugPrint('Delete account error: $e');
+      
+      // Dismiss loading dialog
       if (context.mounted) Navigator.of(context).pop();
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: TranslatedText('Failed to delete account. Please try again.'),
+            content: TranslatedText('Failed to delete account: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

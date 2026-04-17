@@ -47,36 +47,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       final phone = _phoneController.text.trim();
+      final email = _emailController.text.trim();
+      final fullName = _nameController.text.trim();
+      final age = int.tryParse(_ageController.text.trim()) ?? 0;
+      final address = _addressController.text.trim();
+      final password = _passwordController.text;
 
+      // Check if phone number already exists
       final existingPhone = await Supabase.instance.client
           .from('users')
           .select('id')
           .eq('phone_no', phone)
-          .limit(1);
+          .maybeSingle();
 
       if (!mounted) return;
 
-      if (existingPhone.isNotEmpty) {
+      if (existingPhone != null) {
         setState(() {
           _phoneError = 'This phone number is already in use';
           _isLoading = false;
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _formKey.currentState!.validate();
-        });
         return;
       }
 
+      // Check if email already exists
+      final existingEmail = await Supabase.instance.client
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+
+      if (!mounted) return;
+
+      if (existingEmail != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: TranslatedText('This email is already registered'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 1. Sign up with Supabase Auth
       final response = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        data: {
-          'full_name': _nameController.text.trim(),
-          'role': 'norole',
-          'phone_no': phone,
-          'age': int.tryParse(_ageController.text.trim()) ?? 0,
-          'address': _addressController.text.trim(),
-        },
+        email: email,
+        password: password,
+        data: {'full_name': fullName},
       );
 
       debugPrint('[CREATE USER STATUS] ${response.user.toString()}');
@@ -84,12 +102,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response.user != null) {
+        // 2. Insert into your custom users table
+        final user = response.user!;
+/* 
+        final insertData = {
+          'id': user.id,
+          'full_name': fullName,
+          'email': email,
+          'phone_no': phone,
+          'age': age,
+          'address': address,
+          'role': 'norole',
+          'is_active': true,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        print('Inserting user data: $insertData');
+ */
+        // update the row the trigger already created
+        await Supabase.instance.client
+            .from('users')
+            .update({
+              'full_name': fullName,
+              'email': email,
+              'phone_no': phone,
+              'age': age,
+              'address': address,
+              'role': 'norole',
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', user.id);
+
+        if (!mounted) return;
+
+        // Navigate to role selection on success
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
           (route) => false,
         );
       } else {
+        // User needs email confirmation
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const SignUpSuccessScreen()),
@@ -97,14 +151,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText(e.message),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+      print('Auth error: ${e.message}');
+
+      if (e.message.contains('User already registered')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: TranslatedText(
+              'This email is already registered. Please login.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText(e.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
+
+      print('Sign up error: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: TranslatedText('Sign up failed: ${e.toString()}'),
