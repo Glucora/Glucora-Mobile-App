@@ -25,19 +25,24 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   void initState() {
     super.initState();
     _fetchUsers();
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchUsers() async {
+  void _onSearchChanged() {
     setState(() {
-      _loading = true;
-      _error = null;
+      _query = _searchController.text.trim();
     });
+  }
+
+  Future<void> _fetchUsers({bool silent = false}) async {
+    if (!silent) setState(() { _loading = true; _error = null; });
     try {
       final response = await Supabase.instance.client
           .from('users')
@@ -48,23 +53,27 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           .map((row) => AdminUser.fromMap(row as Map<String, dynamic>))
           .toList();
 
-      if (mounted) setState(() { _allUsers = users; _loading = false; });
+      if (mounted) {
+        setState(() { 
+          _allUsers = users; 
+          _loading = false; 
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  List<AdminUser> get _filtered {
+  List<AdminUser> _getFilteredUsers() {
     return _allUsers.where((u) {
-      if (_query.isNotEmpty &&
-          !u.name.toLowerCase().contains(_query.toLowerCase()) &&
-          !u.email.toLowerCase().contains(_query.toLowerCase())) {
-        return false;
-      }
-      if (_roleFilter != 'All' && u.role != _roleFilter.toLowerCase()) {
-        return false;
-      }
-      return true;
+      final matchesQuery = _query.isEmpty ||
+          u.name.toLowerCase().contains(_query.toLowerCase()) ||
+          u.email.toLowerCase().contains(_query.toLowerCase());
+
+      final matchesRole = _roleFilter == 'All' ||
+          u.role.toLowerCase() == _roleFilter.toLowerCase();
+
+      return matchesQuery && matchesRole;
     }).toList();
   }
 
@@ -128,6 +137,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
 
       if (mounted) {
         await _fetchUsers(); 
+      }
+
+      await supabase.rpc('delete_user_by_id', params: {'user_id': user.id});
+
+      if (mounted) {
+        await _fetchUsers(silent: true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('${user.name} deleted'),
@@ -217,15 +232,8 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           .update({'role': newRole, 'is_active': newActive})
           .eq('id', user.id);
 
-      setState(() {
-        final index = _allUsers.indexWhere((u) => u.id == user.id);
-        if (index != -1) {
-          _allUsers[index].role = newRole;
-          _allUsers[index].isActive = newActive;
-        }
-      });
-
       if (mounted) {
+        await _fetchUsers(silent: true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: TranslatedText('User updated'), backgroundColor: Colors.green),
         );
@@ -252,7 +260,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final filtered = _filtered;
+    final filteredUsers = _getFilteredUsers();
 
     return Scaffold(
       appBar: AppBar(
@@ -282,7 +290,6 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                         icon: Icon(Icons.clear, color: colors.textSecondary),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() => _query = '');
                         },
                       )
                     : null,
@@ -294,7 +301,6 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   borderSide: BorderSide.none,
                 ),
               ),
-              onChanged: (v) => setState(() => _query = v),
             ),
           ),
           SizedBox(
@@ -311,7 +317,9 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     selected: selected,
                     selectedColor: colors.accent.withValues(alpha: 0.2),
                     checkmarkColor: colors.accent,
-                    onSelected: (_) => setState(() => _roleFilter = label),
+                    onSelected: (_) {
+                      setState(() => _roleFilter = label);
+                    },
                   ),
                 );
               }).toList(),
@@ -332,13 +340,20 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                           ],
                         ),
                       )
-                    : filtered.isEmpty
+                    : filteredUsers.isEmpty
                         ? Center(child: TranslatedText('No users found', style: TextStyle(color: colors.textSecondary)))
                         : ListView.separated(
+                            key: ValueKey('user_list_$_query$_roleFilter'),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            itemCount: filtered.length,
+                            itemCount: filteredUsers.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (context, index) => _userCard(context, filtered[index]),
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              return KeyedSubtree(
+                                key: ValueKey('user_${user.id}_$_query'),
+                                child: _userCard(context, user),
+                              );
+                            },
                           ),
           ),
         ],
@@ -376,10 +391,15 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                   children: [
                     TranslatedText(
                       user.name,
+                      key: ValueKey('name_${user.id}_$_query'),
                       style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: colors.textPrimary),
                     ),
                     const SizedBox(height: 2),
-                    TranslatedText(user.email, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      user.email,
+                      key: ValueKey('email_${user.id}_$_query'),
+                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -391,6 +411,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 ),
                 child: TranslatedText(
                   user.roleLabel,
+                  key: ValueKey('role_${user.id}_$_query'),
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: roleColor),
                 ),
               ),
@@ -403,16 +424,24 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     color: colors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: TranslatedText('Inactive', style: TextStyle(fontSize: 10, color: colors.error)),
+                  child: TranslatedText(
+                    'Inactive',
+                    key: ValueKey('inactive_${user.id}_$_query'),
+                    style: TextStyle(fontSize: 10, color: colors.error),
+                  ),
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'delete') _deleteUser(user);
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+                    child: TranslatedText(
+                      'Delete',
+                      key: ValueKey('delete_${user.id}'),
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
