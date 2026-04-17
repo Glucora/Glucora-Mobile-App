@@ -72,59 +72,6 @@ Future<Map<String, dynamic>?> getLatestPrediction(int patientProfileId) async {
   }
 }
 
-/// Inserts a new AI predicted glucose value from the BLE hardware.
-/// [predictedValue] - The raw value predicted by the hardware's AI model.
-/// Uses the int8 patient_profile config id as the `patient_id`.
-Future<bool> insertAiPrediction(double predictedValue) async {
-  try {
-    final user = _db.auth.currentUser;
-    
-    if (user == null) {
-      if (kDebugMode) {
-        print(
-          '[SupabaseService] check failed: No user found for insertAiPrediction.',
-        );
-      }
-      return false;
-    }
-
-    final patientProfileId = await getPatientProfileId(user.id);
-    if (patientProfileId == null) {
-      if (kDebugMode) {
-        print(
-          '[SupabaseService] check failed: No patient profile found for insertAiPrediction.',
-        );
-      }
-      return false;
-    }
-
-    String riskLevel = 'IN_RANGE';
-    if (predictedValue < 70) {
-      riskLevel = 'LOW';
-    } else if (predictedValue > 180) {
-      riskLevel = 'HIGH';
-    }
-
-    final createdAt = DateTime.now().toUtc();
-    final predictedFor = createdAt.add(const Duration(minutes: 5));
-
-    await _db.from('ai_predictions').insert({
-      'patient_id': patientProfileId, // int8 profile ID
-      'predicted_value_mg_dl': predictedValue,
-      'horizon_minutes': 5,
-      'confidence_score': 100.0,
-      'risk_level': riskLevel,
-      'model_version': '1',
-      'created_at': createdAt.toIso8601String(),
-      'predicted_for': predictedFor.toIso8601String(),
-    });
-
-    return true;
-  } catch (e) {
-    if (kDebugMode) print('[SupabaseService] insertAiPrediction error: $e');
-    return false;
-  }
-}
 
 /// Fetch the latest `limit` recommendations for a patient.
 Future<List<Map<String, dynamic>>> getLatestRecommendations({
