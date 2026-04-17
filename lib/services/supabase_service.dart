@@ -304,3 +304,45 @@ Future<String?> getDeviceBattery(String userId) async {
     return null;
   }
 }
+/// Inserts a new AI predicted glucose value from the BLE hardware.
+/// [predictedValue] - The raw value predicted by the hardware's AI model.
+/// Uses the Supabase Auth UUID as the `patient_id`.
+Future<bool> insertAiPrediction(double predictedValue) async {
+  try {
+    final user = _db.auth.currentUser;
+    if (user == null) {
+      if (kDebugMode) {
+        print(
+          '[SupabaseService] check failed: No user found for insertAiPrediction.',
+        );
+      }
+      return false;
+    }
+
+    String riskLevel = 'IN_RANGE';
+    if (predictedValue < 70) {
+      riskLevel = 'LOW';
+    } else if (predictedValue > 180) {
+      riskLevel = 'HIGH';
+    }
+
+    final createdAt = DateTime.now().toUtc();
+    final predictedFor = createdAt.add(const Duration(minutes: 5));
+
+    await _db.from('ai_predictions').insert({
+      'patient_id': user.id, // Supabase Auth UUID as requested
+      'predicted_value': predictedValue,
+      'horizon_minutes': 5,
+      'confidence_score': 100.0,
+      'risk_level': riskLevel,
+      'model_version': '1',
+      'created_at': createdAt.toIso8601String(),
+      'predicted_for': predictedFor.toIso8601String(),
+    });
+
+    return true;
+  } catch (e) {
+    if (kDebugMode) print('[SupabaseService] insertAiPrediction error: $e');
+    return false;
+  }
+}
