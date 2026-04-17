@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/role_selection_screen.dart';
-import 'features/patient/widgets/patient_shell.dart' as patientShell;
+import 'features/patient/widgets/patient_shell.dart';
 import 'features/doctor/widgets/doctor_shell.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/widgets/guardian_shell.dart';
@@ -191,7 +191,7 @@ class _StartupGateState extends State<_StartupGate> {
           .trim()
           .toLowerCase();
       if (normalizedRole == 'patient') {
-        return const patientShell.PatientNavigation();
+        return const PatientNavigation();
       } else if (normalizedRole == 'doctor') {
         return const DoctorMainScreen();
       } else if (normalizedRole == 'guardian') {
