@@ -29,8 +29,12 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-import 'package:glucora_ai_companion/features/user/patient_navigation.dart'; // Contains BluetoothPairingScreen
+import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_repository.dart';
 
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -171,7 +175,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
-      AiPredictionUploadService.instance.startListening();
+    AiPredictionUploadService.instance.startListening();
     }
   }
 

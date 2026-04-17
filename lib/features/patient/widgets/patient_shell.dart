@@ -13,6 +13,13 @@ import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.d
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
+import 'dart:async';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:provider/provider.dart';
+import 'package:glucora_ai_companion/core/theme/theme_provider.dart';
+import 'package:glucora_ai_companion/services/localization_service.dart';
+import 'package:glucora_ai_companion/shared/screens/language_selection_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 // ─────────────────────────────────────────────────────────────
 // PatientNavigation
 // ─────────────────────────────────────────────────────────────
@@ -154,6 +161,431 @@ class _NavTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+class BluetoothPairingScreen extends StatefulWidget {
+  const BluetoothPairingScreen();
+
+  @override
+  State<BluetoothPairingScreen> createState() => _BluetoothPairingScreenState();
+}
+
+class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
+  StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<bool>? _isScanningSub;
+
+  List<ScanResult> _scanResults = [];
+  List<BluetoothDevice> _connectedDevices = [];
+  bool _isScanning = false;
+  bool _isBusy = false;
+  String? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    _scanSub = FlutterBluePlus.scanResults.listen((results) {
+      if (!mounted) return;
+      setState(() => _scanResults = results);
+    });
+    _isScanningSub = FlutterBluePlus.isScanning.listen((isScanning) {
+      if (!mounted) return;
+      setState(() => _isScanning = isScanning);
+    });
+    _refreshConnectedDevices();
+  }
+
+  @override
+  void dispose() {
+    _scanSub?.cancel();
+    _isScanningSub?.cancel();
+    FlutterBluePlus.stopScan();
+    super.dispose();
+  }
+
+  Future<void> _refreshConnectedDevices() async {
+    final devices = FlutterBluePlus.connectedDevices;
+    if (!mounted) return;
+    setState(() => _connectedDevices = devices);
+  }
+
+  Future<bool> _requestBlePermissions() async {
+    final statuses = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
+
+    return statuses.values.every((status) => status.isGranted);
+  }
+
+  Future<void> _scanForDevices() async {
+    if (_isScanning || _isBusy) return;
+
+    setState(() {
+      _status = 'Scanning for nearby devices...';
+      _isBusy = true;
+    });
+
+    try {
+      final granted = await _requestBlePermissions();
+      if (!granted) {
+        if (!mounted) return;
+        setState(() => _status = 'Bluetooth permissions are required to scan.');
+        return;
+      }
+
+      setState(() => _scanResults = []);
+
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+
+      if (!mounted) return;
+      setState(() {
+        _status = _scanResults.isEmpty
+            ? 'Scan finished. No BLE advertisements found yet.'
+            : 'Found ${_scanResults.length} device(s). Tap one to connect.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Scan failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isBusy = false);
+      }
+    }
+  }
+
+  Future<void> _connectDevice(BluetoothDevice device) async {
+    setState(() {
+      _isBusy = true;
+      _status = 'Connecting to ${_deviceLabel(device)}...';
+    });
+
+    try {
+      final granted = await _requestBlePermissions();
+      if (!granted) {
+        if (!mounted) return;
+        setState(
+          () => _status = 'Bluetooth permissions are required to connect.',
+        );
+        return;
+      }
+
+      try {
+        await device.createBond();
+      } catch (_) {
+        // Some platforms/devices do not require explicit bonding.
+      }
+
+      await device.connect(timeout: const Duration(seconds: 12));
+      await _refreshConnectedDevices();
+
+      if (!mounted) return;
+      setState(() => _status = 'Connected to ${_deviceLabel(device)}.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: TranslatedText('Connected to ${_deviceLabel(device)}'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Connection failed: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText('Failed to connect: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isBusy = false);
+      }
+    }
+  }
+
+  Future<void> _disconnectDevice(BluetoothDevice device) async {
+    setState(() => _isBusy = true);
+    try {
+      await device.disconnect();
+      await _refreshConnectedDevices();
+      if (!mounted) return;
+      setState(() => _status = 'Disconnected from ${_deviceLabel(device)}.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Disconnect failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isBusy = false);
+      }
+    }
+  }
+
+  bool _isConnected(BluetoothDevice device) {
+    return _connectedDevices.any((d) => d.remoteId == device.remoteId);
+  }
+
+  String _deviceLabel(BluetoothDevice device) {
+    final name = device.platformName.trim();
+    if (name.isNotEmpty) return name;
+    return 'Device ${device.remoteId.str}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    final visibleScanResults = _scanResults;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: TranslatedText(
+          'Connect Device',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TranslatedText(
+                      'Connected Devices',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: _isBusy ? null : _refreshConnectedDevices,
+                    icon: Icon(Icons.refresh_rounded, color: colors.primary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_connectedDevices.isEmpty)
+                _emptyStateCard(context, 'No connected devices yet.')
+              else
+                ..._connectedDevices.map(
+                  (d) => _connectedDeviceTile(context, d),
+                ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: (_isBusy || _isScanning) ? null : _scanForDevices,
+                  icon: Icon(
+                    _isScanning
+                        ? Icons.hourglass_bottom_rounded
+                        : Icons.bluetooth_searching_rounded,
+                  ),
+                  label: TranslatedText(
+                    _isScanning ? 'Scanning...' : 'Pair/Connect New Device',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              TranslatedText(
+                'Available Devices',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (visibleScanResults.isEmpty)
+                _emptyStateCard(context, 'No discovered devices yet.')
+              else
+                ...visibleScanResults.map((result) {
+                  final device = result.device;
+                  final advertisedName = result.advertisementData.advName;
+                  final platformName = device.platformName.trim();
+                  final name = advertisedName.isNotEmpty
+                      ? advertisedName
+                      : (platformName.isNotEmpty
+                            ? platformName
+                            : 'Unnamed BLE Device (${device.remoteId.str})');
+                  final connected = _isConnected(device);
+
+                  return _scanResultTile(
+                    context,
+                    name: name,
+                    signal: 'RSSI: ${result.rssi} dBm',
+                    connected: connected,
+                    onConnect: connected || _isBusy
+                        ? null
+                        : () => _connectDevice(device),
+                  );
+                }),
+              const SizedBox(height: 24),
+              if (_status != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TranslatedText(
+                    _status!,
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
+                ),
+              TranslatedText(
+                'To pair a new device, put it in discovery mode and tap on it.',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyStateCard(BuildContext context, String message) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
+      child: TranslatedText(
+        message,
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
+    );
+  }
+
+  Widget _connectedDeviceTile(BuildContext context, BluetoothDevice device) {
+    return _deviceTile(
+      context,
+      name: _deviceLabel(device),
+      status: 'Connected',
+      isConnected: true,
+      actionLabel: 'Disconnect',
+      onAction: _isBusy ? null : () => _disconnectDevice(device),
+    );
+  }
+
+  Widget _scanResultTile(
+    BuildContext context, {
+    required String name,
+    required String signal,
+    required bool connected,
+    required VoidCallback? onConnect,
+  }) {
+    return _deviceTile(
+      context,
+      name: name,
+      status: connected ? 'Connected' : signal,
+      isConnected: connected,
+      actionLabel: connected ? 'Connected' : 'Connect',
+      onAction: connected ? null : onConnect,
+    );
+  }
+
+  Widget _deviceTile(
+    BuildContext context, {
+    required String name,
+    required String status,
+    required bool isConnected,
+    required String actionLabel,
+    required VoidCallback? onAction,
+  }) {
+    final colors = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.bluetooth_rounded,
+            size: 24,
+            color: isConnected ? colors.primary : colors.textSecondary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                TranslatedText(
+                  status,
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          if (isConnected)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TranslatedText(
+                'Connected',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: colors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: TranslatedText(
+                actionLabel,
+                style: TextStyle(color: colors.primary),
+              ),
+            ),
+        ],
       ),
     );
   }
