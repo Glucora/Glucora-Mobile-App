@@ -11,6 +11,7 @@ import 'package:glucora_ai_companion/services/localization_service.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:glucora_ai_companion/core/utils/app_strings.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
@@ -18,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/role_selection_screen.dart';
-import 'features/patient/widgets/patient_shell.dart';
+import 'features/patient/widgets/patient_shell.dart' as patientShell;
 import 'features/doctor/widgets/doctor_shell.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/widgets/guardian_shell.dart';
@@ -189,11 +190,17 @@ class _StartupGateState extends State<_StartupGate> {
       final normalizedRole = (userMetaRole ?? appMetaRole ?? '')
           .trim()
           .toLowerCase();
-      if (normalizedRole == 'patient') return const PatientNavigation();
-      if (normalizedRole == 'doctor') return const DoctorMainScreen();
-      if (normalizedRole == 'guardian') return const GuardianMainScreen();
-      if (normalizedRole == 'admin') return const AdminMainScreen();
-      return const RoleSelectionScreen();
+      if (normalizedRole == 'patient') {
+        return const patientShell.PatientNavigation();
+      } else if (normalizedRole == 'doctor') {
+        return const DoctorMainScreen();
+      } else if (normalizedRole == 'guardian') {
+        return const GuardianMainScreen();
+      } else if (normalizedRole == 'admin') {
+        return const AdminMainScreen();
+      } else {
+        return const RoleSelectionScreen();
+      }
     }
 
     return const WelcomeScreen();

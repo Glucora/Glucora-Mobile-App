@@ -1,5 +1,6 @@
 // BLE Branch 
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,9 +17,8 @@ import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
+
 Timer? _timeTicker;
-
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  
   // Care plan
   String _doctorName = '';
   String _targetRange = '– mg/dL';
@@ -515,22 +514,22 @@ return SafeArea(
           children: [
             const SizedBox(height: 20),
 
-            // ── Header ──
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TranslatedText(
-                  "Welcome, $userName!",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
+              // ── Header ──
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TranslatedText(
+                    "Welcome, $userName!",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
             isLandscape
                 ? Row(
@@ -550,41 +549,43 @@ return SafeArea(
                             ],
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AIPredictionScreen(),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const AIPredictionScreen(),
+                                  ),
                                 ),
+                                child: _predictionCard(context),
                               ),
-                              child: _predictionCard(context),
-                            ),
-                            const SizedBox(height: 16),
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const RecommendationsScreen(),
+                              const SizedBox(height: 16),
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const RecommendationsScreen(),
+                                  ),
                                 ),
+                                child: _recommendationsCard(context),
                               ),
-                              child: _recommendationsCard(context),
-                            ),
-                            const SizedBox(height: 16),
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PatientCarePlanScreen(),
+                              const SizedBox(height: 16),
+                              GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const PatientCarePlanScreen(),
+                                  ),
                                 ),
+                                child: _carePlanCard(context),
                               ),
-                              child: _carePlanCard(context),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -607,37 +608,88 @@ return SafeArea(
                           MaterialPageRoute(
                             builder: (_) => const AIPredictionScreen(),
                           ),
+                          child: _predictionCard(context),
                         ),
-                        child: _predictionCard(context),
-                      ),
-                      const SizedBox(height: 16),
-                      GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RecommendationsScreen(),
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RecommendationsScreen(),
+                            ),
                           ),
+                          child: _recommendationsCard(context),
                         ),
-                        child: _recommendationsCard(context),
-                      ),
-                      const SizedBox(height: 16),
-                      GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PatientCarePlanScreen(),
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PatientCarePlanScreen(),
+                            ),
                           ),
+                          child: _carePlanCard(context),
                         ),
-                        child: _carePlanCard(context),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-            const SizedBox(height: 30),
-          ],
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
-  ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // DISCONNECTED HARDWARE PLACEHOLDER
+  // ════════════════════════════════════════════════════
+  Widget _disconnectedHardwarePlaceholder(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 34),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TranslatedText(
+            "No Hardware connected!",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed('/bluetooth-pairing');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            child: const TranslatedText("Get started"),
+          ),
+        ],
+      ),
     );
   }
 
