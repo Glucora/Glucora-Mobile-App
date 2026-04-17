@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
+import 'package:intl/intl.dart';
+
 class AIPredictionScreen extends StatelessWidget {
-  const AIPredictionScreen({super.key});
+  final double currentGlucose;
+  final double predictedGlucose;
+  final double percentageChange;
+  final DateTime? lastReadingTime;
+
+  const AIPredictionScreen({
+    super.key,
+    required this.currentGlucose,
+    required this.predictedGlucose,
+    required this.percentageChange,
+    this.lastReadingTime,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final isRising = percentageChange >= 0;
+    final trendColor = isRising ? colors.error : colors.primary;
+    final trendIcon = isRising ? Icons.arrow_upward : Icons.arrow_downward;
+    final diff = (predictedGlucose - currentGlucose).abs();
+    
+    final formattedDate = lastReadingTime != null
+        ? DateFormat('h:mma · d MMM, yyyy').format(lastReadingTime!)
+        : '--';
+
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -53,7 +75,7 @@ class AIPredictionScreen extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        "135",
+                        "${predictedGlucose.round()}",
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -70,13 +92,13 @@ class AIPredictionScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.arrow_upward,
-                          color: colors.error, size: 14),
+                      Icon(trendIcon,
+                          color: trendColor, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        "22.73% rise expected",
+                        "${percentageChange.abs().toStringAsFixed(2)}% ${isRising ? 'rise' : 'fall'} expected",
                         style: TextStyle(
-                            color: colors.error,
+                            color: trendColor,
                             fontWeight: FontWeight.w600,
                             fontSize: 13),
                       ),
@@ -99,13 +121,13 @@ class AIPredictionScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            _detailRow(context, "Current Level", "110 mg/dL", colors.primary),
+            _detailRow(context, "Current Level", "${currentGlucose.round()} mg/dL", colors.primary),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow(context, "Predicted (30 min)", "135 mg/dL", colors.error),
+            _detailRow(context, "Predicted (30 min)", "${predictedGlucose.round()} mg/dL", trendColor),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow(context, "Trend", "Rising", const Color(0xFFEFDD16)),
+            _detailRow(context, "Trend", isRising ? "Rising" : "Falling", const Color(0xFFEFDD16)),
             const Divider(height: 24, color: Color(0xFFEEEEEE)),
-            _detailRow(context, "Last Reading", "10:21pm · 15 Jan, 2026", colors.textSecondary),
+            _detailRow(context, "Last Reading", formattedDate, colors.textSecondary),
 
             const SizedBox(height: 28),
 
@@ -123,8 +145,8 @@ class AIPredictionScreen extends StatelessWidget {
             _infoCard(
               context,
               Icons.info_outline_rounded,
-              "Your glucose is predicted to rise by 25 mg/dL in the next 30 minutes. "
-              "Consider reducing carbohydrate intake and staying active.",
+              "Your glucose is predicted to ${isRising ? 'rise' : 'fall'} by ${diff.round()} mg/dL in the next 30 minutes. "
+              "${isRising ? 'Consider reducing carbohydrate intake and staying active.' : 'Consider having a small snack and monitoring your levels.'}",
             ),
 
             const SizedBox(height: 30),

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:glucora_ai_companion/core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
+import 'package:intl/intl.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/iob_detail_sheet.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
@@ -63,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hadHardwareConnection = false;
   bool _disconnectSnackbarShown = false;
   bool _hideSensorValuesUntilReconnect = false;
+  final List<double> _liveGlucoseHistory = [];
 
   @override
   void initState() {
@@ -116,6 +119,17 @@ class _HomeScreenState extends State<HomeScreen> {
         _hardwareDeviceName = data.deviceName;
         _hardwareBatteryPercent = data.batteryPercent;
         _hardwarePredictionValue = data.predictionValue;
+
+        if (data.latestGlucoseValue != null &&
+            data.latestGlucoseValue != _hardwareLatestGlucoseValue) {
+          if (_liveGlucoseHistory.isEmpty ||
+              _liveGlucoseHistory.last != data.latestGlucoseValue) {
+            _liveGlucoseHistory.add(data.latestGlucoseValue!);
+            if (_liveGlucoseHistory.length > 20)
+              _liveGlucoseHistory.removeAt(0);
+          }
+        }
+
         _hardwareLatestGlucoseValue = data.latestGlucoseValue;
         _hardwareStatus = data.status;
 
@@ -552,23 +566,61 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             children: [
                               GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const AIPredictionScreen(),
-                                  ),
-                                ),
+                                onTap: () {
+                                  final currentGlucose =
+                                      _hardwareLatestGlucoseValue ??
+                                      _glucoseValue ??
+                                      _backendGlucoseValue ??
+                                      0.0;
+                                  double predictedGlucose =
+                                      _hardwarePredictionValue ?? 0.0;
+                                  if (predictedGlucose <= 0.0 &&
+                                      currentGlucose > 0) {
+                                    predictedGlucose = currentGlucose + 25.0;
+                                  }
+                                  final percentageChange = currentGlucose > 0
+                                      ? ((predictedGlucose - currentGlucose) /
+                                                currentGlucose) *
+                                            100
+                                      : 0.0;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AIPredictionScreen(
+                                        currentGlucose: currentGlucose,
+                                        predictedGlucose: predictedGlucose,
+                                        percentageChange: percentageChange,
+                                        lastReadingTime: _glucoseUpdatedAt,
+                                      ),
+                                    ),
+                                  );
+                                },
                                 child: _predictionCard(context),
                               ),
                               const SizedBox(height: 16),
                               GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const RecommendationsScreen(),
-                                  ),
-                                ),
+                                onTap: () {
+                                  final currentGlucose =
+                                      _hardwareLatestGlucoseValue ??
+                                      _glucoseValue ??
+                                      0.0;
+                                  final predictedGlucose =
+                                      _hardwarePredictionValue ??
+                                      currentGlucose;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RecommendationsScreen(
+                                        currentGlucose: currentGlucose > 0
+                                            ? currentGlucose
+                                            : null,
+                                        predictedGlucose: predictedGlucose > 0
+                                            ? predictedGlucose
+                                            : null,
+                                      ),
+                                    ),
+                                  );
+                                },
                                 child: _recommendationsCard(context),
                               ),
                               const SizedBox(height: 16),
@@ -600,22 +652,59 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                         const SizedBox(height: 16),
                         GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AIPredictionScreen(),
-                            ),
-                          ),
+                          onTap: () {
+                            final currentGlucose =
+                                _hardwareLatestGlucoseValue ??
+                                _glucoseValue ??
+                                _backendGlucoseValue ??
+                                0.0;
+                            double predictedGlucose =
+                                _hardwarePredictionValue ?? 0.0;
+                            if (predictedGlucose <= 0.0 && currentGlucose > 0) {
+                              predictedGlucose = currentGlucose + 25.0;
+                            }
+                            final percentageChange = currentGlucose > 0
+                                ? ((predictedGlucose - currentGlucose) /
+                                          currentGlucose) *
+                                      100
+                                : 0.0;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AIPredictionScreen(
+                                  currentGlucose: currentGlucose,
+                                  predictedGlucose: predictedGlucose,
+                                  percentageChange: percentageChange,
+                                  lastReadingTime: _glucoseUpdatedAt,
+                                ),
+                              ),
+                            );
+                          },
                           child: _predictionCard(context),
                         ),
                         const SizedBox(height: 16),
                         GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RecommendationsScreen(),
-                            ),
-                          ),
+                          onTap: () {
+                            final currentGlucose =
+                                _hardwareLatestGlucoseValue ??
+                                _glucoseValue ??
+                                0.0;
+                            final predictedGlucose =
+                                _hardwarePredictionValue ?? currentGlucose;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RecommendationsScreen(
+                                  currentGlucose: currentGlucose > 0
+                                      ? currentGlucose
+                                      : null,
+                                  predictedGlucose: predictedGlucose > 0
+                                      ? predictedGlucose
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
                           child: _recommendationsCard(context),
                         ),
                         const SizedBox(height: 16),
@@ -1304,6 +1393,55 @@ class _HomeScreenState extends State<HomeScreen> {
   // ════════════════════════════════════════════════════
   Widget _predictionCard(BuildContext context) {
     final colors = context.colors;
+    final currentGlucose =
+        _hardwareLatestGlucoseValue ??
+        _glucoseValue ??
+        _backendGlucoseValue ??
+        0.0;
+
+    double predictedGlucose = _hardwarePredictionValue ?? 0.0;
+    if (predictedGlucose <= 0.0 && currentGlucose > 0) {
+      predictedGlucose =
+          currentGlucose + 25.0; // fallback to a positive prediction
+    }
+
+    double percentageChange = 0.0;
+    if (currentGlucose > 0) {
+      percentageChange =
+          ((predictedGlucose - currentGlucose) / currentGlucose) * 100;
+    }
+
+    final isRising = percentageChange >= 0;
+    final trendColor = isRising ? colors.error : colors.primary;
+    final trendIcon = isRising ? Icons.arrow_upward : Icons.arrow_downward;
+
+    final formattedDate = _glucoseUpdatedAt != null
+        ? DateFormat('h:mma · d MMM, yyyy').format(_glucoseUpdatedAt!)
+        : _backendGlucoseUpdatedAt != null
+        ? DateFormat('h:mma · d MMM, yyyy').format(_backendGlucoseUpdatedAt!)
+        : '--';
+
+    // Get latest glucose history
+    final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(minutes: 60));
+    final recentHistory = patientLogEntries
+        .where(
+          (entry) =>
+              entry.type == HistoryEntryType.cgmReading &&
+              entry.timestamp.isAfter(cutoff) &&
+              entry.glucoseValue != null,
+        )
+        .toList();
+    recentHistory.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    final List<double> combinedHistory = recentHistory
+        .map((e) => e.glucoseValue!.toDouble())
+        .toList();
+    combinedHistory.addAll(_liveGlucoseHistory);
+
+    final historyGlucose = combinedHistory.isNotEmpty
+        ? combinedHistory
+        : (currentGlucose > 0 ? [currentGlucose] : <double>[]);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
@@ -1348,7 +1486,9 @@ class _HomeScreenState extends State<HomeScreen> {
             textBaseline: TextBaseline.alphabetic,
             children: [
               TranslatedText(
-                "135",
+                predictedGlucose > 0
+                    ? predictedGlucose.round().toString()
+                    : "--",
                 style: TextStyle(
                   fontSize: 46,
                   fontWeight: FontWeight.bold,
@@ -1369,13 +1509,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(Icons.arrow_upward, color: colors.error, size: 14),
+              Icon(trendIcon, color: trendColor, size: 14),
               const SizedBox(width: 2),
               TranslatedText(
-                "22.73%",
+                "${percentageChange.abs().toStringAsFixed(2)}%",
                 style: TextStyle(
                   fontSize: 13,
-                  color: colors.error,
+                  color: trendColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1388,7 +1528,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           TranslatedText(
-            "Glucose from 10:21pm 15 Jan, 2026",
+            "Glucose from $formattedDate",
             style: TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -1396,7 +1536,14 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: ChartPainter(primaryColor: colors.primary),
+              painter: ChartPainter(
+                primaryColor: colors.primary,
+                currentGlucose: currentGlucose,
+                predictedGlucose: predictedGlucose,
+                historyGlucose: historyGlucose.isNotEmpty
+                    ? historyGlucose
+                    : null,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -1685,99 +1832,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-// ════════════════════════════════════════════════════
-// CHART PAINTER
-// ════════════════════════════════════════════════════
-class _ChartPainter extends CustomPainter {
-  final Color primaryColor;
-  const _ChartPainter({required this.primaryColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const lh = 18.0;
-    final h = size.height - lh;
-    final w = size.width;
-    final s = w / 5;
-
-    final grid = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.15)
-      ..strokeWidth = 1;
-    for (int i = 0; i <= 3; i++) {
-      canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
-    }
-
-    const xl = ['10', '20', '30', '40', '50', '60'];
-    for (int i = 0; i < xl.length; i++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: xl[i],
-          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
-    }
-
-    final gry = [
-      Offset(0, h * 0.58),
-      Offset(s * 0.65, h * 0.42),
-      Offset(s * 1.25, h * 0.53),
-      Offset(s * 2.0, h * 0.37),
-    ];
-    final grn = [
-      Offset(s * 2.0, h * 0.37),
-      Offset(s * 2.7, h * 0.47),
-      Offset(s * 3.5, h * 0.30),
-      Offset(s * 4.2, h * 0.18),
-      Offset(s * 5.0, h * 0.04),
-    ];
-
-    final fill = _sp(grn)
-      ..lineTo(grn.last.dx, h)
-      ..lineTo(grn.first.dx, h)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..color = primaryColor.withValues(alpha: 0.10)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      _sp(gry),
-      Paint()
-        ..color = const Color(0xFFCCCCCC)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.drawPath(
-      _sp(grn),
-      Paint()
-        ..color = primaryColor
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    for (final pt in [gry.last, grn.last]) {
-      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
-      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
-    }
-  }
-
-  Path _sp(List<Offset> pts) {
-    final p = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (int i = 1; i < pts.length; i++) {
-      final a = pts[i - 1], b = pts[i];
-      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
-    }
-    return p;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
 }

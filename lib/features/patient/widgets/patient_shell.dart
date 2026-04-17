@@ -13,6 +13,7 @@ import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.d
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
+
 // ─────────────────────────────────────────────────────────────
 // PatientNavigation
 // ─────────────────────────────────────────────────────────────
@@ -1078,55 +1079,46 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     );
   }
 
-Widget _buildField(
-  BuildContext context,
-  String label,
-  TextEditingController controller,
-  IconData icon, {
-  TextInputType keyboardType = TextInputType.text,
-  String? suffix,
-}) {
-  final colors = context.colors;
-  return TextField(
-    controller: controller,
-    keyboardType: keyboardType,
-    style: TextStyle(
-      color: colors.textPrimary,
-      fontSize: 14,
-    ),
-    decoration: InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(
-        color: colors.textSecondary,
-        fontSize: 13,
+  Widget _buildField(
+    BuildContext context,
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+    String? suffix,
+  }) {
+    final colors = context.colors;
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
+        suffixText: suffix,
+        suffixStyle: TextStyle(color: colors.textSecondary, fontSize: 12),
+        prefixIcon: Icon(icon, size: 20, color: colors.primary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: colors.surface, // ✅ NOW USES THEME COLOR
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
-      suffixText: suffix,
-      suffixStyle: TextStyle(
-        color: colors.textSecondary,
-        fontSize: 12,
-      ),
-      prefixIcon: Icon(icon, size: 20, color: colors.primary),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      filled: true,
-      fillColor: colors.surface, // ✅ NOW USES THEME COLOR
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> _save() async {
     final supabase = Supabase.instance.client;
@@ -1221,7 +1213,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   String _phone = "";
   String _email = "";
   String _weight = "";
-  String _profilePictureUrl = ""; 
+  String _profilePictureUrl = "";
   bool _isLoading = true;
   bool _notificationsEnabled = true;
   final supabase = Supabase.instance.client;
@@ -1264,7 +1256,7 @@ class _ProfileTabState extends State<_ProfileTab> {
         _age = (userData?['age'] ?? 0).toInt();
         _height = "${patientData?['height_cm'] ?? 0} cm";
         _weight = "${patientData?['weight_kg'] ?? 0} kg";
-        _profilePictureUrl = userData?['profile_picture_url'] ?? ""; 
+        _profilePictureUrl = userData?['profile_picture_url'] ?? "";
         _isLoading = false;
       });
     } catch (e) {
@@ -1320,6 +1312,7 @@ class _ProfileTabState extends State<_ProfileTab> {
       ),
     );
   }
+
   Widget _buildSettingsCard(
     BuildContext context, {
     required IconData icon,
@@ -1373,10 +1366,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   const SizedBox(height: 2),
                   TranslatedText(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -1392,7 +1382,7 @@ class _ProfileTabState extends State<_ProfileTab> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1423,7 +1413,9 @@ class _ProfileTabState extends State<_ProfileTab> {
                         builder: (_) => SettingsScreen(
                           notificationsEnabled: _notificationsEnabled,
                           onNotificationsChanged: (notifications) {
-                            setState(() => _notificationsEnabled = notifications);
+                            setState(
+                              () => _notificationsEnabled = notifications,
+                            );
                           },
                           additionalSettings: [
                             _buildSettingsCard(
@@ -1431,13 +1423,11 @@ class _ProfileTabState extends State<_ProfileTab> {
                               icon: Icons.bluetooth_rounded,
                               title: 'Bluetooth Pairing',
                               subtitle: 'Connect your CGM sensor or pump',
-                              onTap: () => Navigator.push(
+                              onTap: () => Navigator.of(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => const _BluetoothPairingScreen(),
-                                ),
-                              ),
-                            ),const SizedBox(height: 16),
+                              ).pushNamed('/bluetooth-pairing'),
+                            ),
+                            const SizedBox(height: 16),
                             _buildSettingsCard(
                               context,
                               icon: Icons.people_outline_rounded,
@@ -1449,16 +1439,21 @@ class _ProfileTabState extends State<_ProfileTab> {
                                   builder: (_) => const _ConnectionsScreen(),
                                 ),
                               ),
-                            ),const SizedBox(height: 16),
+                            ),
+                            const SizedBox(height: 16),
                             _buildSettingsCard(
                               context,
                               icon: Icons.person_add_alt_1_rounded,
                               title: 'Connect with Care Team',
-                              subtitle: 'Find and connect with doctors & guardians',
+                              subtitle:
+                                  'Find and connect with doctors & guardians',
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const ConnectionRequestsScreen(role: 'patient'),
+                                  builder: (_) =>
+                                      const ConnectionRequestsScreen(
+                                        role: 'patient',
+                                      ),
                                 ),
                               ),
                             ),
@@ -1474,7 +1469,7 @@ class _ProfileTabState extends State<_ProfileTab> {
             Center(
               child: Column(
                 children: [
-                                   ProfilePicture(
+                  ProfilePicture(
                     userId: supabase.auth.currentUser!.id,
                     imageUrl: _profilePictureUrl,
                     size: 90,
