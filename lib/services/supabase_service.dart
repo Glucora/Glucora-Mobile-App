@@ -74,14 +74,25 @@ Future<Map<String, dynamic>?> getLatestPrediction(int patientProfileId) async {
 
 /// Inserts a new AI predicted glucose value from the BLE hardware.
 /// [predictedValue] - The raw value predicted by the hardware's AI model.
-/// Uses the Supabase Auth UUID as the `patient_id`.
+/// Uses the int8 patient_profile config id as the `patient_id`.
 Future<bool> insertAiPrediction(double predictedValue) async {
   try {
     final user = _db.auth.currentUser;
+    
     if (user == null) {
       if (kDebugMode) {
         print(
           '[SupabaseService] check failed: No user found for insertAiPrediction.',
+        );
+      }
+      return false;
+    }
+
+    final patientProfileId = await getPatientProfileId(user.id);
+    if (patientProfileId == null) {
+      if (kDebugMode) {
+        print(
+          '[SupabaseService] check failed: No patient profile found for insertAiPrediction.',
         );
       }
       return false;
@@ -98,8 +109,8 @@ Future<bool> insertAiPrediction(double predictedValue) async {
     final predictedFor = createdAt.add(const Duration(minutes: 5));
 
     await _db.from('ai_predictions').insert({
-      'patient_id': user.id, // Supabase Auth UUID as requested
-      'predicted_value': predictedValue,
+      'patient_id': patientProfileId, // int8 profile ID
+      'predicted_value_mg_dl': predictedValue,
       'horizon_minutes': 5,
       'confidence_score': 100.0,
       'risk_level': riskLevel,
