@@ -97,6 +97,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         data: {'full_name': fullName},
       );
 
+      debugPrint('[CREATE USER STATUS] ${response.user.toString()}');
+
       if (!mounted) return;
 
       if (response.user != null) {
@@ -331,8 +333,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
                   final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
                   final hasDigit = RegExp(r'[0-9]').hasMatch(value);
-                  final hasSpecial = RegExp(r'[!_@#\$%^&*(),.?":{}|<>]').hasMatch(value);
-                  if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+                  final hasSpecial = RegExp(
+                    r'[!@#\$%^&*(),.?":{}|<>]',
+                  ).hasMatch(value);
+                  if (!hasUppercase ||
+                      !hasLowercase ||
+                      !hasDigit ||
+                      !hasSpecial) {
                     return 'Password must include uppercase, lowercase,\nnumber, and special character';
                   }
                   return null;

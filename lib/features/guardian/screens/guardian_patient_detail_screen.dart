@@ -448,7 +448,6 @@ class _OverviewTabState extends State<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
       slivers: [
