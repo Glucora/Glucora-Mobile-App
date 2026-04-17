@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/role_selection_screen.dart';
-import 'features/patient/widgets/patient_shell.dart' as patientShell;
+import 'features/patient/widgets/patient_shell.dart';
 import 'features/doctor/widgets/doctor_shell.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/widgets/guardian_shell.dart';
@@ -29,8 +29,12 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-import 'package:glucora_ai_companion/features/user/patient_navigation.dart'; // Contains BluetoothPairingScreen
+import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
+import 'package:glucora_ai_companion/services/ble/ble_hardware_repository.dart';
 
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -171,7 +175,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
-      AiPredictionUploadService.instance.startListening();
+    AiPredictionUploadService.instance.startListening();
     }
   }
 
@@ -187,7 +191,7 @@ class _StartupGateState extends State<_StartupGate> {
           .trim()
           .toLowerCase();
       if (normalizedRole == 'patient') {
-        return const patientShell.PatientNavigation();
+        return const PatientNavigation();
       } else if (normalizedRole == 'doctor') {
         return const DoctorMainScreen();
       } else if (normalizedRole == 'guardian') {

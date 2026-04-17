@@ -1,3 +1,4 @@
+// BLE Branch 
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -52,6 +53,14 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _batteryHealth;
   bool _batteryLoading = true;
 
+  // AI Predictions (from Supabase)
+  double? _aiPredictedGlucose;
+  double? _aiConfidenceScore;
+  String? _aiRiskLevel;
+  DateTime? _aiPredictionTime;
+  int? _aiHorizonMinutes;
+  bool _aiPredictionLoading = true;
+
   // BLE hardware
   final BleHardwareService _bleHardwareService = BleHardwareService.instance;
   StreamSubscription<BleHardwareData>? _bleDataSub;
@@ -74,24 +83,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchLatestGlucose();
     _fetchLatestIOB();
     _fetchDeviceBattery();
+    _fetchLatestAIPrediction();
     _startBleHardwareFeed();
+    _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
-    _timeTicker?.cancel();
     _bleDataSub?.cancel();
     _bleHardwareService.stop();
+    _timeTicker?.cancel();
     super.dispose();
-  }
-
-  Future<void> _onRefresh() async {
-    await Future.wait([
-      _fetchLatestGlucose(),
-      _fetchLatestIOB(),
-      _fetchDeviceBattery(),
-      _fetchCarePlanSummary(),
-    ]);
   }
 
   Future<void> _startBleHardwareFeed() async {
@@ -149,18 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _disconnectSnackbarShown = false;
         }
 
-        // Once hardware has connected at least once, keep values hidden for
-        // every disconnected/scanning state until a real reconnection happens.
         _hideSensorValuesUntilReconnect =
             _hadHardwareConnection && !data.isConnected;
 
         if (!data.isConnected && _hideSensorValuesUntilReconnect) {
-          // Clear BLE-derived values so the UI does not keep stale connected data.
           _hardwareBatteryPercent = null;
           _hardwarePredictionValue = null;
           _hardwareLatestGlucoseValue = null;
-
-          // Keep UI values empty until reconnection to avoid showing stale data.
           _glucoseValue = null;
           _glucoseTrend = 'stable';
           _glucoseUpdatedAt = null;
@@ -170,8 +171,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _iobLoading = false;
           _batteryLoading = false;
         } else if (!data.isConnected) {
-          // If there has not been a prior active hardware connection,
-          // backend values can still be shown as fallback.
           _hardwareBatteryPercent = null;
           _hardwarePredictionValue = null;
           _hardwareLatestGlucoseValue = null;
@@ -215,11 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) {
-        setState(() {}); // just rebuild to update timeAgo
-      }
-    });
   }
 
   // ════════════════════════════════════════════════════
@@ -233,6 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .select('id')
           .eq('user_id', userId)
           .maybeSingle();
+
       if (response != null && response['id'] != null) {
         return response['id'] as int;
       }
@@ -269,10 +264,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _nextAppointment = response['next_appointment'] ?? '–';
     });
   }
-  // ════════════════════════════════════════════════════
 
   // FETCH: LATEST GLUCOSE
-  // ════════════════════════════════════════════════════
   Future<void> _fetchLatestGlucose() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
@@ -310,9 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ════════════════════════════════════════════════════
   // FETCH: LATEST IOB
-  // ════════════════════════════════════════════════════
   Future<void> _fetchLatestIOB() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
@@ -329,9 +320,37 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ════════════════════════════════════════════════════
-  // FETCH: DEVICE BATTERY - FIXED VERSION
-  // ════════════════════════════════════════════════════
+  // FETCH: LATEST AI PREDICTION
+  Future<void> _fetchLatestAIPrediction() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _aiPredictionLoading = false);
+      return;
+    }
+
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) {
+      setState(() => _aiPredictionLoading = false);
+      return;
+    }
+
+    final prediction = await getLatestPrediction(patientId);
+    
+    if (mounted) {
+      setState(() {
+        if (prediction != null) {
+          _aiPredictedGlucose = (prediction['predicted_value'] as num?)?.toDouble();
+          _aiConfidenceScore = (prediction['confidence_score'] as num?)?.toDouble();
+          _aiRiskLevel = prediction['risk_level'];
+          _aiPredictionTime = DateTime.tryParse(prediction['created_at']);
+          _aiHorizonMinutes = prediction['horizon_minutes'];
+        }
+        _aiPredictionLoading = false;
+      });
+    }
+  }
+
+  // FETCH: DEVICE BATTERY
   Future<void> _fetchDeviceBattery() async {
     try {
       final supabase = Supabase.instance.client;
@@ -351,10 +370,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Try multiple approaches to get battery health
       String? batteryValue;
 
-      // Approach 1: Get active device first
       final activeDevice = await supabase
           .from('devices')
           .select('battery_health, last_sync_at')
@@ -366,7 +383,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (activeDevice != null && activeDevice['battery_health'] != null) {
         batteryValue = activeDevice['battery_health'].toString();
       } else {
-        // Approach 2: Get any device (most recent)
         final device = await supabase
             .from('devices')
             .select('battery_health, last_sync_at')
@@ -380,44 +396,14 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // If still no battery, try to see if there are any devices at all
-      if (batteryValue == null) {
-        final devices = await supabase
-            .from('devices')
-            .select('id')
-            .eq('patient_id', patientProfileId);
-
-        if (kDebugMode) {
-          debugPrint(
-            'Device count for patientProfileId $patientProfileId: ${devices.length}',
-          );
-        }
-      }
-
       final battery = await getDeviceBattery(userId);
 
       if (mounted) {
         setState(() {
-          _batteryHealth = _hideSensorValuesUntilReconnect
-              ? null
-              : batteryValue;
+          _batteryHealth = _hideSensorValuesUntilReconnect ? null : batteryValue;
           _batteryHealth = battery;
           _batteryLoading = false;
         });
-
-        if (kDebugMode) {
-          debugPrint('Battery fetched successfully: $_batteryHealth');
-        }
-
-        // If no battery found after first attempt, try again in 2 seconds
-        // (in case device data is still syncing)
-        if (batteryValue == null && mounted) {
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              _retryFetchBattery();
-            }
-          });
-        }
       }
     } catch (e) {
       if (kDebugMode) print('Failed to fetch battery: $e');
@@ -452,14 +438,21 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _batteryHealth = response['battery_health'].toString();
         });
-
-        if (kDebugMode) {
-          print('Battery fetched on retry: $_batteryHealth');
-        }
       }
     } catch (e) {
       if (kDebugMode) print('Retry battery fetch failed: $e');
     }
+  }
+
+  // Refresh method
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      _fetchLatestGlucose(),
+      _fetchLatestIOB(),
+      _fetchDeviceBattery(),
+      _fetchCarePlanSummary(),
+      _fetchLatestAIPrediction(),
+    ]);
   }
 
   // ════════════════════════════════════════════════════
@@ -481,8 +474,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return colors.primary;
   }
 
-  /// Parses battery_health string into a 0.0–1.0 fraction.
-  /// Handles formats like "95%", "95", or falls back to null.
   double? _parseBatteryPercent(String? raw) {
     if (raw == null) return null;
     final cleaned = raw.replaceAll('%', '').trim();
@@ -516,9 +507,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: _onRefresh, // 👈 add this
+        onRefresh: _onRefresh,
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(), // 👈 IMPORTANT
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: hPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,6 +527,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                       color: colors.textPrimary,
                     ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.edit_note, color: colors.primary),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ManualLogScreen()),
+                      );
+                    },
+                    tooltip: 'Manual Log',
                   ),
                 ],
               ),
@@ -628,8 +629,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        const PatientCarePlanScreen(),
+                                    builder: (_) => const PatientCarePlanScreen(),
                                   ),
                                 ),
                                 child: _carePlanCard(context),
@@ -781,7 +781,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ════════════════════════════════════════════════════
-  // GLUCOSE CARD — live data
+  // GLUCOSE CARD
   // ════════════════════════════════════════════════════
   Widget _glucoseCard(BuildContext context) {
     final colors = context.colors;
@@ -994,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 
   // ════════════════════════════════════════════════════
-  // IOB + BATTERY ROW — both live
+  // IOB + BATTERY ROW
   // ════════════════════════════════════════════════════
   Widget _statusIndicatorsRow(BuildContext context) {
     final colors = context.colors;
@@ -1006,14 +1006,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ? '–'
         : (_iobValue?.toStringAsFixed(1) ?? '–');
 
-    // Prefer hardware battery value; fallback to backend battery health.
     final double? batteryPercent = suppressValues
         ? null
         : _hardwareBatteryPercent != null
         ? (_hardwareBatteryPercent!.clamp(0, 100) / 100.0)
         : _parseBatteryPercent(_batteryHealth);
 
-    // Display: use numeric value if parseable, otherwise show the raw string
     final String batteryDisplay = suppressValues
         ? '–'
         : batteryPercent != null
@@ -1021,7 +1019,7 @@ class _HomeScreenState extends State<HomeScreen> {
         : (_batteryLoading && _hardwareLoading ? '–' : (_batteryHealth ?? '–'));
 
     final Color batteryColor = batteryPercent == null
-        ? const Color(0xFF4CAF50) // default to green when unknown
+        ? const Color(0xFF4CAF50)
         : batteryPercent > 0.5
         ? const Color(0xFF4CAF50)
         : batteryPercent > 0.2
@@ -1030,7 +1028,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Row(
       children: [
-        // ── IOB card ──
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1131,10 +1128,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-
         const SizedBox(width: 12),
-
-        // ── Battery card ──
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1215,7 +1209,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 5),
-                      // Show progress bar only when we have a numeric value
                       if (batteryPercent != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
@@ -1389,7 +1382,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ════════════════════════════════════════════════════
-  // AI PREDICTION CARD
+  // AI PREDICTION CARD - WITH REAL DATA
   // ════════════════════════════════════════════════════
   Widget _predictionCard(BuildContext context) {
     final colors = context.colors;
@@ -1462,20 +1455,61 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TranslatedText(
-                "AI Prediction",
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
+              Row(
+                children: [
+                  TranslatedText(
+                    "AI Prediction",
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  if (_aiPredictionLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colors.primary,
+                        ),
+                      ),
+                    ),
+                  if (_aiRiskLevel != null && !_aiPredictionLoading)
+                    Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: getRiskColor().withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _aiRiskLevel!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: getRiskColor(),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              TranslatedText(
-                "View details",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.primary,
-                  fontWeight: FontWeight.w500,
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AIPredictionScreen(),
+                  ),
+                ),
+                child: TranslatedText(
+                  "View details",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -1498,7 +1532,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: TranslatedText(
+                child: Text(
                   " mg/dL",
                   style: TextStyle(fontSize: 18, color: colors.textSecondary),
                 ),
@@ -1509,28 +1543,87 @@ class _HomeScreenState extends State<HomeScreen> {
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(trendIcon, color: trendColor, size: 14),
-              const SizedBox(width: 2),
-              TranslatedText(
-                "${percentageChange.abs().toStringAsFixed(2)}%",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: trendColor,
-                  fontWeight: FontWeight.w600,
+              if (percentageChange != null) ...[
+                Icon(
+                  isRising ? Icons.arrow_upward : Icons.arrow_downward,
+                  color: isRising ? colors.error : colors.success,
+                  size: 14,
                 ),
-              ),
+                const SizedBox(width: 2),
+                Text(
+                  "${percentageChange.abs().toStringAsFixed(2)}%",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isRising ? colors.error : colors.success,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ] else if (_hardwarePredictionValue != null) ...[
+                Icon(Icons.bluetooth_rounded, color: colors.primary, size: 14),
+                const SizedBox(width: 2),
+                Text(
+                  "From hardware",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ] else ...[
+                Icon(Icons.timeline_rounded, color: colors.textSecondary, size: 14),
+                const SizedBox(width: 2),
+                Text(
+                  "Awaiting prediction",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
               const SizedBox(width: 6),
-              TranslatedText(
-                "Expected glucose in 30 minutes",
+              Text(
+                "Expected glucose in $horizonMinutes minutes",
                 style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          TranslatedText(
-            "Glucose from $formattedDate",
+          Text(
+            _aiPredictionTime != null
+                ? "Prediction generated: ${getPredictionTime()}"
+                : (_hardwarePredictionValue != null 
+                    ? "Hardware prediction - syncing to cloud..."
+                    : "No predictions available yet"),
             style: TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
+          
+          if (_aiConfidenceScore != null && !_aiPredictionLoading) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: _aiConfidenceScore! / 100,
+                      minHeight: 4,
+                      backgroundColor: colors.textSecondary.withValues(alpha: 0.15),
+                      valueColor: AlwaysStoppedAnimation(colors.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "${_aiConfidenceScore!.toInt()}% confidence",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          
           const SizedBox(height: 14),
           SizedBox(
             height: 130,
@@ -1551,14 +1644,14 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(width: 14, height: 2.5, color: colors.primary),
               const SizedBox(width: 6),
-              TranslatedText(
-                "Next 60 minutes",
+              Text(
+                "Next $horizonMinutes minutes",
                 style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
               const SizedBox(width: 16),
               Container(width: 14, height: 2.5, color: Colors.grey),
               const SizedBox(width: 6),
-              TranslatedText(
+              Text(
                 "Last Hour",
                 style: TextStyle(fontSize: 11, color: colors.textSecondary),
               ),
@@ -1832,4 +1925,99 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+// ════════════════════════════════════════════════════
+// CHART PAINTER
+// ════════════════════════════════════════════════════
+class ChartPainter extends CustomPainter {
+  final Color primaryColor;
+  const ChartPainter({required this.primaryColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const lh = 18.0;
+    final h = size.height - lh;
+    final w = size.width;
+    final s = w / 5;
+
+    final grid = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.15)
+      ..strokeWidth = 1;
+    for (int i = 0; i <= 3; i++) {
+      canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
+    }
+
+    const xl = ['10', '20', '30', '40', '50', '60'];
+    for (int i = 0; i < xl.length; i++) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: xl[i],
+          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
+    }
+
+    final gry = [
+      Offset(0, h * 0.58),
+      Offset(s * 0.65, h * 0.42),
+      Offset(s * 1.25, h * 0.53),
+      Offset(s * 2.0, h * 0.37),
+    ];
+    final grn = [
+      Offset(s * 2.0, h * 0.37),
+      Offset(s * 2.7, h * 0.47),
+      Offset(s * 3.5, h * 0.30),
+      Offset(s * 4.2, h * 0.18),
+      Offset(s * 5.0, h * 0.04),
+    ];
+
+    final fill = _sp(grn)
+      ..lineTo(grn.last.dx, h)
+      ..lineTo(grn.first.dx, h)
+      ..close();
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..color = primaryColor.withValues(alpha: 0.10)
+        ..style = PaintingStyle.fill,
+    );
+
+    canvas.drawPath(
+      _sp(gry),
+      Paint()
+        ..color = const Color(0xFFCCCCCC)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    canvas.drawPath(
+      _sp(grn),
+      Paint()
+        ..color = primaryColor
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round,
+    );
+
+    for (final pt in [gry.last, grn.last]) {
+      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
+      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
+    }
+  }
+
+  Path _sp(List<Offset> pts) {
+    final p = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (int i = 1; i < pts.length; i++) {
+      final a = pts[i - 1], b = pts[i];
+      p.cubicTo((a.dx + b.dx) / 2, a.dy, (a.dx + b.dx) / 2, b.dy, b.dx, b.dy);
+    }
+    return p;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter o) => false;
 }
