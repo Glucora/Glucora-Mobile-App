@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
 import '../../../services/admin_service.dart';
-import 'admin_alert_rule_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
@@ -42,7 +41,9 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const TranslatedText('Delete Alert Rule'),
-        content: TranslatedText('Are you sure you want to delete "${rule.name}"?'),
+        content: TranslatedText(
+          'Are you sure you want to delete "${rule.name}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -51,13 +52,11 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              
-              // Show loading
+
               setState(() => _isLoading = true);
-              
-              // Delete from database
+
               final success = await AdminService.deleteAlertRule(rule.id);
-              
+
               if (success && mounted) {
                 await _loadRules();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -76,7 +75,10 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 );
               }
             },
-            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -84,17 +86,14 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   }
 
   Future<void> _toggleRuleEnabled(AdminAlertRule rule, bool value) async {
-    // Optimistically update UI
     final oldValue = rule.isEnabled;
     setState(() {
       rule.isEnabled = value;
     });
-    
-    // Update in database
+
     final success = await AdminService.toggleAlertRule(rule.id, value);
-    
+
     if (!success && mounted) {
-      // Revert on failure
       setState(() {
         rule.isEnabled = oldValue;
       });
@@ -152,22 +151,6 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
         ),
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AdminAlertRuleFormScreen(),
-                ),
-              );
-              if (result == true && mounted) {
-                await _loadRules();
-              }
-            },
-          ),
-        ],
       ),
       backgroundColor: colors.background,
       body: _isLoading
@@ -178,17 +161,25 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   height: 50,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    children: ['All', 'Critical', 'Warning', 'Info'].map((label) {
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    children:
+                        ['All', 'Critical', 'Warning', 'Info'].map((label) {
                       final selected = _severityFilter == label;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: FilterChip(
-                          label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
+                          label: TranslatedText(
+                            label,
+                            style: TextStyle(color: colors.textPrimary),
+                          ),
                           selected: selected,
                           selectedColor: colors.accent.withValues(alpha: 0.2),
                           checkmarkColor: colors.accent,
-                          onSelected: (_) => setState(() => _severityFilter = label),
+                          onSelected: (_) =>
+                              setState(() => _severityFilter = label),
                         ),
                       );
                     }).toList(),
@@ -208,8 +199,10 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                             vertical: 4,
                           ),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) => _ruleCard(context, filtered[index]),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) =>
+                              _ruleCard(context, filtered[index]),
                         ),
                 ),
               ],
@@ -224,98 +217,88 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AdminAlertRuleFormScreen(rule: rule),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _conditionIcon(rule.conditionType),
+                color: color,
+                size: 24,
+              ),
             ),
-          );
-          if (result == true && mounted) {
-            await _loadRules();
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  _conditionIcon(rule.conditionType),
-                  color: color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TranslatedText(
-                      rule.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    TranslatedText(
-                      _ruleDescription(rule),
-                      style: TextStyle(fontSize: 11, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: TranslatedText(
-                      rule.severity,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
+                  TranslatedText(
+                    rule.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: colors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Switch(
-                    value: rule.isEnabled,
-                    activeThumbColor: colors.accent,
-                    onChanged: (v) => _toggleRuleEnabled(rule, v),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    _ruleDescription(rule),
+                    style:
+                        TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                 ],
               ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'delete') _deleteRule(rule);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
                   ),
-                ],
-              ),
-            ],
-          ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: TranslatedText(
+                    rule.severity,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Switch(
+                  value: rule.isEnabled,
+                  activeThumbColor: colors.accent,
+                  onChanged: (v) => _toggleRuleEnabled(rule, v),
+                ),
+              ],
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'delete') _deleteRule(rule);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: TranslatedText(
+                    'Delete',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

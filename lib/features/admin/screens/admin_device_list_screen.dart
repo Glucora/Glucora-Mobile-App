@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/admin_model.dart';
 import '../../../services/admin_service.dart';
-import '../screens/admin_device_form_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
@@ -73,9 +72,9 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               setState(() => _isLoading = true);
-              
+
               final success = await AdminService.deleteDevice(device.id);
-              
+
               if (success && mounted) {
                 await _loadDevices();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -94,7 +93,10 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                 );
               }
             },
-            child: const TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+            child: const TranslatedText(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -129,20 +131,6 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AdminDeviceFormScreen(),
-                ),
-              );
-              if (result == true && mounted) {
-                await _loadDevices();
-              }
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadDevices,
@@ -194,7 +182,10 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: TranslatedText(label, style: TextStyle(color: colors.textPrimary)),
+                    label: TranslatedText(
+                      label,
+                      style: TextStyle(color: colors.textPrimary),
+                    ),
                     selected: selected,
                     selectedColor: colors.accent.withValues(alpha: 0.2),
                     checkmarkColor: colors.accent,
@@ -237,113 +228,104 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AdminDeviceFormScreen(device: device),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isCGM ? Icons.sensors : Icons.medical_services,
+                color: color,
+                size: 24,
+              ),
             ),
-          );
-          if (result == true && mounted) {
-            await _loadDevices();
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  isCGM ? Icons.sensors : Icons.medical_services,
-                  color: color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TranslatedText(
-                      device.deviceName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    TranslatedText(
-                      '${device.model}  •  ${device.serialNumber}',
-                      style: TextStyle(fontSize: 11, color: colors.textSecondary),
-                    ),
-                    const SizedBox(height: 2),
-                    TranslatedText(
-                      'Assigned to: ${device.assignedToUserName}',
-                      style: TextStyle(fontSize: 11, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TranslatedText(
+                    device.deviceName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    '${device.model}  •  ${device.serialNumber}',
+                    style:
+                        TextStyle(fontSize: 11, color: colors.textSecondary),
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    'Assigned to: ${device.assignedToUserName}',
+                    style:
+                        TextStyle(fontSize: 11, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: TranslatedText(
+                    device.deviceType,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (!device.isActive)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                      horizontal: 6,
+                      vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
+                      color: colors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: TranslatedText(
-                      device.deviceType,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
+                      'Inactive',
+                      style: TextStyle(fontSize: 10, color: colors.error),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  if (!device.isActive)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: TranslatedText(
-                        'Inactive',
-                        style: TextStyle(fontSize: 10, color: colors.error),
-                      ),
-                    ),
-                ],
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'delete') _deleteDevice(device);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: TranslatedText('Delete', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'delete') _deleteDevice(device);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: TranslatedText(
+                    'Delete',
+                    style: TextStyle(color: Colors.red),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

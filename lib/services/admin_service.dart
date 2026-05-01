@@ -253,7 +253,6 @@ class AdminService {
 
   static Future<bool> assignDoctorToPatient(String doctorId, String patientId) async {
     try {
-      // Check if assignment already exists
       final existing = await supabase
           .from('doctor_patient_connections')
           .select()
@@ -310,6 +309,58 @@ class AdminService {
     } catch (e) {
       debugPrint('Error fetching stats: $e');
       return {'totalUsers': 0, 'activeDevices': 0, 'alertRules': 0};
+    }
+  }
+
+  // ─── DASHBOARD COUNTS ─────────────────────────────────────────────────────────
+
+  static Future<int> getAlertsCount() async {
+    try {
+      final response = await supabase
+          .from('alerts')
+          .select('id');
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error fetching alerts count: $e');
+      return 0;
+    }
+  }
+
+  static Future<int> getDevicesCount() async {
+    try {
+      final response = await supabase
+          .from('devices')
+          .select('id');
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error fetching devices count: $e');
+      return 0;
+    }
+  }
+
+  static Future<int> getActiveDevicesCount() async {
+    try {
+      final response = await supabase
+          .from('devices')
+          .select('id')
+          .eq('is_active', true);
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error fetching active devices count: $e');
+      return 0;
+    }
+  }
+
+  static Future<int> getInactiveDevicesCount() async {
+    try {
+      final response = await supabase
+          .from('devices')
+          .select('id')
+          .eq('is_active', false);
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error fetching inactive devices count: $e');
+      return 0;
     }
   }
 }

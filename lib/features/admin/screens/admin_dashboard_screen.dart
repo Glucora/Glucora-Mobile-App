@@ -13,9 +13,10 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<AdminUser> _allUsers = [];
-  List<AdminDevice> _allDevices = [];
-  List<AdminAlertRule> _allRules = [];
-  List<DoctorPatientAssignment> _allAssignments = [];
+  int _alertsCount = 0;
+  int _devicesCount = 0;
+  int _activeDevicesCount = 0;
+  int _inactiveDevicesCount = 0;
   bool _loading = true;
   String? _error;
 
@@ -30,21 +31,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _loading = true;
       _error = null;
     });
-    
+
     try {
       final results = await Future.wait([
         AdminService.getAllUsers(),
-        AdminService.getAllDevices(),
-        AdminService.getAllAlertRules(),
-        AdminService.getAllAssignments(),
+        AdminService.getAlertsCount(),
+        AdminService.getDevicesCount(),
+        AdminService.getActiveDevicesCount(),
+        AdminService.getInactiveDevicesCount(),
       ]);
 
-if (mounted) {
+      if (mounted) {
         setState(() {
           _allUsers = results[0] as List<AdminUser>;
-          _allDevices = results[1] as List<AdminDevice>;
-          _allRules = results[2] as List<AdminAlertRule>;
-          _allAssignments = results[3] as List<DoctorPatientAssignment>;
+          _alertsCount = results[1] as int;
+          _devicesCount = results[2] as int;
+          _activeDevicesCount = results[3] as int;
+          _inactiveDevicesCount = results[4] as int;
           _loading = false;
         });
       }
@@ -65,15 +68,6 @@ if (mounted) {
     final patients = _allUsers.where((u) => u.role == 'patient').toList();
     final doctors = _allUsers.where((u) => u.role == 'doctor').toList();
     final guardians = _allUsers.where((u) => u.role == 'guardian').toList();
-
-    final activeDevices = _allDevices.where((d) => d.isActive).length;
-    final inactiveDevices = _allDevices.where((d) => !d.isActive).length;
-    final enabledRules = _allRules.where((r) => r.isEnabled).length;
-    final criticalRules = _allRules.where((r) => r.severity == 'Critical').length;
-    
-    final unassignedPatients = patients.where(
-      (p) => !_allAssignments.any((a) => a.patientId == p.id)
-    ).length;
 
     if (_loading) {
       return Scaffold(
@@ -103,11 +97,14 @@ if (mounted) {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TranslatedText('Failed to load data', style: TextStyle(color: colors.error)),
+              TranslatedText(
+                'Failed to load data',
+                style: TextStyle(color: colors.error),
+              ),
               const SizedBox(height: 8),
               ElevatedButton(
-                onPressed: _fetchAllData, 
-                child: const TranslatedText('Retry')
+                onPressed: _fetchAllData,
+                child: const TranslatedText('Retry'),
               ),
             ],
           ),
@@ -194,7 +191,7 @@ if (mounted) {
                         child: _statCard(
                           context,
                           'Active Devices',
-                          '$activeDevices',
+                          '$_activeDevicesCount',
                           Icons.sensors,
                           colors.accent,
                         ),
@@ -204,7 +201,7 @@ if (mounted) {
                         child: _statCard(
                           context,
                           'Inactive Devices',
-                          '$inactiveDevices',
+                          '$_inactiveDevicesCount',
                           Icons.sensors_off,
                           colors.error,
                         ),
@@ -213,9 +210,9 @@ if (mounted) {
                       Expanded(
                         child: _statCard(
                           context,
-                          'Alert Rules',
-                          '$enabledRules enabled',
-                          Icons.rule,
+                          'Total Devices',
+                          '$_devicesCount',
+                          Icons.device_hub,
                           const Color(0xFF5B8CF5),
                         ),
                       ),
@@ -223,42 +220,12 @@ if (mounted) {
                       Expanded(
                         child: _statCard(
                           context,
-                          'Critical Rules',
-                          '$criticalRules',
+                          'Alerts',
+                          '$_alertsCount',
                           Icons.warning_amber,
                           colors.error,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _sectionTitle(context, 'Assignments'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _statCard(
-                          context,
-                          'Total Assignments',
-                          '${_allAssignments.length}',
-                          Icons.link,
-                          const Color(0xFF9B59B6),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _statCard(
-                          context,
-                          'Unassigned Patients',
-                          '$unassignedPatients',
-                          Icons.person_off,
-                          colors.warning,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(child: SizedBox()),
-                      const SizedBox(width: 12),
-                      const Expanded(child: SizedBox()),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -332,7 +299,7 @@ if (mounted) {
                       child: _statCard(
                         context,
                         'Active Devices',
-                        '$activeDevices',
+                        '$_activeDevicesCount',
                         Icons.sensors,
                         colors.accent,
                       ),
@@ -342,64 +309,30 @@ if (mounted) {
                       child: _statCard(
                         context,
                         'Inactive Devices',
-                        '$inactiveDevices',
+                        '$_inactiveDevicesCount',
                         Icons.sensors_off,
                         colors.error,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                _sectionTitle(context, 'Alert Rules'),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _statCard(
-                        context,
-                        'Enabled Rules',
-                        '$enabledRules',
-                        Icons.rule,
-                        const Color(0xFF5B8CF5),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _statCard(
-                        context,
-                        'Critical Rules',
-                        '$criticalRules',
-                        Icons.warning_amber,
-                        colors.error,
-                      ),
-                    ),
-                  ],
+                _statCard(
+                  context,
+                  'Total Devices',
+                  '$_devicesCount',
+                  Icons.device_hub,
+                  const Color(0xFF5B8CF5),
                 ),
                 const SizedBox(height: 24),
-                _sectionTitle(context, 'Assignments'),
+                _sectionTitle(context, 'Alerts'),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _statCard(
-                        context,
-                        'Total Assignments',
-                        '${_allAssignments.length}',
-                        Icons.link,
-                        const Color(0xFF9B59B6),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _statCard(
-                        context,
-                        'Unassigned',
-                        '$unassignedPatients',
-                        Icons.person_off,
-                        colors.warning,
-                      ),
-                    ),
-                  ],
+                _statCard(
+                  context,
+                  'Alerts',
+                  '$_alertsCount',
+                  Icons.warning_amber,
+                  colors.error,
                 ),
                 const SizedBox(height: 24),
                 _aiModelPlaceholder(context),
@@ -423,7 +356,13 @@ if (mounted) {
     );
   }
 
-  Widget _statCard(BuildContext context, String label, String value, IconData icon, Color color) {
+  Widget _statCard(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -459,7 +398,10 @@ if (mounted) {
             ),
           ),
           const SizedBox(height: 4),
-          TranslatedText(label, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+          TranslatedText(
+            label,
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
+          ),
         ],
       ),
     );
