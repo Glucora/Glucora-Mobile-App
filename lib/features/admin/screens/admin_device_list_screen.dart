@@ -14,7 +14,6 @@ class AdminDeviceListScreen extends StatefulWidget {
 class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
-  String _typeFilter = 'All';
   List<AdminDevice> _devices = [];
   bool _isLoading = true;
 
@@ -34,18 +33,11 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   }
 
   List<AdminDevice> get _filtered {
+    if (_query.isEmpty) return _devices;
     return _devices.where((d) {
-      if (_query.isNotEmpty &&
-          !d.deviceName.toLowerCase().contains(_query.toLowerCase()) &&
-          !d.assignedToUserName.toLowerCase().contains(_query.toLowerCase()) &&
-          !d.serialNumber.toLowerCase().contains(_query.toLowerCase())) {
-        return false;
-      }
-      if (_typeFilter == 'CGM' && d.deviceType != 'CGM') return false;
-      if (_typeFilter == 'Micropump' && d.deviceType != 'Micropump') {
-        return false;
-      }
-      return true;
+      return d.deviceName.toLowerCase().contains(_query.toLowerCase()) ||
+          d.assignedToUserName.toLowerCase().contains(_query.toLowerCase()) ||
+          d.serialNumber.toLowerCase().contains(_query.toLowerCase());
     }).toList();
   }
 
@@ -172,30 +164,6 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
               onChanged: (v) => setState(() => _query = v),
             ),
           ),
-          SizedBox(
-            height: 42,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: ['All', 'CGM', 'Micropump'].map((label) {
-                final selected = _typeFilter == label;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: TranslatedText(
-                      label,
-                      style: TextStyle(color: colors.textPrimary),
-                    ),
-                    selected: selected,
-                    selectedColor: colors.accent.withValues(alpha: 0.2),
-                    checkmarkColor: colors.accent,
-                    onSelected: (_) => setState(() => _typeFilter = label),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -260,14 +228,12 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                   const SizedBox(height: 2),
                   TranslatedText(
                     '${device.model}  •  ${device.serialNumber}',
-                    style:
-                        TextStyle(fontSize: 11, color: colors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                   const SizedBox(height: 2),
                   TranslatedText(
                     'Assigned to: ${device.assignedToUserName}',
-                    style:
-                        TextStyle(fontSize: 11, color: colors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                 ],
               ),

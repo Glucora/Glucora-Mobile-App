@@ -13,37 +13,37 @@ class AdminAlertRulesScreen extends StatefulWidget {
 
 class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _severityFilter = 'All';
-  List<AdminAlertRule> _rules = [];
+  List<AdminAlert> _alerts = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadRules();
+    _loadAlerts();
   }
 
-  Future<void> _loadRules() async {
+  Future<void> _loadAlerts() async {
     setState(() => _isLoading = true);
-    final rules = await AdminService.getAllAlertRules();
+    final alerts = await AdminService.getAllAlerts();
     setState(() {
-      _rules = rules;
+      _alerts = alerts;
       _isLoading = false;
     });
   }
 
-  List<AdminAlertRule> get _filtered {
-    if (_severityFilter == 'All') return _rules;
-    return _rules.where((r) => r.severity == _severityFilter).toList();
+  List<AdminAlert> get _filtered {
+    if (_severityFilter == 'All') return _alerts;
+    return _alerts
+        .where((a) => a.severity.toLowerCase() == _severityFilter.toLowerCase())
+        .toList();
   }
 
-  Future<void> _deleteRule(AdminAlertRule rule) async {
+  Future<void> _deleteAlert(AdminAlert alert) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const TranslatedText('Delete Alert Rule'),
-        content: TranslatedText(
-          'Are you sure you want to delete "${rule.name}"?',
-        ),
+        title: const TranslatedText('Delete Alert'),
+        content: TranslatedText('Are you sure you want to delete "${alert.title}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -52,16 +52,13 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-
               setState(() => _isLoading = true);
-
-              final success = await AdminService.deleteAlertRule(rule.id);
-
+              final success = await AdminService.deleteAlert(alert.id);
               if (success && mounted) {
-                await _loadRules();
+                await _loadAlerts();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: TranslatedText('Rule deleted successfully'),
+                    content: TranslatedText('Alert deleted successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -69,7 +66,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 setState(() => _isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: TranslatedText('Failed to delete rule'),
+                    content: TranslatedText('Failed to delete alert'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -85,57 +82,37 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     );
   }
 
-  Future<void> _toggleRuleEnabled(AdminAlertRule rule, bool value) async {
-    final oldValue = rule.isEnabled;
-    setState(() {
-      rule.isEnabled = value;
-    });
-
-    final success = await AdminService.toggleAlertRule(rule.id, value);
-
-    if (!success && mounted) {
-      setState(() {
-        rule.isEnabled = oldValue;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: TranslatedText('Failed to update rule status'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Color _severityColor(String severity) {
-    switch (severity) {
-      case 'Critical':
+    switch (severity.toLowerCase()) {
+      case 'critical':
         return const Color(0xFFD32F2F);
-      case 'Warning':
+      case 'warning':
         return const Color(0xFFFF9F40);
-      case 'Info':
-        return const Color(0xFF5B8CF5);
       default:
         return Colors.grey;
     }
   }
 
-  IconData _conditionIcon(String conditionType) {
-    switch (conditionType) {
-      case 'Glucose High':
+  IconData _alertTypeIcon(String alertType) {
+    switch (alertType) {
+      case 'high_glucose':
         return Icons.arrow_upward;
-      case 'Glucose Low':
+      case 'low_glucose':
         return Icons.arrow_downward;
-      case 'Sensor Disconnect':
+      case 'sensor_disconnect':
         return Icons.sensors_off;
-      case 'Pump Failure':
+      case 'pump_failure':
         return Icons.warning_amber;
-      case 'Missed Dose':
+      case 'missed_dose':
         return Icons.schedule;
-      case 'Time Out of Range':
-        return Icons.timer;
       default:
-        return Icons.rule;
+        return Icons.notifications;
     }
+  }
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '—';
+    return '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -146,11 +123,18 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TranslatedText(
-          'Alert Rules',
+          'Alerts',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         backgroundColor: colors.primaryDark,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadAlerts,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       backgroundColor: colors.background,
       body: _isLoading
@@ -165,8 +149,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    children:
-                        ['All', 'Critical', 'Warning', 'Info'].map((label) {
+                    children: ['All', 'Critical', 'Warning'].map((label) {
                       final selected = _severityFilter == label;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
@@ -189,7 +172,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   child: filtered.isEmpty
                       ? Center(
                           child: TranslatedText(
-                            'No alert rules',
+                            'No alerts',
                             style: TextStyle(color: colors.textSecondary),
                           ),
                         )
@@ -202,7 +185,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 8),
                           itemBuilder: (context, index) =>
-                              _ruleCard(context, filtered[index]),
+                              _alertCard(context, filtered[index]),
                         ),
                 ),
               ],
@@ -210,9 +193,9 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
     );
   }
 
-  Widget _ruleCard(BuildContext context, AdminAlertRule rule) {
+  Widget _alertCard(BuildContext context, AdminAlert alert) {
     final colors = context.colors;
-    final color = _severityColor(rule.severity);
+    final color = _severityColor(alert.severity);
 
     return Material(
       color: colors.surface,
@@ -228,7 +211,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                _conditionIcon(rule.conditionType),
+                _alertTypeIcon(alert.alertType),
                 color: color,
                 size: 24,
               ),
@@ -239,7 +222,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TranslatedText(
-                    rule.name,
+                    alert.title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -248,9 +231,15 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   ),
                   const SizedBox(height: 2),
                   TranslatedText(
-                    _ruleDescription(rule),
-                    style:
-                        TextStyle(fontSize: 11, color: colors.textSecondary),
+                    alert.message,
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  TranslatedText(
+                    _formatDate(alert.triggeredAt),
+                    style: TextStyle(fontSize: 10, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -268,7 +257,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: TranslatedText(
-                    rule.severity,
+                    alert.severity,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -276,17 +265,27 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Switch(
-                  value: rule.isEnabled,
-                  activeThumbColor: colors.accent,
-                  onChanged: (v) => _toggleRuleEnabled(rule, v),
-                ),
+                const SizedBox(height: 4),
+                if (alert.resolvedAt != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const TranslatedText(
+                      'Resolved',
+                      style: TextStyle(fontSize: 10, color: Colors.green),
+                    ),
+                  ),
               ],
             ),
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value == 'delete') _deleteRule(rule);
+                if (value == 'delete') _deleteAlert(alert);
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(
@@ -302,17 +301,5 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
         ),
       ),
     );
-  }
-
-  String _ruleDescription(AdminAlertRule rule) {
-    final parts = <String>[];
-    parts.add(rule.conditionType);
-    if (rule.thresholdValue != null) {
-      parts.add('Threshold: ${rule.thresholdValue!.toInt()} mg/dL');
-    }
-    if (rule.durationMinutes != null) {
-      parts.add('Duration: ${rule.durationMinutes} min');
-    }
-    return parts.join('  •  ');
   }
 }

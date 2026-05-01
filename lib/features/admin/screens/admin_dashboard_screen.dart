@@ -17,6 +17,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _devicesCount = 0;
   int _activeDevicesCount = 0;
   int _inactiveDevicesCount = 0;
+  AIPredictionStats? _aiStats;
   bool _loading = true;
   String? _error;
 
@@ -39,6 +40,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         AdminService.getDevicesCount(),
         AdminService.getActiveDevicesCount(),
         AdminService.getInactiveDevicesCount(),
+        AdminService.getAIPredictionStats(),
       ]);
 
       if (mounted) {
@@ -48,6 +50,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _devicesCount = results[2] as int;
           _activeDevicesCount = results[3] as int;
           _inactiveDevicesCount = results[4] as int;
+          _aiStats = results[5] as AIPredictionStats;
           _loading = false;
         });
       }
@@ -229,7 +232,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _aiModelPlaceholder(context),
+                  _aiStatsCard(context),
                 ],
               ),
             );
@@ -335,7 +338,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   colors.error,
                 ),
                 const SizedBox(height: 24),
-                _aiModelPlaceholder(context),
+                _aiStatsCard(context),
               ],
             ),
           );
@@ -407,8 +410,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _aiModelPlaceholder(BuildContext context) {
+  Widget _aiStatsCard(BuildContext context) {
     final colors = context.colors;
+    
+    if (_aiStats == null || _aiStats!.totalPredictions == 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colors.accent.withValues(alpha: 0.3),
+            width: 1.5,
+            style: BorderStyle.solid,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.psychology,
+              size: 48,
+              color: colors.accent.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
+            TranslatedText(
+              'AI Model Statistics',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: colors.primaryDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TranslatedText(
+              'No predictions available yet. AI model statistics will appear here once predictions are made.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -429,29 +480,188 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.psychology,
-            size: 48,
-            color: colors.accent.withValues(alpha: 0.4),
+          Row(
+            children: [
+              Icon(
+                Icons.psychology,
+                size: 28,
+                color: colors.accent,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TranslatedText(
+                  'AI Model Statistics',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: colors.primaryDark,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colors.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TranslatedText(
+                  'Real-time',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colors.accent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _aiStatItem(
+                  context,
+                  'Avg. Confidence',
+                  '${_aiStats!.averageConfidenceScore.toStringAsFixed(1)}%',
+                  Icons.verified,
+                  const Color(0xFF2BB6A3),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _aiStatItem(
+                  context,
+                  'Avg. Prediction',
+                  '${_aiStats!.averagePredictedValue.toStringAsFixed(0)} mg/dL',
+                  Icons.show_chart,
+                  const Color(0xFF5B8CF5),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          TranslatedText(
-            'AI Model Statistics',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: colors.primaryDark,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _aiStatItem(
+                  context,
+                  'Most Common Risk',
+                  _formatRiskLevel(_aiStats!.mostCommonRiskLevel),
+                  Icons.warning_rounded,
+                  _getRiskColor(_aiStats!.mostCommonRiskLevel),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _aiStatItem(
+                  context,
+                  'Total Predictions',
+                  '${_aiStats!.totalPredictions}',
+                  Icons.analytics,
+                  const Color(0xFF9B59B6),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          TranslatedText(
-            'Model performance metrics, prediction accuracy, and training stats will appear here.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: colors.textSecondary),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colors.accent.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: colors.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TranslatedText(
+                    'Based on glucose predictions from the AI model',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _aiStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 8),
+          TranslatedText(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          TranslatedText(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+String _formatRiskLevel(String riskLevel) {
+  final cleaned = riskLevel.trim().toUpperCase();
+  print('Formatting risk level: "$cleaned"'); 
+  
+  if (cleaned == 'IN_RANGE' || cleaned == 'INRANGE') {
+    return 'In Range';
+  }
+  if (cleaned == 'HIGH') {
+    return 'High';
+  }
+  if (cleaned == 'LOW') {
+    return 'Low';
+  }
+  return cleaned; 
+}
+
+  Color _getRiskColor(String riskLevel) {
+    switch (riskLevel.toUpperCase()) {
+      case 'IN_RANGE':
+        return const Color(0xFF2BB6A3);
+      case 'HIGH':
+      case 'LOW':
+      default:
+        return const Color(0xFF95A5A6);
+    }
   }
 }

@@ -5,6 +5,34 @@ import '../core/models/admin_model.dart';
 class AdminService {
   static final supabase = Supabase.instance.client;
 
+  // ─── ALERTS ───────────────────────────────────────────────────────────────────
+
+  static Future<List<AdminAlert>> getAllAlerts() async {
+    try {
+      final response = await supabase
+          .from('alerts')
+          .select('*')
+          .order('triggered_at', ascending: false);
+      return (response as List)
+          .map((a) => AdminAlert.fromMap(a))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching alerts: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> deleteAlert(int id) async {
+    try {
+      await supabase.from('alerts').delete().eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting alert: $e');
+      return false;
+    }
+  }
+
+
   // ─── ALERT RULES ──────────────────────────────────────────────────────────────
   
   static Future<List<AdminAlertRule>> getAllAlertRules() async {
@@ -363,4 +391,57 @@ class AdminService {
       return 0;
     }
   }
+
+
+static Future<AIPredictionStats> getAIPredictionStats() async {
+  try {
+    final supabase = Supabase.instance.client;
+    
+    final avgResult = await supabase
+        .from('ai_predictions')
+        .select('confidence_score, predicted_value_mg_dl, risk_level');
+    
+    double totalConfidence = 0;
+    double totalPredictedValue = 0;
+    int recordCount = avgResult.length;
+    
+    Map<String, int> riskCounts = {};
+    
+    for (var item in avgResult) {
+      totalConfidence += (item['confidence_score'] ?? 0.0).toDouble();
+      totalPredictedValue += (item['predicted_value_mg_dl'] ?? 0.0).toDouble();
+      
+      String risk = item['risk_level'] ?? 'UNKNOWN';
+      riskCounts[risk] = (riskCounts[risk] ?? 0) + 1;
+    }
+    
+    double avgConfidence = recordCount > 0 ? totalConfidence / recordCount : 0;
+    double avgPredictedValue = recordCount > 0 ? totalPredictedValue / recordCount : 0;
+    
+    String mostCommonRisk = 'N/A';
+    int maxCount = 0;
+    riskCounts.forEach((risk, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonRisk = risk;
+      }
+    });
+    
+    return AIPredictionStats(
+      averageConfidenceScore: avgConfidence,
+      averagePredictedValue: avgPredictedValue,
+      mostCommonRiskLevel: mostCommonRisk,
+      totalPredictions: recordCount,
+    );
+  } catch (e) {
+    print('Error fetching AI prediction stats: $e');
+    return AIPredictionStats(
+      averageConfidenceScore: 0.0,
+      averagePredictedValue: 0.0,
+      mostCommonRiskLevel: 'N/A',
+      totalPredictions: 0,
+    );
+  }
 }
+}
+

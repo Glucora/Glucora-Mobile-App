@@ -188,6 +188,81 @@ class DoctorPatientAssignment {
     required this.patientName,
   });
 }
+class AdminAlert {
+  final int id;
+  final int patientId;
+  final String alertType;
+  final String severity;
+  final String title;
+  final String message;
+  final double? glucoseValueAtTrigger;
+  final bool isReadDoctor;
+  final bool isReadGuardian;
+  final bool isReadUser;
+  final DateTime? triggeredAt;
+  final DateTime? resolvedAt;
+  final String? patientUserId;
 
+  AdminAlert({
+    required this.id,
+    required this.patientId,
+    required this.alertType,
+    required this.severity,
+    required this.title,
+    required this.message,
+    this.glucoseValueAtTrigger,
+    required this.isReadDoctor,
+    required this.isReadGuardian,
+    required this.isReadUser,
+    this.triggeredAt,
+    this.resolvedAt,
+    this.patientUserId,
+  });
+
+  factory AdminAlert.fromMap(Map<String, dynamic> map) {
+    return AdminAlert(
+      id: map['id'] as int,
+      patientId: map['patient_id'] as int,
+      alertType: map['alert_type'] as String? ?? '',
+      severity: map['severity'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      message: map['message'] as String? ?? '',
+      glucoseValueAtTrigger: (map['glucose_value_at_trigger'] as num?)?.toDouble(),
+      isReadDoctor: map['is_read_doctor'] as bool? ?? false,
+      isReadGuardian: map['is_read_guardian'] as bool? ?? false,
+      isReadUser: map['is_read_user'] as bool? ?? false,
+      triggeredAt: map['triggered_at'] != null
+          ? DateTime.parse(map['triggered_at'] as String)
+          : null,
+      resolvedAt: map['resolved_at'] != null
+          ? DateTime.parse(map['resolved_at'] as String)
+          : null,
+      patientUserId: map['patient_user_id'] as String?,
+    );
+  }
+}
+
+class AIPredictionStats {
+  final double averageConfidenceScore;
+  final double averagePredictedValue;
+  final String mostCommonRiskLevel;
+  final int totalPredictions;
+
+  AIPredictionStats({
+    required this.averageConfidenceScore,
+    required this.averagePredictedValue,
+    required this.mostCommonRiskLevel,
+    required this.totalPredictions,
+  });
+
+  factory AIPredictionStats.fromJson(Map<String, dynamic> json) {
+    return AIPredictionStats(
+      averageConfidenceScore: (json['avg_confidence_score'] ?? 0.0).toDouble(),
+      averagePredictedValue: (json['avg_predicted_value'] ?? 0.0).toDouble(),
+      mostCommonRiskLevel: json['most_common_risk_level'] ?? 'N/A',
+      totalPredictions: json['total_predictions'] ?? 0,
+    );
+  }
+}
 // ─── REMOVED ALL MOCK DATA ─────────────────────────────────────────────────────
 // No more hardcoded lists! All data comes from Supabase now.
