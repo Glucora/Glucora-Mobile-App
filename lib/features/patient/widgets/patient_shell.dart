@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
-import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/calorie_log_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/home_screen.dart';
 import 'package:glucora_ai_companion/features/patient/screens/manual_log_screen.dart';
@@ -14,7 +13,6 @@ import 'package:glucora_ai_companion/features/patient/screens/medication_screen.
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
 import 'package:glucora_ai_companion/shared/widgets/base_profile_tab.dart';
 import 'package:glucora_ai_companion/shared/widgets/shared_profile_field.dart';
-import 'package:glucora_ai_companion/services/localization_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';

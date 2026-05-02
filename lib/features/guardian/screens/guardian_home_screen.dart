@@ -49,7 +49,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       setState(() => _isLoading = true);
 
       final userId = _supabase.auth.currentUser!.id;
-      print('👤 Current Guardian User ID: $userId');
+      print('Current Guardian User ID: $userId');
 
       // Step 1: Get connections with user info including profile picture
       final connectionsResp = await _supabase
@@ -68,7 +68,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           .eq('status', 'accepted');
 
       final connections = connectionsResp as List;
-      print('📱 Found ${connections.length} connections');
+      print('Found ${connections.length} connections');
 
       if (connections.isEmpty) {
         if (!mounted) return;
@@ -84,7 +84,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           .map((r) => r['patient_id'] as String)
           .toList();
 
-      print('📋 Patient UUIDs: $patientUserIds');
+      print('Patient UUIDs: $patientUserIds');
 
       final profilesResp = await _supabase
           .from('patient_profile')
@@ -97,11 +97,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         final userUuid = p['user_id'] as String;
         final profileId = p['id'] as int;
         uuidToProfileId[userUuid] = profileId;
-        print('🔗 Mapping: User $userUuid -> Profile ID $profileId');
+        print('Mapping: User $userUuid -> Profile ID $profileId');
       }
 
       final patientProfileIds = uuidToProfileId.values.toList();
-      print('📊 Profile IDs: $patientProfileIds');
+      print('Profile IDs: $patientProfileIds');
 
       // Step 3: Fetch glucose readings for ALL patients at once
       final readingsResp = await _supabase
@@ -178,7 +178,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
         // Skip if no profile ID found (shouldn't happen)
         if (profileId == null) {
-          print('❌ ERROR: No profile ID for UUID: $patientUuid');
+          print('ERROR: No profile ID for UUID: $patientUuid');
           continue;
         }
 
@@ -218,7 +218,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         final sensorConnected = deviceStatus?['sensor'] ?? false;
         final pumpActive = deviceStatus?['pump'] ?? false;
 
-        print('✅ Building patient: $name');
+        print('Building patient: $name');
         print('   UUID: $patientUuid -> Profile ID: $profileId');
         print(
           '   Glucose: $glucose mg/dL (from ${patientReadings.length} readings)',
@@ -463,69 +463,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildStatusPills(BuildContext context) {
-    final colors = context.colors;
-    final goodCount = _allPatients
-        .where((p) => p.overallStatus == 'good')
-        .length;
-
-    return Row(
-      children: [
-        _buildPill(
-          context,
-          '$goodCount Doing well',
-          colors.accent,
-          colors.accent.withValues(alpha: 0.1),
-          'good_count',
-        ),
-        const SizedBox(width: 8),
-        if (_attentionCount > 0)
-          _buildPill(
-            context,
-            '$_attentionCount Worth a look',
-            colors.warning,
-            colors.warning.withValues(alpha: (0.1)),
-            'attention_count',
-          ),
-        if (_emergencyCount > 0) ...[
-          const SizedBox(width: 8),
-          _buildPill(
-            context,
-            '$_emergencyCount Check on them',
-            colors.error,
-            colors.error.withValues(alpha: 0.1),
-            'emergency_count',
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildPill(
-    BuildContext context,
-    String label,
-    Color textColor,
-    Color bgColor,
-    String keySuffix,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: TranslatedText(
-        label,
-        key: ValueKey('pill_$keySuffix'),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-
+ 
   Widget _buildSearchAndFilter(BuildContext context) {
     final colors = context.colors;
 
@@ -947,66 +885,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       ],
     );
   }
-
-  Widget _buildAlertChip(
-    String text,
-    Color color,
-    GlucoraColors colors,
-    String patientId,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TranslatedText(
-        text,
-        key: ValueKey('alert_${text}_${patientId}_$_query'),
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    IconData icon,
-    String label,
-    Color color,
-    VoidCallback onPressed,
-    GlucoraColors colors,
-  ) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            TranslatedText(
-              label,
-              key: ValueKey('action_$label'),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showFilterSheet(BuildContext context) {
+ void _showFilterSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1067,18 +946,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         return colors.accent;
     }
   }
-
-  Color _getStatusBgColor(String status, GlucoraColors colors) {
-    switch (status) {
-      case 'emergency':
-        return colors.error.withValues(alpha: 0.1);
-      case 'attention':
-        return colors.warning.withValues(alpha: 0.1);
-      default:
-        return colors.accent.withValues(alpha: 0.1);
-    }
-  }
-
   String _getStatusLabel(String status) {
     switch (status) {
       case 'emergency':

@@ -15,7 +15,6 @@ import 'manual_log_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 
 Timer? _timeTicker;
