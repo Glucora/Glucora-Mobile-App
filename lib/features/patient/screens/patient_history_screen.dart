@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/models/history_entry_model.dart';
 import 'history_detail_screen.dart';
 import '../widgets/csv_export_sheet.dart';
@@ -72,30 +74,66 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   String _activeFilter = 'All';
   _GraphType _graphType = _GraphType.glucose;
   _GraphSpan _graphSpan = _GraphSpan.day;
+  bool _loading = true;
+  String? _error;
 
   final List<String> _filters = [
-    'All',
-    'CGM Reading',
-    'Manual Log',
-    'Insulin',
-    'CGM Failure',
-    'Pump Failure',
+    'All', 'CGM Reading', 'Manual Log',
+    'Insulin', 'CGM Failure', 'Pump Failure',
   ];
 
-  // ── Computed ───────────────────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    patientLogEntries = []; 
+    _loadHistory();
+  }
 
+  // ✅ Fetch from Supabase
+  Future<void> _loadHistory() async {
+  if (!mounted) return;
+  setState(() { _loading = true; _error = null; });
+  try {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not logged in');
+
+    final patientId = await getPatientProfileId(userId);
+    if (patientId == null) throw Exception('No patient profile');
+
+    final response = await supabase
+        .from('event_history')
+        .select()
+        .eq('patient_id', patientId)
+        .order('occurred_at', ascending: false)
+        .limit(200);
+
+    if (!mounted) return;
+    setState(() {
+      patientLogEntries = (response as List) // ✅ replaces the list entirely
+          .map((e) => HistoryEntry.fromJson(e))
+          .toList();
+      _loading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+    setState(() { 
+      _loading = false; 
+      _error = 'Failed to load history: $e'; 
+    });
+  }
+}
+  // ── Computed ───────────────────────────────────────────────────────────
   List<HistoryEntry> get _filtered {
     if (_activeFilter == 'All') return patientLogEntries;
     const map = {
-      'CGM Reading': HistoryEntryType.cgmReading,
-      'Manual Log': HistoryEntryType.manualGlucoseLog,
-      'Insulin': HistoryEntryType.insulinDelivery,
-      'CGM Failure': HistoryEntryType.cgmDeviceFailure,
+      'CGM Reading':  HistoryEntryType.cgmReading,
+      'Manual Log':   HistoryEntryType.manualGlucoseLog,
+      'Insulin':      HistoryEntryType.insulinDelivery,
+      'CGM Failure':  HistoryEntryType.cgmDeviceFailure,
       'Pump Failure': HistoryEntryType.micropumpFailure,
     };
-    return patientLogEntries
-        .where((e) => e.type == map[_activeFilter])
-        .toList();
+    return patientLogEntries.where((e) => e.type == map[_activeFilter]).toList();
   }
 
   int _countForType(HistoryEntryType t) =>
@@ -259,60 +297,115 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   // ── Build ──────────────────────────────────────────────────────────────
+ @override
+Widget build(BuildContext context) {
+  final colors = context.colors;
+  final filtered = _filtered;
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final filtered = _filtered;
-
+  // ✅ Loading state
+  if (_loading) {
     return Scaffold(
       backgroundColor: colors.background,
-      bottomNavigationBar: _buildNavBar(context),
-      body: SafeArea(
+      body: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  // ✅ Error state
+  if (_error != null) {
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: colors.error),
+            const SizedBox(height: 12),
+            Text(_error!,
+                style: TextStyle(color: colors.error),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadHistory,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ rest of your existing build unchanged from here
+  return Scaffold(
+    backgroundColor: colors.background,
+    bottomNavigationBar: _buildNavBar(context),
+    body: SafeArea(
+      child: RefreshIndicator( // ✅ pull to refresh
+        onRefresh: _loadHistory,
         child: OrientationBuilder(
           builder: (context, orientation) {
             final isLandscape = orientation == Orientation.landscape;
             return CustomScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: _buildHeader(context, isLandscape)),
+                SliverToBoxAdapter(
+                    child: _buildHeader(context, isLandscape)),
                 SliverToBoxAdapter(child: _buildGraphCard(context)),
-                SliverToBoxAdapter(child: _buildSummaryCounts(context)),
+                SliverToBoxAdapter(
+                    child: _buildSummaryCounts(context)),
                 if (!isLandscape)
-                  SliverToBoxAdapter(child: _buildFilterChipsScroll(context)),
-                SliverToBoxAdapter(child: _buildListLabel(context, filtered.length)),
+                  SliverToBoxAdapter(
+                      child: _buildFilterChipsScroll(context)),
+                SliverToBoxAdapter(
+                    child: _buildListLabel(context, filtered.length)),
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
-                      child: TranslatedText(
-                        'No entries for this filter.',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 15),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.history_rounded,
+                              size: 48,
+                              color: colors.textSecondary),
+                          const SizedBox(height: 12),
+                          Text(
+                            patientLogEntries.isEmpty
+                                ? 'No history recorded yet'
+                                : 'No entries for this filter',
+                            style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 15),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 if (filtered.isNotEmpty && !isLandscape)
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _HistoryCard(entry: filtered[i]),
+                        (ctx, i) =>
+                            _HistoryCard(entry: filtered[i]),
                         childCount: filtered.length,
                       ),
                     ),
                   ),
                 if (filtered.isNotEmpty && isLandscape)
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 0,
-                            mainAxisExtent: 120,
-                          ),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 0,
+                        mainAxisExtent: 120,
+                      ),
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _HistoryCard(entry: filtered[i]),
+                        (ctx, i) =>
+                            _HistoryCard(entry: filtered[i]),
                         childCount: filtered.length,
                       ),
                     ),
@@ -322,9 +415,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           },
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   // ── Header ─────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, bool isLandscape) {
