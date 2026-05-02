@@ -66,6 +66,14 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   bool _isLoading = true;
   bool _notificationsEnabled = true;
 
+  // ✅ Incremented on every _loadProfileData call.
+  // Passed as ValueKey to BaseProfileTab so Flutter fully destroys and
+  // recreates the widget tree — including ProfilePicture — on each reload,
+  // preventing any stale in-memory image cache from the previous key.
+  int _reloadKey = 0;
+
+  RealtimeChannel? _profileChannel;
+
   static const List<FaqEntry> _faqs = [
     FaqEntry(
       'How do I monitor my patient\'s glucose levels?',
@@ -89,6 +97,36 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
   void initState() {
     super.initState();
     _loadProfileData();
+    _subscribeToProfileChanges();
+  }
+
+  @override
+  void dispose() {
+    _profileChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeToProfileChanges() {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _profileChannel = supabase
+        .channel('doctor_profile_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'users',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) {
+            if (mounted) _loadProfileData();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _loadProfileData() async {
@@ -99,9 +137,12 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     try {
       final response = await supabase
           .from('users')
-          .select('full_name, phone_no, email, age, address, profile_picture_url, doctor_profile(liscense_number, speciality)')
+          .select(
+              'full_name, phone_no, email, age, address, profile_picture_url, doctor_profile(liscense_number, speciality)')
           .eq('id', user.id)
           .single();
+
+      if (!mounted) return;
 
       setState(() {
         _name = response['full_name'] ?? 'Unknown Doctor';
@@ -109,19 +150,34 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         _email = response['email'] ?? '';
         _age = (response['age'] as num?)?.toInt() ?? 0;
         _address = response['address'] ?? 'No Address Set';
-        _profilePictureUrl = response['profile_picture_url'] ?? '';
+
+        // ✅ Strip any existing cache-buster from the stored URL first,
+        // then append a fresh timestamp. Without stripping, the URL grows
+        // indefinitely and the "base" URL comparison never matches,
+        // causing Flutter to treat it as a new network resource but still
+        // serve the cached bytes for that path from its HTTP cache.
+        final rawUrl = response['profile_picture_url'] as String? ?? '';
+        final baseUrl =
+            rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
+        _profilePictureUrl = baseUrl.isNotEmpty
+            ? '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}'
+            : '';
 
         final dynamic profileData = response['doctor_profile'];
         if (profileData != null) {
-          final profile = (profileData is List) ? profileData.first : profileData;
+          final profile =
+              (profileData is List) ? profileData.first : profileData;
           _license = profile['liscense_number'] ?? 'Not Set';
           _specialty = profile['speciality'] ?? 'General Practitioner';
         }
+
+        // ✅ Bump key so BaseProfileTab gets a new ValueKey → full rebuild
+        _reloadKey++;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Fetch error details: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -166,7 +222,11 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
             .eq('user_id', userId);
 
         await supabase.auth.updateUser(
-          UserAttributes(data: {'full_name': result['full_name'], 'phone': result['phone_no']}),
+          UserAttributes(
+              data: {
+                'full_name': result['full_name'],
+                'phone': result['phone_no']
+              }),
         );
 
         await _loadProfileData();
@@ -183,11 +243,13 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
         debugPrint('Update error: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: TranslatedText('Update failed: $e'), backgroundColor: Colors.red),
+            SnackBar(
+                content: TranslatedText('Update failed: $e'),
+                backgroundColor: Colors.red),
           );
         }
       } finally {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -201,6 +263,10 @@ class _DoctorProfileTabState extends State<_DoctorProfileTab> {
     }
 
     return BaseProfileTab(
+      // ✅ New key on every reload → Flutter destroys the old widget entirely
+      // (including its internal Image cache entry) and builds a fresh one.
+      // This is the nuclear option that guarantees no stale image survives.
+      key: ValueKey(_reloadKey),
       name: _name,
       age: _age,
       profilePictureUrl: _profilePictureUrl,
@@ -253,7 +319,8 @@ class _EditDoctorProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditDoctorProfileScreen> createState() => _EditDoctorProfileScreenState();
+  State<_EditDoctorProfileScreen> createState() =>
+      _EditDoctorProfileScreenState();
 }
 
 class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
@@ -307,7 +374,10 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
             onPressed: _save,
             child: TranslatedText(
               'Save',
-              style: TextStyle(color: colors.primary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: colors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -318,15 +388,21 @@ class _EditDoctorProfileScreenState extends State<_EditDoctorProfileScreen> {
           children: [
             buildProfileField(context, 'Full Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
+            buildProfileField(context, 'Age', _ageController, Icons.cake_outlined,
+                keyboardType: TextInputType.number),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Speciality', _specialityController, Icons.medical_services_outlined),
+            buildProfileField(context, 'Speciality', _specialityController,
+                Icons.medical_services_outlined),
             const SizedBox(height: 16),
-            buildProfileField(context, 'License Number', _licenseController, Icons.badge_outlined),
+            buildProfileField(context, 'License Number', _licenseController,
+                Icons.badge_outlined),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Clinic Phone', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            buildProfileField(context, 'Clinic Phone', _phoneController,
+                Icons.phone_outlined,
+                keyboardType: TextInputType.phone),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Clinic Address', _addressController, Icons.location_on_outlined),
+            buildProfileField(context, 'Clinic Address', _addressController,
+                Icons.location_on_outlined),
           ],
         ),
       ),

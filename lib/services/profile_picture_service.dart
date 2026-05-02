@@ -1,7 +1,9 @@
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart'; 
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class ProfilePictureService {
   static final supabase = Supabase.instance.client;
   static const String _bucketName = 'profile-pictures';
@@ -11,10 +13,11 @@ class ProfilePictureService {
     try {
       final buckets = await supabase.storage.listBuckets();
       final exists = buckets.any((b) => b.name == _bucketName);
-      
+
       if (!exists) {
-        await supabase.storage.createBucket(_bucketName,
-          const BucketOptions(public: true)
+        await supabase.storage.createBucket(
+          _bucketName,
+          const BucketOptions(public: true),
         );
       }
     } catch (e) {
@@ -23,26 +26,27 @@ class ProfilePictureService {
   }
 
   // Upload profile picture
-  static Future<String?> uploadProfilePicture(File imageFile, String userId) async {
+  static Future<String?> uploadProfilePicture(
+      File imageFile, String userId) async {
     try {
       final fileExtension = imageFile.path.split('.').last;
       final fileName = '$userId.$fileExtension';
       final filePath = fileName;
-      
+
       await supabase.storage.from(_bucketName).upload(
-        filePath,
-        imageFile,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
-      
-      final publicUrl = supabase.storage.from(_bucketName).getPublicUrl(filePath);
-      
+            filePath,
+            imageFile,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+
+      final publicUrl =
+          supabase.storage.from(_bucketName).getPublicUrl(filePath);
+
       // Update user profile with picture URL
       await supabase
           .from('users')
-          .update({'profile_picture_url': publicUrl})
-          .eq('id', userId);
-      
+          .update({'profile_picture_url': publicUrl}).eq('id', userId);
+
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading profile picture: $e');
@@ -53,27 +57,23 @@ class ProfilePictureService {
   // Delete profile picture
   static Future<bool> deleteProfilePicture(String userId) async {
     try {
-      // Get current user data
       final userData = await supabase
           .from('users')
           .select('profile_picture_url')
           .eq('id', userId)
           .single();
-      
+
       final currentUrl = userData['profile_picture_url'] as String?;
-      
+
       if (currentUrl != null && currentUrl.isNotEmpty) {
-        // Extract file name from URL
         final fileName = currentUrl.split('/').last;
         await supabase.storage.from(_bucketName).remove([fileName]);
       }
-      
-      // Update database
+
       await supabase
           .from('users')
-          .update({'profile_picture_url': null})
-          .eq('id', userId);
-      
+          .update({'profile_picture_url': null}).eq('id', userId);
+
       return true;
     } catch (e) {
       debugPrint('Error deleting profile picture: $e');
@@ -89,7 +89,7 @@ class ProfilePictureService {
           .select('profile_picture_url')
           .eq('id', userId)
           .single();
-      
+
       return userData['profile_picture_url'] as String?;
     } catch (e) {
       debugPrint('Error getting profile picture: $e');
@@ -107,7 +107,7 @@ class ProfilePictureService {
         maxHeight: 500,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         return File(image.path);
       }
@@ -127,9 +127,19 @@ class ProfilePictureService {
         maxHeight: 500,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
-        return File(image.path);
+        // ✅ Copy to a stable temp path before uploading.
+        // Camera files are written to a volatile system temp location that
+        // may not be fully flushed/released before the upload reads them,
+        // causing an incomplete or zero-byte upload on some devices.
+        // Copying to the app's own temp directory ensures the file is
+        // fully accessible before Supabase reads it.
+        final tempDir = await getTemporaryDirectory();
+        final stablePath =
+            '${tempDir.path}/camera_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final stableFile = await File(image.path).copy(stablePath);
+        return stableFile;
       }
     } catch (e) {
       debugPrint('Error taking photo: $e');
