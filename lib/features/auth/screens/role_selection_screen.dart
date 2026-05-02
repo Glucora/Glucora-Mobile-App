@@ -54,7 +54,6 @@ Future<void> _selectRole(String role) async {
           .upsert(
             {
               'user_id': user.id,
-              'speciality': '',
             },
             onConflict: 'user_id',
           );
