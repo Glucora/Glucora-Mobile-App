@@ -29,7 +29,8 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-
+import 'package:glucora_ai_companion/providers/admin_provider.dart';
+import 'package:glucora_ai_companion/providers/glucose_provider.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -109,13 +110,15 @@ class GlucoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<LocalizationService>.value(
-          value: localizationService,
-        ),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ],
+   return MultiProvider(
+  providers: [
+    ChangeNotifierProvider<LocalizationService>.value(
+      value: localizationService,
+    ),
+    ChangeNotifierProvider(create: (_) => ThemeProvider()),
+    ChangeNotifierProvider(create: (_) => AdminProvider()),
+    ChangeNotifierProvider(create: (_) => GlucoseProvider()),
+  ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(

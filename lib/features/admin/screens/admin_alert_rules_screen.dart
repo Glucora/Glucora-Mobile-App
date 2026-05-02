@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/models/admin_model.dart';
-import '../../../services/admin_service.dart';
+import '../../../providers/admin_provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
@@ -13,27 +14,17 @@ class AdminAlertRulesScreen extends StatefulWidget {
 
 class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _severityFilter = 'All';
-  List<AdminAlert> _alerts = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadAlerts();
+    Future.microtask(() =>
+        context.read<AdminProvider>().loadAlerts());
   }
 
-  Future<void> _loadAlerts() async {
-    setState(() => _isLoading = true);
-    final alerts = await AdminService.getAllAlerts();
-    setState(() {
-      _alerts = alerts;
-      _isLoading = false;
-    });
-  }
-
-  List<AdminAlert> get _filtered {
-    if (_severityFilter == 'All') return _alerts;
-    return _alerts
+  List<AdminAlert> _filtered(List<AdminAlert> alerts) {
+    if (_severityFilter == 'All') return alerts;
+    return alerts
         .where((a) => a.severity.toLowerCase() == _severityFilter.toLowerCase())
         .toList();
   }
@@ -43,7 +34,8 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const TranslatedText('Delete Alert'),
-        content: TranslatedText('Are you sure you want to delete "${alert.title}"?'),
+        content: TranslatedText(
+            'Are you sure you want to delete "${alert.title}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -52,24 +44,16 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              setState(() => _isLoading = true);
-              final success = await AdminService.deleteAlert(alert.id);
-              if (success && mounted) {
-                await _loadAlerts();
+              await context.read<AdminProvider>().deleteAlert(alert.id);
+              if (mounted) {
+                final error = context.read<AdminProvider>().errorMessage;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: TranslatedText('Alert deleted successfully'),
-                    backgroundColor: Colors.green,
+                  SnackBar(
+                    content: TranslatedText(error ?? 'Alert deleted successfully'),
+                    backgroundColor: error != null ? Colors.red : Colors.green,
                   ),
                 );
-              } else if (mounted) {
-                setState(() => _isLoading = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: TranslatedText('Failed to delete alert'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (error != null) context.read<AdminProvider>().clearError();
               }
             },
             child: const TranslatedText(
@@ -118,78 +102,85 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final filtered = _filtered;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const TranslatedText(
-          'Alerts',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: colors.primaryDark,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAlerts,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      backgroundColor: colors.background,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                SizedBox(
-                  height: 50,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    children: ['All', 'Critical', 'Warning'].map((label) {
-                      final selected = _severityFilter == label;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: TranslatedText(
-                            label,
-                            style: TextStyle(color: colors.textPrimary),
-                          ),
-                          selected: selected,
-                          selectedColor: colors.accent.withValues(alpha: 0.2),
-                          checkmarkColor: colors.accent,
-                          onSelected: (_) =>
-                              setState(() => _severityFilter = label),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                Expanded(
-                  child: filtered.isEmpty
-                      ? Center(
-                          child: TranslatedText(
-                            'No alerts',
-                            style: TextStyle(color: colors.textSecondary),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, index) =>
-                              _alertCard(context, filtered[index]),
-                        ),
-                ),
-              ],
+    return Consumer<AdminProvider>(
+      builder: (context, provider, _) {
+        final filtered = _filtered(provider.alerts);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const TranslatedText(
+              'Alerts',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
+            backgroundColor: colors.primaryDark,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => provider.loadAlerts(),
+                tooltip: 'Refresh',
+              ),
+            ],
+          ),
+          backgroundColor: colors.background,
+          body: provider.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    SizedBox(
+                      height: 50,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        children: ['All', 'Critical', 'Warning'].map((label) {
+                          final selected = _severityFilter == label;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: TranslatedText(
+                                label,
+                                style: TextStyle(color: colors.textPrimary),
+                              ),
+                              selected: selected,
+                              selectedColor:
+                                  colors.accent.withValues(alpha: 0.2),
+                              checkmarkColor: colors.accent,
+                              onSelected: (_) =>
+                                  setState(() => _severityFilter = label),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? Center(
+                              child: TranslatedText(
+                                'No alerts',
+                                style:
+                                    TextStyle(color: colors.textSecondary),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) =>
+                                  _alertCard(context, filtered[index]),
+                            ),
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 
@@ -210,11 +201,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                _alertTypeIcon(alert.alertType),
-                color: color,
-                size: 24,
-              ),
+              child: Icon(_alertTypeIcon(alert.alertType), color: color, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -232,14 +219,16 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                   const SizedBox(height: 2),
                   TranslatedText(
                     alert.message,
-                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 11, color: colors.textSecondary),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   TranslatedText(
                     _formatDate(alert.triggeredAt),
-                    style: TextStyle(fontSize: 10, color: colors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 10, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -248,10 +237,8 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -268,10 +255,8 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                 const SizedBox(height: 4),
                 if (alert.resolvedAt != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
