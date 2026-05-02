@@ -5,10 +5,12 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/models/history_entry_model.dart';
 import '../widgets/weekly_history_sheet.dart';
@@ -25,8 +27,10 @@ class WeeklyReportScreen extends StatefulWidget {
 }
 
 class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
-  late WeeklyStats _stats;
+  WeeklyStats? _stats;           // ✅ nullable until loaded
+  bool _loading = true;          // ✅ NEW
   bool _exporting = false;
+  DateTime? _currentWeekStart;   // ✅ track selected week
 
   final GlobalKey _trendKey = GlobalKey();
   final GlobalKey _tirKey = GlobalKey();
@@ -36,28 +40,72 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   @override
   void initState() {
     super.initState();
-    final start = widget.weekStart ?? weekMonday(DateTime.now());
-    _stats = computeWeeklyStats(start);
+    _currentWeekStart = widget.weekStart ?? weekMonday(DateTime.now());
+    _loadAndCompute();
   }
 
-  Future<void> _showHistory() async {
-    final result = await showModalBottomSheet<DateTime>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const WeeklyHistorySheet(),
-    );
-    if (result != null && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WeeklyReportScreen(weekStart: result),
-        ),
-      );
+  // ✅ Fetch from DB then compute stats
+  Future<void> _loadAndCompute() async {
+    setState(() => _loading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+
+      final patientId = await getPatientProfileId(userId);
+      if (patientId == null) throw Exception('No patient profile');
+
+      // Fetch 30 days of data to cover history sheet browsing
+      final from = _currentWeekStart!
+          .subtract(const Duration(days: 1))
+          .toUtc()
+          .toIso8601String();
+
+      final to = _currentWeekStart!
+          .add(const Duration(days: 7))
+          .toUtc()
+          .toIso8601String();
+          patientLogEntries = []; // ✅ clear old entries before loading new ones
+      final response = await supabase
+          .from('event_history')
+          .select()
+          .eq('patient_id', patientId)
+          .gte('occurred_at', from)
+          .lte('occurred_at', to)
+          .order('occurred_at', ascending: false);
+
+      // ✅ Populate global list so computeWeeklyStats works
+      patientLogEntries = (response as List)
+          .map((e) => HistoryEntry.fromJson(e))
+          .toList();
+
+      setState(() {
+        _stats = computeWeeklyStats(_currentWeekStart!);
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: $e')),
+        );
+      }
     }
   }
+Future<void> _showHistory() async {
+  final result = await showModalBottomSheet<DateTime>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const WeeklyHistorySheet(),
+  );
+  if (result != null && mounted) {
+    setState(() => _currentWeekStart = result);
+    await _loadAndCompute(); // ✅ reload for selected week
+  }
+}
 
   Future<Uint8List?> _captureWidget(GlobalKey key) async {
     try {
@@ -88,9 +136,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           bold: pw.Font.helveticaBold(),
         ),
       );
+      // BEFORE — crashes if _stats is null
       final stats = _stats;
-      final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
-
+      final weekLabel = formatWeekRange(stats!.weekStart, stats!.weekEnd);
+            
       doc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -251,56 +300,108 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final stats = _stats;
-    final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
+Widget build(BuildContext context) {
+  final colors = context.colors;
 
+  // ✅ Show loader while fetching
+  if (_loading) {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: colors.primaryDark,
         foregroundColor: Colors.white,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Weekly Report',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              weekLabel,
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
+        title: const Text('Weekly Report'),
+      ),
+      body: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  // ✅ Show empty state if no data
+  if (_stats == null) {
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.primaryDark,
+        foregroundColor: Colors.white,
+        title: const Text('Weekly Report'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),
-            tooltip: 'Previous Weeks',
             onPressed: _showHistory,
           ),
-          _exporting
-              ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.picture_as_pdf_rounded),
-                  tooltip: 'Export PDF',
-                  onPressed: _exportPdf,
-                ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bar_chart_rounded,
+                size: 56, color: colors.textSecondary),
+            const SizedBox(height: 16),
+            Text('No data for this week',
+                style: TextStyle(
+                    fontSize: 16, color: colors.textSecondary)),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _showHistory,
+              child: const Text('Browse other weeks'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  final stats = _stats!; // ✅ safe from here down
+  final weekLabel = formatWeekRange(stats.weekStart, stats.weekEnd);
+
+  return Scaffold(
+    backgroundColor: colors.background,
+    appBar: AppBar(
+      backgroundColor: colors.primaryDark,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Weekly Report',
+              style:
+                  TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          Text(weekLabel,
+              style: const TextStyle(
+                  fontSize: 12, color: Colors.white70)),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.history_rounded),
+          tooltip: 'Previous Weeks',
+          onPressed: _showHistory,
+        ),
+        _exporting
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.picture_as_pdf_rounded),
+                tooltip: 'Export PDF',
+                onPressed: _stats != null ? _exportPdf : null, // ✅ guard
+              ),
+      ],
+    ),
+    body: RefreshIndicator(
+      onRefresh: _loadAndCompute, // ✅ pull to refresh
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,7 +451,9 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                           child: const SizedBox.expand(),
                         ),
                       ),
-                      Flexible(flex: 3, child: _TIRLegend(context, stats)),
+                      Flexible(
+                          flex: 3,
+                          child: _TIRLegend(context, stats)),
                     ],
                   ),
                 ),
@@ -370,7 +473,9 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                     height: 160,
                     child: CustomPaint(
                       painter: _DailyBarPainter(
-                        values: stats.dailyAvgGlucose.map((v) => v).toList(),
+                        values: stats.dailyAvgGlucose
+                            .map((v) => v)
+                            .toList(),
                         maxValue: 300,
                         unitLabel: 'mg/dL',
                         colorFn: (v) => glucoseZoneColor(v.round()),
@@ -386,7 +491,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             const SizedBox(height: 4),
             Text(
               'Total units delivered per day (used as IOB proxy)',
-              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              style: TextStyle(
+                  fontSize: 12, color: colors.textSecondary),
             ),
             const SizedBox(height: 6),
             _chartCard(
@@ -400,10 +506,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                     child: CustomPaint(
                       painter: _DailyBarPainter(
                         values: stats.dailyTotalInsulin
-                            .map<double?>((v) => v > 0 ? v : null)
+                            .map<double?>(
+                                (v) => v > 0 ? v : null)
                             .toList(),
-                        maxValue:
-                            stats.dailyTotalInsulin
+                        maxValue: stats.dailyTotalInsulin
                                 .reduce((a, b) => a > b ? a : b)
                                 .ceilToDouble() +
                             2,
@@ -431,15 +537,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: colors.textSecondary
+                          .withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.check_circle_outline_rounded,
-                      color: colors.accent,
-                      size: 36,
-                    ),
+                    Icon(Icons.check_circle_outline_rounded,
+                        color: colors.accent, size: 36),
                     const SizedBox(height: 8),
                     Text(
                       'No notable events this week',
@@ -457,9 +562,9 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           ],
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _sectionHeader(BuildContext context, String title) {
     final colors = context.colors;
     return Text(

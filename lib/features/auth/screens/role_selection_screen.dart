@@ -16,58 +16,92 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
 
-  Future<void> _saveRoleToProfiles({
-    required String userId,
-    required String role,
-  }) async {
+Future<void> _saveRoleToProfiles({
+  required String userId,
+  required String role,
+}) async {
+  await Supabase.instance.client
+      .from('users')
+      .update({'role': role})
+      .eq('id', userId)
+      .select()
+      .single();
+}
+
+Future<void> _selectRole(String role) async {
+  if (_saving) return;
+  setState(() => _saving = true);
+
+  try {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) throw Exception('Not logged in');
+
+    // 1. Update auth metadata
+    await Supabase.instance.client.auth.updateUser(
+      UserAttributes(data: {'role': role}),
+    );
+
+    // 2. Update users table role
     await Supabase.instance.client
         .from('users')
         .update({'role': role})
-        .eq('id', userId)
-        .select()
-        .single();
-  }
+        .eq('id', user.id);
 
-  Future<void> _selectRole(String role) async {
-    if (_saving) return;
-    setState(() => _saving = true);
-
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await Supabase.instance.client.auth.updateUser(
-          UserAttributes(data: {'role': role}),
-        );
-        await _saveRoleToProfiles(userId: user.id, role: role);
-      }
-
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => _targetForRole(role)),
-        (route) => false,
-      );
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText(e.message),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } catch (ex) {
-      if (!mounted) return;
-      debugPrint('Role save error: $ex'); // you'll see the real error here
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ex.toString()), // real error shown temporarily
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    // 3. Create role-specific profile using upsert — never crashes on duplicate
+    if (role == 'doctor') {
+      await Supabase.instance.client
+          .from('doctor_profile')
+          .upsert(
+            {
+              'user_id': user.id,
+            },
+            onConflict: 'user_id',
+          );
+    } else if (role == 'patient') {
+      await Supabase.instance.client
+          .from('patient_profile')
+          .upsert(
+            {
+              'user_id': user.id,
+              'height_cm': 0,
+              'weight_kg': 0,
+            },
+            onConflict: 'user_id',
+          );
+    } else if (role == 'guardian') {
+      await Supabase.instance.client
+          .from('guardian_profile')
+          .upsert(
+            {'user_id': user.id},
+            onConflict: 'user_id',
+          );
     }
-  }
 
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => _targetForRole(role)),
+      (route) => false,
+    );
+  } on AuthException catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+    );
+  } catch (ex) {
+    if (!mounted) return;
+    debugPrint('Role save error FULL: $ex');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ex.toString()),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 8),
+      ),
+    );
+  } finally {
+    if (mounted) setState(() => _saving = false);
+  }
+}
   Widget _targetForRole(String role) {
     switch (role) {
       case 'patient':
