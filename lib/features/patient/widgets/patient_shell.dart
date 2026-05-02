@@ -926,8 +926,11 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     try {
       await supabase.from(table).delete().eq('id', connectionId);
       setState(() {
-        if (person['role'] == 'Guardian') _guardians.removeWhere((g) => g['connectionId'] == person['connectionId']);
-        else _doctors.removeWhere((d) => d['connectionId'] == person['connectionId']);
+        if (person['role'] == 'Guardian') {
+          _guardians.removeWhere((g) => g['connectionId'] == person['connectionId']);
+        } else {
+          _doctors.removeWhere((d) => d['connectionId'] == person['connectionId']);
+        }
         _sharingMap.remove(person['connectionId'] as String);
       });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('${person['name']} removed.'), backgroundColor: context.colors.error));

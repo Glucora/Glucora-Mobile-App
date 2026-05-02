@@ -1307,7 +1307,7 @@ class _HomeScreenState extends State<HomeScreen> {
     double? percentageChange;
     bool isRising = true;
     
-    if (currentGlucose != null && displayValue != null && currentGlucose > 0) {
+    if (currentGlucose != null && currentGlucose > 0) {
       percentageChange = ((displayValue - currentGlucose) / currentGlucose) * 100;
       isRising = percentageChange > 0;
     }

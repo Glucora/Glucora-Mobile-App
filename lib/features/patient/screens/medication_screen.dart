@@ -150,8 +150,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
         final reminderId = reminderResponse['id'] as int;
         final notificationId = (medId * 1000) + reminderId;
 
-        if (kDebugMode)
+        if (kDebugMode) {
           print('Scheduling notification id=$notificationId for $remindAt');
+        }
 
         // FIX: scheduleReminder now handles the exact-alarm exception gracefully
         await NotificationService.scheduleReminder(

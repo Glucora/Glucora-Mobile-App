@@ -281,8 +281,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter your email';
+                  }
                   if (!value.contains('@')) return 'Enter a valid email';
                   return null;
                 },
@@ -326,10 +327,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter your password';
-                  if (value.length < 8)
+                  }
+                  if (value.length < 8) {
                     return 'Password must be at least 8 characters';
+                  }
                   final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
                   final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
                   final hasDigit = RegExp(r'[0-9]').hasMatch(value);
@@ -374,13 +377,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty)
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter your phone number';
+                  }
                   final numberRegex = RegExp(r'^[0-9]+$');
-                  if (!numberRegex.hasMatch(value))
+                  if (!numberRegex.hasMatch(value)) {
                     return 'Please enter a valid number (numbers only)';
-                  if (value.length < 10)
+                  }
+                  if (value.length < 10) {
                     return 'Please enter a valid phone number';
+                  }
                   if (_phoneError != null) return _phoneError;
                   return null;
                 },
@@ -414,12 +420,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty)
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter your age';
+                  }
                   final age = int.tryParse(value);
                   if (age == null) return 'Please enter a valid number';
-                  if (age < 0 || age > 100)
+                  if (age < 0 || age > 100) {
                     return 'Please enter a valid age (0–100)';
+                  }
                   return null;
                 },
               ),
@@ -455,8 +463,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty)
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter your address';
+                  }
                   if (value.length < 5) return 'Please enter a valid address';
                   return null;
                 },
