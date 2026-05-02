@@ -151,53 +151,52 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       _profilePictureUrl = userData?['profile_picture_url'] as String?;
 
       final results = await Future.wait([
-        supabase
-            .from('care_plans')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle(),
-        supabase
-            .from('glucose_readings')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('recorded_at', ascending: true),
-        supabase
-            .from('insulin_doses')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('delivered_at', ascending: true),
-        supabase
-            .from('alerts')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('triggered_at', ascending: false)
-            .limit(5),
-        supabase
-            .from('devices')
-            .select()
-            .eq('patient_id', userId)
-            .eq('is_active', true)
-            .maybeSingle(),
-        // Latest AI prediction
-        supabase
-            .from('ai_predictions')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle(),
-        // Latest IOB snapshot
-        supabase
-            .from('insulin_on_board')
-            .select()
-            .eq('patient_id', widget.patientId)
-            .order('calculated_at', ascending: false)
-            .limit(1)
-            .maybeSingle(),
-      ]);
-
+  supabase
+      .from('care_plans')
+      .select()
+      .eq('patient_id', widget.patientId)
+      .order('created_at', ascending: false)
+      .limit(1)
+      .maybeSingle(),
+  supabase
+      .from('glucose_readings')
+      .select()
+      .eq('patient_id', widget.patientId)
+      .order('recorded_at', ascending: true),
+  supabase
+      .from('insulin_doses')
+      .select()
+      .eq('patient_id', widget.patientId)
+      .order('delivered_at', ascending: true),
+  supabase
+      .from('alerts')
+      .select()
+      .eq('patient_id', widget.patientId)
+      .order('triggered_at', ascending: false)
+      .limit(5),
+  supabase
+      .from('devices')
+      .select()
+      .eq('patient_id', userId)
+      .eq('is_active', true)
+      .maybeSingle(),
+  // ✅ FIXED: Latest AI prediction - use patient_uuid instead of patient_id
+  supabase
+      .from('ai_predictions')
+      .select()
+      .eq('patient_uuid', userId)  // ← Changed from 'patient_id' to 'patient_uuid', using userId (UUID)
+      .order('created_at', ascending: false)
+      .limit(1)
+      .maybeSingle(),
+  // Latest IOB snapshot
+  supabase
+      .from('insulin_on_board')
+      .select()
+      .eq('patient_id', widget.patientId)
+      .order('calculated_at', ascending: false)
+      .limit(1)
+      .maybeSingle(),
+]);
       if (!mounted) return;
       setState(() {
         _patientProfile = profile;
