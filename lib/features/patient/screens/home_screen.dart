@@ -1,4 +1,4 @@
-// BLE Branch 
+// BLE Branch
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -320,12 +320,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final prediction = await getLatestPrediction(patientId);
-    
+
     if (mounted) {
       setState(() {
         if (prediction != null) {
-          _aiPredictedGlucose = (prediction['predicted_value'] as num?)?.toDouble();
-          _aiConfidenceScore = (prediction['confidence_score'] as num?)?.toDouble();
+          _aiPredictedGlucose = (prediction['predicted_value'] as num?)
+              ?.toDouble();
+          _aiConfidenceScore = (prediction['confidence_score'] as num?)
+              ?.toDouble();
           _aiRiskLevel = prediction['risk_level'];
           _aiPredictionTime = DateTime.tryParse(prediction['created_at']);
           _aiHorizonMinutes = prediction['horizon_minutes'];
@@ -385,7 +387,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         setState(() {
-          _batteryHealth = _hideSensorValuesUntilReconnect ? null : batteryValue;
+          _batteryHealth = _hideSensorValuesUntilReconnect
+              ? null
+              : batteryValue;
           _batteryHealth = battery;
           _batteryLoading = false;
         });
@@ -513,16 +517,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: colors.textPrimary,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.edit_note, color: colors.primary),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ManualLogScreen()),
-                      );
-                    },
-                    tooltip: 'Manual Log',
-                  ),
                 ],
               ),
 
@@ -565,7 +559,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const RecommendationsScreen(),
+                                    builder: (_) =>
+                                        const RecommendationsScreen(),
                                   ),
                                 ),
                                 child: _recommendationsCard(context),
@@ -575,7 +570,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const PatientCarePlanScreen(),
+                                    builder: (_) =>
+                                        const PatientCarePlanScreen(),
                                   ),
                                 ),
                                 child: _carePlanCard(context),
@@ -748,9 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: showLinks
-                      ? colors.primary.withValues(alpha: 0.6)
-                      : dotColor,
+                  color: dotColor,
                   shape: BoxShape.circle,
                 ),
                 child: showSpinner
@@ -762,9 +756,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     : Icon(
-                        showLinks
-                            ? Icons.edit_note_rounded
-                            : suppressValues
+                        suppressValues
                             ? Icons.bluetooth_disabled_rounded
                             : trendIcon,
                         color: Colors.white,
@@ -785,81 +777,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    if (showLinks)
-                      Wrap(
-                        spacing: 6.0,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ManualLogScreen(),
-                                ),
-                              );
-                            },
-                            child: TranslatedText(
-                              "Log Manually",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: colors.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          glucoseDisplay,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: dotColor,
                           ),
-                          TranslatedText(
-                            "or",
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Last updated: $updatedDisplay',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               color: colors.textSecondary,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(
-                                context,
-                              ).pushNamed('/bluetooth-pairing');
-                            },
-                            child: TranslatedText(
-                              "Connect Hardware",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: colors.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            glucoseDisplay,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: dotColor,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Last updated: $updatedDisplay',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: colors.textSecondary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1295,22 +1237,22 @@ class _HomeScreenState extends State<HomeScreen> {
   // ════════════════════════════════════════════════════
   Widget _predictionCard(BuildContext context) {
     final colors = context.colors;
-    
-    final displayValue = _aiPredictedGlucose ?? 
-                         _hardwarePredictionValue ??
-                         135.0;
-    
+
+    final displayValue =
+        _aiPredictedGlucose ?? _hardwarePredictionValue ?? 135.0;
+
     final horizonMinutes = _aiHorizonMinutes ?? 30;
-    
+
     final currentGlucose = _glucoseValue;
     double? percentageChange;
     bool isRising = true;
-    
+
     if (currentGlucose != null && currentGlucose > 0) {
-      percentageChange = ((displayValue - currentGlucose) / currentGlucose) * 100;
+      percentageChange =
+          ((displayValue - currentGlucose) / currentGlucose) * 100;
       isRising = percentageChange > 0;
     }
-    
+
     String getPredictionTime() {
       if (_aiPredictionTime != null) {
         final now = DateTime.now();
@@ -1322,7 +1264,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       return "Waiting for data...";
     }
-    
+
     Color getRiskColor() {
       if (_aiRiskLevel == 'LOW') return const Color(0xFFEFDD16);
       if (_aiRiskLevel == 'HIGH') return colors.error;
@@ -1374,7 +1316,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_aiRiskLevel != null && !_aiPredictionLoading)
                     Container(
                       margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: getRiskColor().withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -1393,9 +1338,7 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const AIPredictionScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const AIPredictionScreen()),
                 ),
                 child: TranslatedText(
                   "View details",
@@ -1462,14 +1405,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ] else ...[
-                Icon(Icons.timeline_rounded, color: colors.textSecondary, size: 14),
+                Icon(
+                  Icons.timeline_rounded,
+                  color: colors.textSecondary,
+                  size: 14,
+                ),
                 const SizedBox(width: 2),
                 Text(
                   "Awaiting prediction",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
               ],
               const SizedBox(width: 6),
@@ -1483,12 +1427,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             _aiPredictionTime != null
                 ? "Prediction generated: ${getPredictionTime()}"
-                : (_hardwarePredictionValue != null 
-                    ? "Hardware prediction - syncing to cloud..."
-                    : "No predictions available yet"),
+                : (_hardwarePredictionValue != null
+                      ? "Hardware prediction - syncing to cloud..."
+                      : "No predictions available yet"),
             style: TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
-          
+
           if (_aiConfidenceScore != null && !_aiPredictionLoading) ...[
             const SizedBox(height: 12),
             Row(
@@ -1499,7 +1443,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: LinearProgressIndicator(
                       value: _aiConfidenceScore! / 100,
                       minHeight: 4,
-                      backgroundColor: colors.textSecondary.withValues(alpha: 0.15),
+                      backgroundColor: colors.textSecondary.withValues(
+                        alpha: 0.15,
+                      ),
                       valueColor: AlwaysStoppedAnimation(colors.primary),
                     ),
                   ),
@@ -1507,15 +1453,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
                 Text(
                   "${_aiConfidenceScore!.toInt()}% confidence",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 10, color: colors.textSecondary),
                 ),
               ],
             ),
           ],
-          
+
           const SizedBox(height: 14),
           SizedBox(
             height: 130,

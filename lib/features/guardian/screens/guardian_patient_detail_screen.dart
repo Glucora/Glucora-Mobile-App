@@ -111,29 +111,31 @@ class _GuardianPatientDetailScreenState
             final isLandscape = orientation == Orientation.landscape;
             return Column(
               children: [
+                // here
                 Container(
                   color: colors.surface,
                   padding: EdgeInsets.fromLTRB(
-                    8,
-                    isLandscape ? 8 : 14,
                     16,
-                    isLandscape ? 8 : 14,
+                    isLandscape ? 10 : 16,
+                    16,
+                    isLandscape ? 10 : 16,
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
                           Icons.arrow_back_ios_new_rounded,
-                          size: 20,
+                          size: 18,
+                          color: colors.textSecondary,
                         ),
-                        color: colors.textPrimary,
                       ),
-                      // ✅ Profile Picture instead of CircleAvatar
+                      const SizedBox(width: 14),
                       ProfilePicture(
                         userId: p.patientId,
                         imageUrl: p.profilePictureUrl,
-                        size: isLandscape ? 36 : 44,
+                        size: isLandscape ? 34 : 40,
                         isEditable: false,
                         showInitials: true,
                         displayName: p.name,
@@ -142,83 +144,83 @@ class _GuardianPatientDetailScreenState
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             TranslatedText(
                               p.name,
                               style: TextStyle(
-                                fontSize: isLandscape ? 15 : 18,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
                                 color: colors.textPrimary,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            TranslatedText(
-                              '${p.relationship}  ·  Age ${p.age}  ·  Type 1',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: colors.textSecondary,
-                              ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: sColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                TranslatedText(
+                                  p.overallStatus == 'emergency'
+                                      ? 'Needs help now'
+                                      : p.overallStatus == 'attention'
+                                      ? 'Needs attention'
+                                      : 'Doing well',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: sColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: sColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: TranslatedText(
-                          p.overallStatus == 'emergency'
-                              ? 'Needs help now'
-                              : p.overallStatus == 'attention'
-                              ? 'Needs attention'
-                              : 'Doing well',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: sColor,
-                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _sms,
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            color: colors.warning.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
+                            color: colors.textSecondary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.sms_rounded,
-                            color: colors.warning,
-                            size: 19,
+                            Icons.message_outlined,
+                            size: 17,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: _call,
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: colors.accent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
+                            shape: BoxShape.circle,
                           ),
                           child: Icon(
                             Icons.call_rounded,
+                            size: 17,
                             color: colors.accent,
-                            size: 19,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
@@ -1276,7 +1278,8 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
                         children: [
                           TranslatedText(
                             plan.doctorName,
-                            style: const TextStyle(
+                            style:
+                             const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -1630,91 +1633,4 @@ class _DoctorPlanTabState extends State<_DoctorPlanTab> {
       ),
     );
   }
-}
-
-class _MapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = const Color(0xFFE8F5F3);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bg);
-
-    final grid = Paint()
-      ..color = const Color(0xFFCCE8E3).withValues(alpha: 0.6)
-      ..strokeWidth = 1;
-    for (double x = 0; x < size.width; x += 36) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y < size.height; y += 36) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final road = Paint()
-      ..color = Colors.white.withValues(alpha: 0.8)
-      ..strokeWidth = 9;
-    canvas.drawLine(
-      Offset(0, size.height * 0.55),
-      Offset(size.width, size.height * 0.45),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.45, 0),
-      Offset(size.width * 0.55, size.height),
-      road,
-    );
-
-    final block = Paint()
-      ..color = const Color(0xFFB2D8D2).withValues(alpha: 0.4)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.08,
-          size.height * 0.08,
-          size.width * 0.3,
-          size.height * 0.3,
-        ),
-        const Radius.circular(4),
-      ),
-      block,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.62,
-          size.height * 0.1,
-          size.width * 0.28,
-          size.height * 0.25,
-        ),
-        const Radius.circular(4),
-      ),
-      block,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.08,
-          size.height * 0.64,
-          size.width * 0.25,
-          size.height * 0.26,
-        ),
-        const Radius.circular(4),
-      ),
-      block,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.62,
-          size.height * 0.64,
-          size.width * 0.3,
-          size.height * 0.28,
-        ),
-        const Radius.circular(4),
-      ),
-      block,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter _) => false;
 }

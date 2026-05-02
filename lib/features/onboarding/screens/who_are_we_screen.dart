@@ -62,8 +62,10 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
       vsync: this,
       duration: const Duration(milliseconds: 450),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+    _fadeAnim = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
     _animController.forward();
   }
 
@@ -99,10 +101,15 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, '/ai-explain'),
+                    onPressed: () =>
+                        Navigator.pushReplacementNamed(context, '/ai-explain'),
                     child: TranslatedText(
                       'Skip',
-                      style: TextStyle(color: colors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -114,8 +121,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                 controller: _pageController,
                 onPageChanged: (i) {
                   setState(() => _currentPage = i);
-                  _animController.reset();
-                  _animController.forward();
+                  _animController.forward(from: 0.4);
                 },
                 itemCount: _pages.length,
                 itemBuilder: (context, index) {
@@ -142,7 +148,9 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
@@ -173,8 +181,7 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
 
                           const SizedBox(height: 20),
 
-                          TranslatedText
-                          (
+                          TranslatedText(
                             p['subtitle'] as String,
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -205,7 +212,9 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                         width: active ? 22 : 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: active ? colors.accent : colors.textSecondary.withValues(alpha: 0.5),
+                          color: active
+                              ? colors.accent
+                              : colors.textSecondary.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
@@ -222,14 +231,17 @@ class _WhoWeAreScreenState extends State<WhoWeAreScreen>
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: TranslatedText(
                         _currentPage == _pages.length - 1
                             ? 'How does the AI work?'
                             : 'Next',
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
