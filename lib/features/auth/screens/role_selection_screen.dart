@@ -55,7 +55,6 @@ Future<void> _selectRole(String role) async {
             {
               'user_id': user.id,
               'speciality': '',
-              'liscense_number': user.id, // ✅ UUID = always unique per user
             },
             onConflict: 'user_id',
           );
