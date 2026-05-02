@@ -297,38 +297,58 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
 
 /// Shared logout dialog — call this from any role profile tab.
 void showLogoutDialog(BuildContext context) {
-  final colors = context.colors;
   showDialog(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: const TranslatedText('Log Out'),
-      content: const TranslatedText('Are you sure to log out of your account?'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: TranslatedText('Cancel', style: TextStyle(color: colors.textSecondary)),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            try {
-              await Supabase.instance.client.auth.signOut();
-            } catch (_) {}
-            if (ctx.mounted) {
-              Navigator.pushNamedAndRemoveUntil(ctx, '/login-screen', (route) => false);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.error,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    barrierDismissible: false, // Prevent accidental dismissal during logout
+    builder: (ctx) {
+      final colors = context.colors;
+      return AlertDialog(
+        title: const TranslatedText('Log Out'),
+        content: const TranslatedText('Are you sure to log out of your account?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: TranslatedText('Cancel', style: TextStyle(color: colors.textSecondary)),
           ),
-          child: const TranslatedText('Logout'),
-        ),
-      ],
-    ),
+          ElevatedButton(
+            onPressed: () async {
+              // Store the original context before closing dialog
+              final originalContext = context;
+              
+              // Close the dialog
+              if (ctx.mounted) {
+                Navigator.of(ctx).pop();
+              }
+              
+              // Small delay to ensure dialog is fully dismissed
+              await Future.delayed(const Duration(milliseconds: 50));
+              
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (e) {
+                debugPrint('Sign out error: $e');
+              }
+              
+              // Use the original context for navigation
+              if (originalContext.mounted) {
+                Navigator.of(originalContext).pushNamedAndRemoveUntil(
+                  '/login-screen',
+                  (route) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const TranslatedText('Logout'),
+          ),
+        ],
+      );
+    },
   );
 }
 
