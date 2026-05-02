@@ -142,6 +142,14 @@ class _ProfileTabState extends State<_ProfileTab> {
   bool _notificationsEnabled = true;
   final supabase = Supabase.instance.client;
 
+  // ✅ Incremented on every _loadProfile call.
+  // Passed as ValueKey to BaseProfileTab so Flutter fully destroys and
+  // recreates the widget tree — including ProfilePicture — on each reload,
+  // preventing any stale in-memory image cache from the previous key.
+  int _reloadKey = 0;
+
+  RealtimeChannel? _profileChannel;
+
   static const List<FaqEntry> _faqs = [
     FaqEntry('How do I connect my glucose monitor?', 'Go to settings and connect your CGM device via Bluetooth.'),
     FaqEntry('What do the glucose ranges mean?', 'They indicate whether your sugar is low, normal, or high.'),
@@ -153,6 +161,36 @@ class _ProfileTabState extends State<_ProfileTab> {
   void initState() {
     super.initState();
     _loadProfile();
+    _subscribeToProfileChanges();
+  }
+
+  @override
+  void dispose() {
+    _profileChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeToProfileChanges() {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _profileChannel = supabase
+        .channel('patient_profile_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'users',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) {
+            if (mounted) _loadProfile();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _loadProfile() async {
@@ -174,6 +212,8 @@ class _ProfileTabState extends State<_ProfileTab> {
           .select()
           .single();
 
+      if (!mounted) return;
+
       setState(() {
         _name = userData?['full_name'] ?? 'No Name';
         _phone = userData?['phone_no'] ?? '';
@@ -181,11 +221,24 @@ class _ProfileTabState extends State<_ProfileTab> {
         _age = (userData?['age'] ?? 0).toInt();
         _height = '${patientData?['height_cm'] ?? 0} cm';
         _weight = '${patientData?['weight_kg'] ?? 0} kg';
-        _profilePictureUrl = userData?['profile_picture_url'] ?? '';
+
+        // ✅ Strip any existing cache-buster from the stored URL first,
+        // then append a fresh timestamp. Without stripping, the URL grows
+        // indefinitely and the "base" URL comparison never matches,
+        // causing Flutter to treat it as a new network resource but still
+        // serve the cached bytes for that path from its HTTP cache.
+        final rawUrl = userData?['profile_picture_url'] as String? ?? '';
+        final baseUrl = rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
+        _profilePictureUrl = baseUrl.isNotEmpty
+            ? '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}'
+            : '';
+
+        // ✅ Bump key so BaseProfileTab gets a new ValueKey → full rebuild
+        _reloadKey++;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -212,6 +265,7 @@ class _ProfileTabState extends State<_ProfileTab> {
         _height = result['height'];
         _weight = result['weight'];
       });
+      await _loadProfile();
     }
   }
 
@@ -287,6 +341,10 @@ class _ProfileTabState extends State<_ProfileTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return BaseProfileTab(
+      // ✅ New key on every reload → Flutter destroys the old widget entirely
+      // (including its internal Image cache entry) and builds a fresh one.
+      // This is the nuclear option that guarantees no stale image survives.
+      key: ValueKey(_reloadKey),
       name: _name,
       age: _age,
       profilePictureUrl: _profilePictureUrl,
