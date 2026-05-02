@@ -572,9 +572,14 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      body: SingleChildScrollView( // ✅ fix
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20, // ✅ keyboard safe
+      ),
+    child: Column(
           children: [
             buildProfileField(context, 'Name', _nameController, Icons.person_outline),
             const SizedBox(height: 16),

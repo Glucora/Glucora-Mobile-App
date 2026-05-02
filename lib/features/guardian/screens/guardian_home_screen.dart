@@ -519,9 +519,13 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   Widget _buildEmptyState(BuildContext context) {
     final colors = context.colors;
     
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Expanded(
+  child: SingleChildScrollView(
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.search_off,
@@ -559,6 +563,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             ),
         ],
       ),
+      ),
+    ),
+    ),
     );
   }
 
@@ -990,7 +997,12 @@ class _FilterBottomSheet extends StatelessWidget {
         color: colors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
+      child: SingleChildScrollView(
+  child: Padding(
+    padding: EdgeInsets.only(
+      bottom: MediaQuery.of(context).viewInsets.bottom, // ✅ keyboard safe
+    ),
+    child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
@@ -1088,7 +1100,9 @@ class _FilterBottomSheet extends StatelessWidget {
           ),
         ],
       ),
-    );
+     ),
+    ),
+  );
   }
 
   Widget _buildFilterOption(

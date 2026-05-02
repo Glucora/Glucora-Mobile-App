@@ -473,49 +473,56 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
     );
   }
 
-  Widget _buildList(
-    BuildContext context,
-    List<ConnectionRequest> requests, {
-    required String tabType,
-    required bool isLandscape,
-  }) {
-    final colors = context.colors;
-    if (requests.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.people_outline_rounded,
-              size: 64,
-              color: colors.textSecondary.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
-            TranslatedText(
-              'No $tabType requests found',
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+Widget _buildList(
+  BuildContext context,
+  List<ConnectionRequest> requests, {
+  required String tabType,
+  required bool isLandscape,
+}) {
+  final colors = context.colors;
+  if (requests.isEmpty) {
+    // ✅ Wrap in SingleChildScrollView so it never overflows
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.5, // ✅ gives Center room
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.people_outline_rounded,
+                size: 64,
+                color: colors.textSecondary.withValues(alpha: 0.3),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TranslatedText(
+                'No $tabType requests found',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 100),
-      itemCount: requests.length,
-      itemBuilder: (context, index) => _RequestCard(
-        request: requests[index],
-        tabType: tabType,
-        onAccept: () => _accept(requests[index]),
-        onDecline: () => _decline(requests[index]),
-        onWithdraw: () => _withdraw(requests[index]),
       ),
     );
   }
+
+  return ListView.builder(
+    padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+    itemCount: requests.length,
+    itemBuilder: (context, index) => _RequestCard(
+      request: requests[index],
+      tabType: tabType,
+      onAccept: () => _accept(requests[index]),
+      onDecline: () => _decline(requests[index]),
+      onWithdraw: () => _withdraw(requests[index]),
+    ),
+  );
+}
 }
 
 class _RequestCard extends StatelessWidget {
