@@ -36,6 +36,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   Map<String, dynamic>? _latestIob;
   bool _isLoading = true;
   String? _profilePictureUrl;
+  
+  // ✅ Add this to force rebuild of care plan card
+  int _carePlanReloadKey = 0;
 
   List<GlucoseReading> get glucoseHistory => _glucoseReadings.map((r) {
     final dt = DateTime.parse(r['recorded_at']).toLocal();
@@ -151,52 +154,53 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       _profilePictureUrl = userData?['profile_picture_url'] as String?;
 
       final results = await Future.wait([
-  supabase
-      .from('care_plans')
-      .select()
-      .eq('patient_id', widget.patientId)
-      .order('created_at', ascending: false)
-      .limit(1)
-      .maybeSingle(),
-  supabase
-      .from('glucose_readings')
-      .select()
-      .eq('patient_id', widget.patientId)
-      .order('recorded_at', ascending: true),
-  supabase
-      .from('insulin_doses')
-      .select()
-      .eq('patient_id', widget.patientId)
-      .order('delivered_at', ascending: true),
-  supabase
-      .from('alerts')
-      .select()
-      .eq('patient_id', widget.patientId)
-      .order('triggered_at', ascending: false)
-      .limit(5),
-  supabase
-      .from('devices')
-      .select()
-      .eq('patient_id', userId)
-      .eq('is_active', true)
-      .maybeSingle(),
-  // ✅ FIXED: Latest AI prediction - use patient_uuid instead of patient_id
-  supabase
-      .from('ai_predictions')
-      .select()
-      .eq('patient_uuid', userId)  // ← Changed from 'patient_id' to 'patient_uuid', using userId (UUID)
-      .order('created_at', ascending: false)
-      .limit(1)
-      .maybeSingle(),
-  // Latest IOB snapshot
-  supabase
-      .from('insulin_on_board')
-      .select()
-      .eq('patient_id', widget.patientId)
-      .order('calculated_at', ascending: false)
-      .limit(1)
-      .maybeSingle(),
-]);
+        supabase
+            .from('care_plans')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+        supabase
+            .from('glucose_readings')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('recorded_at', ascending: true),
+        supabase
+            .from('insulin_doses')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('delivered_at', ascending: true),
+        supabase
+            .from('alerts')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('triggered_at', ascending: false)
+            .limit(5),
+        supabase
+            .from('devices')
+            .select()
+            .eq('patient_id', userId)
+            .eq('is_active', true)
+            .maybeSingle(),
+        // ✅ FIXED: Latest AI prediction - use patient_uuid instead of patient_id
+        supabase
+            .from('ai_predictions')
+            .select()
+            .eq('patient_uuid', userId)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+        // Latest IOB snapshot
+        supabase
+            .from('insulin_on_board')
+            .select()
+            .eq('patient_id', widget.patientId)
+            .order('calculated_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+      ]);
+
       if (!mounted) return;
       setState(() {
         _patientProfile = profile;
@@ -207,6 +211,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         _device = results[4] as Map<String, dynamic>?;
         _latestPrediction = results[5] as Map<String, dynamic>?;
         _latestIob = results[6] as Map<String, dynamic>?;
+        // ✅ Increment key to force rebuild of care plan card
+        _carePlanReloadKey++;
         _isLoading = false;
       });
     } catch (e) {
@@ -346,7 +352,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Row(
         children: [
-          // ✅ Profile Picture instead of CircleAvatar
           ProfilePicture(
             userId: userId,
             imageUrl: _profilePictureUrl,
@@ -539,157 +544,151 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-void _showDeleteConfirmation(BuildContext context) {
-  final colors = context.colors;
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
-          const SizedBox(width: 8),
-          const TranslatedText(
-            'Remove Patient',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
-      content: RichText(
-        text: TextSpan(
-          style: TextStyle(
-            fontSize: 14,
-            color: colors.textPrimary,
-            height: 1.5,
-          ),
+  void _showDeleteConfirmation(BuildContext context) {
+    final colors = context.colors;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
           children: [
-            const TextSpan(text: 'Are you sure you want to remove '),
-            TextSpan(
-              text: widget.patientName,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const TextSpan(
-              text:
-                  ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
+            Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
+            const SizedBox(width: 8),
+            const TranslatedText(
+              'Remove Patient',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
           ],
         ),
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actions: [
-        SizedBox(
-          width: double.infinity,
-          child: Row(
+        content: RichText(
+          text: TextSpan(
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.textPrimary,
+              height: 1.5,
+            ),
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const TranslatedText(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
+              const TextSpan(text: 'Are you sure you want to remove '),
+              TextSpan(
+                text: widget.patientName,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    
-                    // Show loading indicator
-                    if (mounted) {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => const Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    
-                    try {
-                      final currentUserId = supabase.auth.currentUser!.id;
-                      
-                      // ✅ FIX: Get the patient's user ID from patient_profile
-                      final patientProfile = await supabase
-                          .from('patient_profile')
-                          .select('user_id')
-                          .eq('id', widget.patientId)
-                          .single();
-                      
-                      final patientUserId = patientProfile['user_id'] as String;
-                      
-                      // ✅ Delete using the patient's user ID (UUID)
-                      await supabase
-                          .from('doctor_patient_connections')
-                          .delete()
-                          .eq('doctor_id', currentUserId)
-                          .eq('patient_id', patientUserId);
-                      
-                      // Dismiss loading dialog
-                      if (mounted) Navigator.pop(context);
-                      
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: TranslatedText('Patient removed successfully'),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        // Go back to previous screen
-                        Navigator.pop(context, true);
-                      }
-                    } catch (e) {
-                      print('Error removing patient: $e');
-                      
-                      // Dismiss loading dialog
-                      if (mounted) Navigator.pop(context);
-                      
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: TranslatedText(
-                              'Failed to remove patient. Please try again.',
-                            ),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.error,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const TranslatedText(
-                    'Remove',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+              const TextSpan(
+                text:
+                    ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
               ),
             ],
           ),
         ),
-      ],
-    ),
-  );
-}
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: colors.textSecondary.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const TranslatedText(
+                      'Cancel',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      
+                      try {
+                        final currentUserId = supabase.auth.currentUser!.id;
+                        
+                        final patientProfile = await supabase
+                            .from('patient_profile')
+                            .select('user_id')
+                            .eq('id', widget.patientId)
+                            .single();
+                        
+                        final patientUserId = patientProfile['user_id'] as String;
+                        
+                        await supabase
+                            .from('doctor_patient_connections')
+                            .delete()
+                            .eq('doctor_id', currentUserId)
+                            .eq('patient_id', patientUserId);
+                        
+                        if (mounted) Navigator.pop(context);
+                        
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: TranslatedText('Patient removed successfully'),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          Navigator.pop(context, true);
+                        }
+                      } catch (e) {
+                        print('Error removing patient: $e');
+                        
+                        if (mounted) Navigator.pop(context);
+                        
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: TranslatedText(
+                                'Failed to remove patient. Please try again.',
+                              ),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.error,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const TranslatedText(
+                      'Remove',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildGlucoseSummaryCards(BuildContext context) {
     final colors = context.colors;
@@ -973,14 +972,12 @@ void _showDeleteConfirmation(BuildContext context) {
   Widget _buildPumpStatusCard(BuildContext context) {
     final colors = context.colors;
 
-    // Device info from devices table
     final deviceName = _device?['device_name'] as String? ?? 'Pump';
     final batteryRaw = _device?['battery_health'] as String? ?? '—';
     final lastSyncAt = _device?['last_sync_at'] as String?;
     final lastSyncDisplay = lastSyncAt != null ? _timeAgo(lastSyncAt) : '—';
     final isActive = _device?['is_active'] as bool? ?? false;
 
-    // Derived stats from insulin_doses
     final tdd = _tddToday;
     final basalToday = _basalToday;
     final bolusToday = _bolusToday;
@@ -1131,7 +1128,6 @@ void _showDeleteConfirmation(BuildContext context) {
   Widget _buildAIDStatusCard(BuildContext context) {
     final colors = context.colors;
 
-    // ai_predictions fields
     final predictedValue = _latestPrediction?['predicted_value_mg_dl'];
     final predictedDisplay = predictedValue != null
         ? '${(predictedValue as num).toStringAsFixed(0)} mg/dL'
@@ -1143,7 +1139,6 @@ void _showDeleteConfirmation(BuildContext context) {
     final riskLevel = _latestPrediction?['risk_level'] as String? ?? '—';
     final modelVersion = _latestPrediction?['model_version'] as String? ?? '—';
 
-    // care_plans fields
     final isf = _carePlan?['insulin_sensitivity_factor'] as String? ?? '—';
     final carbRatio = _carePlan?['carb_ratio'];
     final carbRatioDisplay = carbRatio != null
@@ -1151,7 +1146,6 @@ void _showDeleteConfirmation(BuildContext context) {
         : '—';
     final aidEnabled = _carePlan?['aid_mode_enabled'] as bool? ?? false;
 
-    // Latest glucose trend from readings
     final latestReading = _glucoseReadings.isNotEmpty
         ? _glucoseReadings.last
         : null;
@@ -1162,7 +1156,6 @@ void _showDeleteConfirmation(BuildContext context) {
         ? '↘ Falling slowly'
         : '→ Stable';
 
-    // Risk color
     Color riskColor;
     if (riskLevel == 'high') {
       riskColor = colors.error;
@@ -1429,6 +1422,7 @@ void _showDeleteConfirmation(BuildContext context) {
     );
   }
 
+  // ✅ FIXED: Added key to force rebuild when care plan updates
   Widget _buildCarePlanCard(BuildContext context) {
     final colors = context.colors;
     final plan = _carePlan;
@@ -1444,33 +1438,21 @@ void _showDeleteConfirmation(BuildContext context) {
       final dt = DateTime.tryParse(nextAppt);
       if (dt != null) {
         const months = [
-          'Jan',
-          'Feb',
-          'Mar',
-          'Apr',
-          'May',
-          'Jun',
-          'Jul',
-          'Aug',
-          'Sep',
-          'Oct',
-          'Nov',
-          'Dec',
+          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
         ];
         apptDisplay = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
       }
     }
 
     return Container(
+      // ✅ Key forces Flutter to rebuild this widget when key changes
+      key: ValueKey(_carePlanReloadKey),
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(context),
       child: Column(
         children: [
-          _carePlanRow(
-            'Target Range',
-            '$targetMin – $targetMax mg/dL',
-            context,
-          ),
+          _carePlanRow('Target Range', '$targetMin – $targetMax mg/dL', context),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
           _carePlanRow('Insulin Type', insulinType, context),
           const Divider(height: 1, color: Color(0xFFF5F5F5)),
@@ -1501,7 +1483,9 @@ void _showDeleteConfirmation(BuildContext context) {
                     ),
                   ),
                 );
-                if (updated == true) _fetchPatientData();
+                if (updated == true) {
+                  await _fetchPatientData();
+                }
               },
               icon: const Icon(
                 Icons.edit_outlined,
@@ -1899,7 +1883,6 @@ void _showDeleteConfirmation(BuildContext context) {
     final colors = context.colors;
     final iob = _latestIob;
 
-    // Pull values from insulin_on_board table
     final totalIob = iob?['total_iob_units'];
     final iobDisplay = totalIob != null
         ? '${(totalIob as num).toStringAsFixed(1)} U'
