@@ -12,11 +12,13 @@ class SettingsScreen extends StatefulWidget {
   final bool notificationsEnabled;
   final ValueChanged<bool> onNotificationsChanged;
   final List<Widget>? additionalSettings;
+  final VoidCallback onLogout;
 
   const SettingsScreen({
     super.key,
     required this.notificationsEnabled,
     required this.onNotificationsChanged,
+    required this.onLogout,
     this.additionalSettings,
   });
 
@@ -38,7 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final colors = context.colors;
-    
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colors.surface,
@@ -59,10 +61,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         centerTitle: true,
       ),
-      body: LayoutBuilder(  // ✅ Add LayoutBuilder to get constraints
+      body: LayoutBuilder(
+        // ✅ Add LayoutBuilder to get constraints
         builder: (context, constraints) {
           return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),  // ✅ Force scrollable
+            physics:
+                const AlwaysScrollableScrollPhysics(), // ✅ Force scrollable
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Padding(
@@ -110,8 +114,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ...widget.additionalSettings!,
                     ],
                     const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: widget.onLogout,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colors.textSecondary.withValues(alpha: 0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: colors.error.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.logout_rounded,
+                                color: colors.error,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TranslatedText(
+                                    'Log Out',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  TranslatedText(
+                                    'Sign out of your account',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: colors.error,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     const DeleteAccountTile(),
-                    const SizedBox(height: 32),  // ✅ Extra padding at bottom
+                    const SizedBox(height: 32), // ✅ Extra padding at bottom
                   ],
                 ),
               ),

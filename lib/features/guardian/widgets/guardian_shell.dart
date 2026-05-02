@@ -46,8 +46,19 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: colors.surface,
-          border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2), width: 1)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, -4))],
+          border: Border(
+            top: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Padding(
@@ -55,9 +66,28 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _item(0, Icons.home_rounded, Icons.home_outlined, 'Home', colors),
-                _item(1, Icons.people_rounded, Icons.people_outline_rounded, 'Requests', colors, badge: _pendingRequests),
-                _item(2, Icons.person_rounded, Icons.person_outline_rounded, 'Profile', colors),
+                _item(
+                  0,
+                  Icons.home_rounded,
+                  Icons.home_outlined,
+                  'Home',
+                  colors,
+                ),
+                _item(
+                  1,
+                  Icons.people_rounded,
+                  Icons.people_outline_rounded,
+                  'Requests',
+                  colors,
+                  badge: _pendingRequests,
+                ),
+                _item(
+                  2,
+                  Icons.person_rounded,
+                  Icons.person_outline_rounded,
+                  'Profile',
+                  colors,
+                ),
               ],
             ),
           ),
@@ -66,7 +96,14 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
     );
   }
 
-  Widget _item(int idx, IconData active, IconData inactive, String label, GlucoraColors colors, {int badge = 0}) {
+  Widget _item(
+    int idx,
+    IconData active,
+    IconData inactive,
+    String label,
+    GlucoraColors colors, {
+    int badge = 0,
+  }) {
     final sel = _index == idx;
     return GestureDetector(
       onTap: () => setState(() => _index = idx),
@@ -75,7 +112,9 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
         decoration: BoxDecoration(
-          color: sel ? colors.accent.withValues(alpha: 0.12) : Colors.transparent,
+          color: sel
+              ? colors.accent.withValues(alpha: 0.12)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -84,7 +123,11 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(sel ? active : inactive, color: sel ? colors.accent : colors.textSecondary, size: 26),
+                Icon(
+                  sel ? active : inactive,
+                  color: sel ? colors.accent : colors.textSecondary,
+                  size: 26,
+                ),
                 if (badge > 0)
                   Positioned(
                     top: -4,
@@ -92,11 +135,18 @@ class _GuardianMainScreenState extends State<GuardianMainScreen> {
                     child: Container(
                       width: 16,
                       height: 16,
-                      decoration: const BoxDecoration(color: Color(0xFFE63946), shape: BoxShape.circle),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE63946),
+                        shape: BoxShape.circle,
+                      ),
                       child: Center(
                         child: TranslatedText(
                           '$badge',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
@@ -293,7 +343,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
         debugPrint('Update error: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: TranslatedText('Update failed: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: TranslatedText('Update failed: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
           setState(() => _isLoading = false);
         }
@@ -315,7 +368,10 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: TranslatedText('Failed to switch: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: TranslatedText('Failed to switch: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -353,18 +409,13 @@ class _GuardianProfileTabState extends State<_GuardianProfileTab> {
           ],
         ),
       ),
-      aboveLogout: [
-        Center(
-          child: ElevatedButton(
-            onPressed: _switchToPatient,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(200, 45),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const TranslatedText('Switch to Patient View'),
-          ),
+      aboveLogout: [],
+      extraSettingsWidgets: [
+        buildSwitchRoleCard(
+          context,
+          title: 'Switch to Patient View',
+          subtitle: 'Switch your role to patient',
+          onTap: _switchToPatient,
         ),
       ],
     );
@@ -388,10 +439,12 @@ class _EditGuardianProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<_EditGuardianProfileScreen> createState() => _EditGuardianProfileScreenState();
+  State<_EditGuardianProfileScreen> createState() =>
+      _EditGuardianProfileScreenState();
 }
 
-class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> {
+class _EditGuardianProfileScreenState
+    extends State<_EditGuardianProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ageController;
   late TextEditingController _emailController;
@@ -423,12 +476,18 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: TranslatedText(
           'Edit Profile',
-          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -436,7 +495,11 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
             onPressed: _save,
             child: TranslatedText(
               'Save',
-              style: TextStyle(color: colors.primary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: colors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -445,13 +508,36 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            buildProfileField(context, 'Name', _nameController, Icons.person_outline),
+            buildProfileField(
+              context,
+              'Name',
+              _nameController,
+              Icons.person_outline,
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number),
+            buildProfileField(
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Email', _emailController, Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            buildProfileField(
+              context,
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Phone Number', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            buildProfileField(
+              context,
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       ),
@@ -464,7 +550,10 @@ class _EditGuardianProfileScreenState extends State<_EditGuardianProfileScreen> 
 
     if (updatedName.isEmpty || updatedEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: TranslatedText('Name and Email are required'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: TranslatedText('Name and Email are required'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }

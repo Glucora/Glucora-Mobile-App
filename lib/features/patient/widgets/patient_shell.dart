@@ -57,8 +57,16 @@ class _PatientNavigationState extends State<PatientNavigation> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2))),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, -2))],
+        border: Border(
+          top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -66,11 +74,36 @@ class _PatientNavigationState extends State<PatientNavigation> {
           height: 62,
           child: Row(
             children: [
-              _NavTile(icon: Icons.home_rounded, label: 'Home', active: _currentIndex == 0, onTap: () => setState(() => _currentIndex = 0)),
-              _NavTile(icon: Icons.restaurant_menu_rounded, label: 'Calories', active: _currentIndex == 1, onTap: () => setState(() => _currentIndex = 1)),
-              _NavTile(icon: Icons.edit_rounded, label: 'Log', active: _currentIndex == 2, onTap: () => setState(() => _currentIndex = 2)),
-              _NavTile(icon: Icons.medication_rounded, label: 'Meds', active: _currentIndex == 3, onTap: () => setState(() => _currentIndex = 3)),
-              _NavTile(icon: Icons.person_outline_rounded, label: 'Profile', active: _currentIndex == 4, onTap: () => setState(() => _currentIndex = 4)),
+              _NavTile(
+                icon: Icons.home_rounded,
+                label: 'Home',
+                active: _currentIndex == 0,
+                onTap: () => setState(() => _currentIndex = 0),
+              ),
+              _NavTile(
+                icon: Icons.restaurant_menu_rounded,
+                label: 'Calories',
+                active: _currentIndex == 1,
+                onTap: () => setState(() => _currentIndex = 1),
+              ),
+              _NavTile(
+                icon: Icons.edit_rounded,
+                label: 'Log',
+                active: _currentIndex == 2,
+                onTap: () => setState(() => _currentIndex = 2),
+              ),
+              _NavTile(
+                icon: Icons.medication_rounded,
+                label: 'Meds',
+                active: _currentIndex == 3,
+                onTap: () => setState(() => _currentIndex = 3),
+              ),
+              _NavTile(
+                icon: Icons.person_outline_rounded,
+                label: 'Profile',
+                active: _currentIndex == 4,
+                onTap: () => setState(() => _currentIndex = 4),
+              ),
             ],
           ),
         ),
@@ -88,7 +121,12 @@ class _NavTile extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  const _NavTile({required this.icon, required this.label, required this.active, required this.onTap});
+  const _NavTile({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -105,13 +143,20 @@ class _NavTile extends StatelessWidget {
             const SizedBox(height: 3),
             TranslatedText(
               label,
-              style: TextStyle(fontSize: 11, color: color, fontWeight: active ? FontWeight.w600 : FontWeight.w400),
+              style: TextStyle(
+                fontSize: 11,
+                color: color,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
             const SizedBox(height: 2),
             Container(
               width: 5,
               height: 5,
-              decoration: BoxDecoration(color: active ? colors.primary : Colors.transparent, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: active ? colors.primary : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
             ),
           ],
         ),
@@ -151,10 +196,22 @@ class _ProfileTabState extends State<_ProfileTab> {
   RealtimeChannel? _profileChannel;
 
   static const List<FaqEntry> _faqs = [
-    FaqEntry('How do I connect my glucose monitor?', 'Go to settings and connect your CGM device via Bluetooth.'),
-    FaqEntry('What do the glucose ranges mean?', 'They indicate whether your sugar is low, normal, or high.'),
-    FaqEntry('Can I share data with my doctor?', 'Yes, you can securely share your data with connected doctors.'),
-    FaqEntry('How accurate are the predictions?', 'Predictions are AI-based and improve over time with more data.'),
+    FaqEntry(
+      'How do I connect my glucose monitor?',
+      'Go to settings and connect your CGM device via Bluetooth.',
+    ),
+    FaqEntry(
+      'What do the glucose ranges mean?',
+      'They indicate whether your sugar is low, normal, or high.',
+    ),
+    FaqEntry(
+      'Can I share data with my doctor?',
+      'Yes, you can securely share your data with connected doctors.',
+    ),
+    FaqEntry(
+      'How accurate are the predictions?',
+      'Predictions are AI-based and improve over time with more data.',
+    ),
   ];
 
   @override
@@ -198,14 +255,22 @@ class _ProfileTabState extends State<_ProfileTab> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      var userData = await supabase.from('users').select().eq('id', user.id).maybeSingle();
+      var userData = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
       userData ??= await supabase
           .from('users')
           .insert({'id': user.id, 'email': user.email, 'full_name': 'New User'})
           .select()
           .single();
 
-      var patientData = await supabase.from('patient_profile').select().eq('user_id', user.id).maybeSingle();
+      var patientData = await supabase
+          .from('patient_profile')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
       patientData ??= await supabase
           .from('patient_profile')
           .insert({'user_id': user.id, 'height_cm': 0, 'weight_kg': 0})
@@ -273,7 +338,10 @@ class _ProfileTabState extends State<_ProfileTab> {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
     try {
-      await supabase.from('users').update({'role': 'guardian'}).eq('id', userId);
+      await supabase
+          .from('users')
+          .update({'role': 'guardian'})
+          .eq('id', userId);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
@@ -282,7 +350,10 @@ class _ProfileTabState extends State<_ProfileTab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: TranslatedText('Failed to switch: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: TranslatedText('Failed to switch: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -302,8 +373,16 @@ class _ProfileTabState extends State<_ProfileTab> {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          border: Border.all(
+            color: colors.textSecondary.withValues(alpha: 0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -321,9 +400,19 @@ class _ProfileTabState extends State<_ProfileTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TranslatedText(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  TranslatedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  TranslatedText(subtitle, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+                  TranslatedText(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  ),
                 ],
               ),
             ),
@@ -364,7 +453,11 @@ class _ProfileTabState extends State<_ProfileTab> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 buildInfoColumn(context, 'Height', _height),
-                Container(width: 1, height: 30, color: colors.textSecondary.withValues(alpha: 0.2)),
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: colors.textSecondary.withValues(alpha: 0.2),
+                ),
                 buildInfoColumn(context, 'Weight', _weight),
               ],
             ),
@@ -375,7 +468,11 @@ class _ProfileTabState extends State<_ProfileTab> {
             alignment: Alignment.centerLeft,
             child: TranslatedText(
               'Reports & History',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -384,28 +481,52 @@ class _ProfileTabState extends State<_ProfileTab> {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WeeklyReportScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const WeeklyReportScreen(),
+                    ),
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                      border: Border.all(
+                        color: colors.textSecondary.withValues(alpha: 0.2),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
                         Container(
                           width: 44,
                           height: 44,
-                          decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                          child: Icon(Icons.insert_chart_outlined_rounded, color: colors.primary, size: 24),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.insert_chart_outlined_rounded,
+                            color: colors.primary,
+                            size: 24,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         TranslatedText(
                           'Weekly Report',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -415,28 +536,54 @@ class _ProfileTabState extends State<_ProfileTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PatientHistoryScreen())),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PatientHistoryScreen(),
+                    ),
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                      border: Border.all(
+                        color: colors.textSecondary.withValues(alpha: 0.2),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
                         Container(
                           width: 44,
                           height: 44,
-                          decoration: BoxDecoration(color: const Color(0xFF5B8CF5).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.history_rounded, color: Color(0xFF5B8CF5), size: 24),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF5B8CF5,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.history_rounded,
+                            color: Color(0xFF5B8CF5),
+                            size: 24,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         TranslatedText(
                           'History & Export',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -454,7 +601,10 @@ class _ProfileTabState extends State<_ProfileTab> {
           icon: Icons.bluetooth_rounded,
           title: 'Bluetooth Pairing',
           subtitle: 'Connect your CGM sensor or pump',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BluetoothPairingScreen())),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BluetoothPairingScreen()),
+          ),
         ),
         const SizedBox(height: 16),
         _buildSettingsCard(
@@ -462,7 +612,10 @@ class _ProfileTabState extends State<_ProfileTab> {
           icon: Icons.people_outline_rounded,
           title: 'My Connections & Sharing',
           subtitle: 'Doctors, guardians & location sharing',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const _ConnectionsScreen())),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const _ConnectionsScreen()),
+          ),
         ),
         const SizedBox(height: 16),
         _buildSettingsCard(
@@ -470,24 +623,22 @@ class _ProfileTabState extends State<_ProfileTab> {
           icon: Icons.person_add_alt_1_rounded,
           title: 'Connect with Care Team',
           subtitle: 'Find and connect with doctors & guardians',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ConnectionRequestsScreen(role: 'patient'))),
-        ),
-      ],
-      // ── Switch to Guardian button ─────────────────────────
-      aboveLogout: [
-        Center(
-          child: ElevatedButton(
-            onPressed: _switchToGuardian,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(200, 45),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ConnectionRequestsScreen(role: 'patient'),
             ),
-            child: const TranslatedText('Switch to Guardian View', style: TextStyle(color: Colors.white)),
           ),
         ),
+        const SizedBox(height: 16),
+        buildSwitchRoleCard(
+          context,
+          title: 'Switch to Guardian View',
+          subtitle: 'Switch your role to guardian',
+          onTap: _switchToGuardian,
+        ),
       ],
+      aboveLogout: [],
     );
   }
 }
@@ -554,12 +705,18 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: TranslatedText(
           'Edit Profile',
-          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -567,7 +724,11 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
             onPressed: _save,
             child: TranslatedText(
               'Save',
-              style: TextStyle(color: colors.primary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: colors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -576,17 +737,55 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            buildProfileField(context, 'Name', _nameController, Icons.person_outline),
+            buildProfileField(
+              context,
+              'Name',
+              _nameController,
+              Icons.person_outline,
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Email', _emailController, Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            buildProfileField(
+              context,
+              'Email',
+              _emailController,
+              Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Height', _heightController, Icons.height, keyboardType: TextInputType.number, suffix: 'cm'),
+            buildProfileField(
+              context,
+              'Height',
+              _heightController,
+              Icons.height,
+              keyboardType: TextInputType.number,
+              suffix: 'cm',
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Weight', _weightController, Icons.monitor_weight_outlined, keyboardType: TextInputType.number, suffix: 'kg'),
+            buildProfileField(
+              context,
+              'Weight',
+              _weightController,
+              Icons.monitor_weight_outlined,
+              keyboardType: TextInputType.number,
+              suffix: 'kg',
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Age', _ageController, Icons.cake_outlined, keyboardType: TextInputType.number, suffix: 'years'),
+            buildProfileField(
+              context,
+              'Age',
+              _ageController,
+              Icons.cake_outlined,
+              keyboardType: TextInputType.number,
+              suffix: 'years',
+            ),
             const SizedBox(height: 16),
-            buildProfileField(context, 'Phone Number', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+            buildProfileField(
+              context,
+              'Phone Number',
+              _phoneController,
+              Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
           ],
         ),
       ),
@@ -610,16 +809,38 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
         ),
       );
 
-      final weightValue = double.tryParse(_weightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-      final heightValue = double.tryParse(_heightController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+      final weightValue =
+          double.tryParse(
+            _weightController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+          ) ??
+          0;
+      final heightValue =
+          double.tryParse(
+            _heightController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+          ) ??
+          0;
       final ageValue = int.tryParse(_ageController.text) ?? 0;
 
-      await supabase.from('users').update({'full_name': newName, 'email': newEmail, 'phone_no': newPhone, 'age': ageValue}).eq('id', user.id);
-      await supabase.from('patient_profile').update({'weight_kg': weightValue, 'height_cm': heightValue}).eq('user_id', user.id);
+      await supabase
+          .from('users')
+          .update({
+            'full_name': newName,
+            'email': newEmail,
+            'phone_no': newPhone,
+            'age': ageValue,
+          })
+          .eq('id', user.id);
+      await supabase
+          .from('patient_profile')
+          .update({'weight_kg': weightValue, 'height_cm': heightValue})
+          .eq('user_id', user.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: TranslatedText('Profile updated successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: TranslatedText('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, {
           'name': newName,
@@ -633,7 +854,10 @@ class _EditProfileScreenState extends State<_EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: TranslatedText('Error updating profile: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: TranslatedText('Error updating profile: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -699,7 +923,10 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
 
   Future<void> _scanForDevices() async {
     if (_isScanning || _isBusy) return;
-    setState(() { _status = 'Scanning for nearby devices...'; _isBusy = true; });
+    setState(() {
+      _status = 'Scanning for nearby devices...';
+      _isBusy = true;
+    });
 
     try {
       final granted = await _requestBlePermissions();
@@ -725,24 +952,37 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
   }
 
   Future<void> _connectDevice(BluetoothDevice device) async {
-    setState(() { _isBusy = true; _status = 'Connecting to ${_deviceLabel(device)}...'; });
+    setState(() {
+      _isBusy = true;
+      _status = 'Connecting to ${_deviceLabel(device)}...';
+    });
     try {
       final granted = await _requestBlePermissions();
       if (!granted) {
         if (!mounted) return;
-        setState(() => _status = 'Bluetooth permissions are required to connect.');
+        setState(
+          () => _status = 'Bluetooth permissions are required to connect.',
+        );
         return;
       }
-      try { await device.createBond(); } catch (_) {}
+      try {
+        await device.createBond();
+      } catch (_) {}
       await device.connect(timeout: const Duration(seconds: 12));
       await _refreshConnectedDevices();
       if (!mounted) return;
       setState(() => _status = 'Connected to ${_deviceLabel(device)}.');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Connected to ${_deviceLabel(device)}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: TranslatedText('Connected to ${_deviceLabel(device)}'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _status = 'Connection failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Failed to connect: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TranslatedText('Failed to connect: $e')),
+      );
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -763,7 +1003,8 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
     }
   }
 
-  bool _isConnected(BluetoothDevice device) => _connectedDevices.any((d) => d.remoteId == device.remoteId);
+  bool _isConnected(BluetoothDevice device) =>
+      _connectedDevices.any((d) => d.remoteId == device.remoteId);
   String _deviceLabel(BluetoothDevice device) {
     final name = device.platformName.trim();
     return name.isNotEmpty ? name : 'Device ${device.remoteId.str}';
@@ -777,10 +1018,19 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: TranslatedText('Connect Device', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
+        title: TranslatedText(
+          'Connect Device',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Padding(
@@ -791,32 +1041,62 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
             children: [
               Row(
                 children: [
-                  Expanded(child: TranslatedText('Connected Devices', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary))),
-                  IconButton(tooltip: 'Refresh', onPressed: _isBusy ? null : _refreshConnectedDevices, icon: Icon(Icons.refresh_rounded, color: colors.primary)),
+                  Expanded(
+                    child: TranslatedText(
+                      'Connected Devices',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: _isBusy ? null : _refreshConnectedDevices,
+                    icon: Icon(Icons.refresh_rounded, color: colors.primary),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
               if (_connectedDevices.isEmpty)
                 _emptyStateCard(context, 'No connected devices yet.')
               else
-                ..._connectedDevices.map((d) => _connectedDeviceTile(context, d)),
+                ..._connectedDevices.map(
+                  (d) => _connectedDeviceTile(context, d),
+                ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: (_isBusy || _isScanning) ? null : _scanForDevices,
-                  icon: Icon(_isScanning ? Icons.hourglass_bottom_rounded : Icons.bluetooth_searching_rounded),
-                  label: TranslatedText(_isScanning ? 'Scanning...' : 'Pair/Connect New Device'),
+                  icon: Icon(
+                    _isScanning
+                        ? Icons.hourglass_bottom_rounded
+                        : Icons.bluetooth_searching_rounded,
+                  ),
+                  label: TranslatedText(
+                    _isScanning ? 'Scanning...' : 'Pair/Connect New Device',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 18),
-              TranslatedText('Available Devices', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+              TranslatedText(
+                'Available Devices',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
               const SizedBox(height: 10),
               if (_scanResults.isEmpty)
                 _emptyStateCard(context, 'No discovered devices yet.')
@@ -827,14 +1107,33 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
                   final platformName = device.platformName.trim();
                   final name = advertisedName.isNotEmpty
                       ? advertisedName
-                      : (platformName.isNotEmpty ? platformName : 'Unnamed BLE Device (${device.remoteId.str})');
+                      : (platformName.isNotEmpty
+                            ? platformName
+                            : 'Unnamed BLE Device (${device.remoteId.str})');
                   final connected = _isConnected(device);
-                  return _scanResultTile(context, name: name, signal: 'RSSI: ${result.rssi} dBm', connected: connected, onConnect: connected || _isBusy ? null : () => _connectDevice(device));
+                  return _scanResultTile(
+                    context,
+                    name: name,
+                    signal: 'RSSI: ${result.rssi} dBm',
+                    connected: connected,
+                    onConnect: connected || _isBusy
+                        ? null
+                        : () => _connectDevice(device),
+                  );
                 }),
               const SizedBox(height: 24),
               if (_status != null)
-                Padding(padding: const EdgeInsets.only(bottom: 10), child: TranslatedText(_status!, style: TextStyle(fontSize: 12, color: colors.textSecondary))),
-              TranslatedText('To pair a new device, put it in discovery mode and tap on it.', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TranslatedText(
+                    _status!,
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
+                ),
+              TranslatedText(
+                'To pair a new device, put it in discovery mode and tap on it.',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
             ],
           ),
         ),
@@ -848,46 +1147,118 @@ class _BluetoothPairingScreenState extends State<BluetoothPairingScreen> {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2))),
-      child: TranslatedText(message, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
+      child: TranslatedText(
+        message,
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
     );
   }
 
-  Widget _connectedDeviceTile(BuildContext context, BluetoothDevice device) => _deviceTile(context, name: _deviceLabel(device), status: 'Connected', isConnected: true, actionLabel: 'Disconnect', onAction: _isBusy ? null : () => _disconnectDevice(device));
+  Widget _connectedDeviceTile(BuildContext context, BluetoothDevice device) =>
+      _deviceTile(
+        context,
+        name: _deviceLabel(device),
+        status: 'Connected',
+        isConnected: true,
+        actionLabel: 'Disconnect',
+        onAction: _isBusy ? null : () => _disconnectDevice(device),
+      );
 
-  Widget _scanResultTile(BuildContext context, {required String name, required String signal, required bool connected, required VoidCallback? onConnect}) =>
-      _deviceTile(context, name: name, status: connected ? 'Connected' : signal, isConnected: connected, actionLabel: connected ? 'Connected' : 'Connect', onAction: connected ? null : onConnect);
+  Widget _scanResultTile(
+    BuildContext context, {
+    required String name,
+    required String signal,
+    required bool connected,
+    required VoidCallback? onConnect,
+  }) => _deviceTile(
+    context,
+    name: name,
+    status: connected ? 'Connected' : signal,
+    isConnected: connected,
+    actionLabel: connected ? 'Connected' : 'Connect',
+    onAction: connected ? null : onConnect,
+  );
 
-  Widget _deviceTile(BuildContext context, {required String name, required String status, required bool isConnected, required String actionLabel, required VoidCallback? onAction}) {
+  Widget _deviceTile(
+    BuildContext context, {
+    required String name,
+    required String status,
+    required bool isConnected,
+    required String actionLabel,
+    required VoidCallback? onAction,
+  }) {
     final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2))),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+      ),
       child: Row(
         children: [
-          Icon(Icons.bluetooth_rounded, size: 24, color: isConnected ? colors.primary : colors.textSecondary),
+          Icon(
+            Icons.bluetooth_rounded,
+            size: 24,
+            color: isConnected ? colors.primary : colors.textSecondary,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary)),
-                TranslatedText(status, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                TranslatedText(
+                  status,
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                ),
               ],
             ),
           ),
           if (isConnected)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: TranslatedText('Connected', style: TextStyle(fontSize: 10, color: colors.primary, fontWeight: FontWeight.w600)),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TranslatedText(
+                'Connected',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: colors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             )
           else
             TextButton(
               onPressed: onAction,
-              style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: TranslatedText(actionLabel, style: TextStyle(color: colors.primary)),
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: TranslatedText(
+                actionLabel,
+                style: TextStyle(color: colors.primary),
+              ),
             ),
         ],
       ),
@@ -922,22 +1293,52 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
 
   Future<void> _loadConnections() async {
     final user = supabase.auth.currentUser;
-    if (user == null) { setState(() => _isLoading = false); return; }
+    if (user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
     try {
       final userId = user.id;
-      var locationRow = await supabase.from('patient_locations').select('id, sharing_enabled').eq('patient_id', userId).maybeSingle();
-      locationRow ??= await supabase.from('patient_locations').insert({'patient_id': userId, 'sharing_enabled': true}).select('id, sharing_enabled').single();
+      var locationRow = await supabase
+          .from('patient_locations')
+          .select('id, sharing_enabled')
+          .eq('patient_id', userId)
+          .maybeSingle();
+      locationRow ??= await supabase
+          .from('patient_locations')
+          .insert({'patient_id': userId, 'sharing_enabled': true})
+          .select('id, sharing_enabled')
+          .single();
       _patientLocationRowId = locationRow['id'] as int;
       _globalLocationSharing = locationRow['sharing_enabled'] ?? true;
 
-      final guardianRows = await supabase.from('guardian_patient_connections').select('id, guardian_id, relationship, is_sharing, users!guardian_id(full_name, email, phone_no)').eq('patient_id', userId).eq('status', 'accepted');
-      final doctorRows = await supabase.from('doctor_patient_connections').select('id, doctor_id, is_sharing, users!doctor_id(full_name, email, phone_no)').eq('patient_id', userId).eq('status', 'accepted');
+      final guardianRows = await supabase
+          .from('guardian_patient_connections')
+          .select(
+            'id, guardian_id, relationship, is_sharing, users!guardian_id(full_name, email, phone_no)',
+          )
+          .eq('patient_id', userId)
+          .eq('status', 'accepted');
+      final doctorRows = await supabase
+          .from('doctor_patient_connections')
+          .select(
+            'id, doctor_id, is_sharing, users!doctor_id(full_name, email, phone_no)',
+          )
+          .eq('patient_id', userId)
+          .eq('status', 'accepted');
 
       final List<Map<String, dynamic>> guardians = [];
       for (final row in (guardianRows as List)) {
         final userInfo = row['users'] as Map<String, dynamic>?;
         final connectionId = row['id'].toString();
-        guardians.add({'connectionId': connectionId, 'name': userInfo?['full_name'] ?? 'Unknown', 'email': userInfo?['email'] ?? '', 'phone': userInfo?['phone_no'] ?? '', 'relationship': row['relationship'] ?? '', 'role': 'Guardian'});
+        guardians.add({
+          'connectionId': connectionId,
+          'name': userInfo?['full_name'] ?? 'Unknown',
+          'email': userInfo?['email'] ?? '',
+          'phone': userInfo?['phone_no'] ?? '',
+          'relationship': row['relationship'] ?? '',
+          'role': 'Guardian',
+        });
         _sharingMap[connectionId] = row['is_sharing'] ?? true;
       }
 
@@ -945,11 +1346,21 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       for (final row in (doctorRows as List)) {
         final userInfo = row['users'] as Map<String, dynamic>?;
         final connectionId = row['id'].toString();
-        doctors.add({'connectionId': connectionId, 'name': userInfo?['full_name'] ?? 'Unknown', 'email': userInfo?['email'] ?? '', 'phone': userInfo?['phone_no'] ?? '', 'role': 'Doctor'});
+        doctors.add({
+          'connectionId': connectionId,
+          'name': userInfo?['full_name'] ?? 'Unknown',
+          'email': userInfo?['email'] ?? '',
+          'phone': userInfo?['phone_no'] ?? '',
+          'role': 'Doctor',
+        });
         _sharingMap[connectionId] = row['is_sharing'] ?? true;
       }
 
-      setState(() { _guardians = guardians; _doctors = doctors; _isLoading = false; });
+      setState(() {
+        _guardians = guardians;
+        _doctors = doctors;
+        _isLoading = false;
+      });
     } catch (e) {
       debugPrint('Error loading connections: $e');
       setState(() => _isLoading = false);
@@ -959,41 +1370,79 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
   Future<void> _onGlobalToggled(bool value) async {
     setState(() => _globalLocationSharing = value);
     try {
-      await supabase.from('patient_locations').update({'sharing_enabled': value}).eq('id', _patientLocationRowId!);
+      await supabase
+          .from('patient_locations')
+          .update({'sharing_enabled': value})
+          .eq('id', _patientLocationRowId!);
     } catch (e) {
       setState(() => _globalLocationSharing = !value);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Failed to update: $e'), backgroundColor: context.colors.error));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('Failed to update: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
     }
   }
 
   Future<void> _onPersonToggled(Map<String, dynamic> person, bool value) async {
     final connectionId = person['connectionId'] as String;
-    final table = person['role'] == 'Guardian' ? 'guardian_patient_connections' : 'doctor_patient_connections';
+    final table = person['role'] == 'Guardian'
+        ? 'guardian_patient_connections'
+        : 'doctor_patient_connections';
     setState(() => _sharingMap[connectionId] = value);
     try {
-      await supabase.from(table).update({'is_sharing': value}).eq('id', int.parse(connectionId));
+      await supabase
+          .from(table)
+          .update({'is_sharing': value})
+          .eq('id', int.parse(connectionId));
     } catch (e) {
       setState(() => _sharingMap[connectionId] = !value);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Failed: $e'), backgroundColor: context.colors.error));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('Failed: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
     }
   }
 
   Future<void> _removeConnection(Map<String, dynamic> person) async {
     final connectionId = int.parse(person['connectionId'] as String);
-    final table = person['role'] == 'Guardian' ? 'guardian_patient_connections' : 'doctor_patient_connections';
+    final table = person['role'] == 'Guardian'
+        ? 'guardian_patient_connections'
+        : 'doctor_patient_connections';
     try {
       await supabase.from(table).delete().eq('id', connectionId);
       setState(() {
         if (person['role'] == 'Guardian') {
-          _guardians.removeWhere((g) => g['connectionId'] == person['connectionId']);
+          _guardians.removeWhere(
+            (g) => g['connectionId'] == person['connectionId'],
+          );
         } else {
-          _doctors.removeWhere((d) => d['connectionId'] == person['connectionId']);
+          _doctors.removeWhere(
+            (d) => d['connectionId'] == person['connectionId'],
+          );
         }
         _sharingMap.remove(person['connectionId'] as String);
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('${person['name']} removed.'), backgroundColor: context.colors.error));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('${person['name']} removed.'),
+            backgroundColor: context.colors.error,
+          ),
+        );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Failed to remove: $e'), backgroundColor: context.colors.error));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('Failed to remove: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
     }
   }
 
@@ -1004,13 +1453,34 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: TranslatedText('Remove ${person['role']}'),
-        content: TranslatedText('Remove ${person['name']}? They will no longer see your data.'),
+        content: TranslatedText(
+          'Remove ${person['name']}? They will no longer see your data.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: TranslatedText('Cancel', style: TextStyle(color: colors.textSecondary))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: TranslatedText(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+          ),
           ElevatedButton(
-            onPressed: () { Navigator.pop(ctx); _removeConnection(person); },
-            style: ElevatedButton.styleFrom(backgroundColor: colors.error, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: const TranslatedText('Remove', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _removeConnection(person);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const TranslatedText(
+              'Remove',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -1025,8 +1495,20 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary), onPressed: () => Navigator.pop(context)),
-        title: TranslatedText('Connections', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: TranslatedText(
+          'Connections',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
       ),
       body: _isLoading
@@ -1038,9 +1520,21 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
                 children: [
                   _buildGlobalToggle(colors),
                   const SizedBox(height: 32),
-                  _buildSection(colors: colors, title: 'Guardians', icon: Icons.shield_outlined, people: _guardians, emptyMessage: 'No guardians connected yet.'),
+                  _buildSection(
+                    colors: colors,
+                    title: 'Guardians',
+                    icon: Icons.shield_outlined,
+                    people: _guardians,
+                    emptyMessage: 'No guardians connected yet.',
+                  ),
                   const SizedBox(height: 32),
-                  _buildSection(colors: colors, title: 'Doctors', icon: Icons.medical_services_outlined, people: _doctors, emptyMessage: 'No doctors connected yet.'),
+                  _buildSection(
+                    colors: colors,
+                    title: 'Doctors',
+                    icon: Icons.medical_services_outlined,
+                    people: _doctors,
+                    emptyMessage: 'No doctors connected yet.',
+                  ),
                 ],
               ),
             ),
@@ -1051,9 +1545,15 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _globalLocationSharing ? colors.primary.withValues(alpha: 0.07) : colors.error.withValues(alpha: 0.06),
+        color: _globalLocationSharing
+            ? colors.primary.withValues(alpha: 0.07)
+            : colors.error.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _globalLocationSharing ? colors.primary.withValues(alpha: 0.25) : colors.error.withValues(alpha: 0.25)),
+        border: Border.all(
+          color: _globalLocationSharing
+              ? colors.primary.withValues(alpha: 0.25)
+              : colors.error.withValues(alpha: 0.25),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,34 +1561,77 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
           Row(
             children: [
               Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: _globalLocationSharing ? colors.primary.withValues(alpha: 0.12) : colors.error.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                child: Icon(_globalLocationSharing ? Icons.location_on_rounded : Icons.location_off_rounded, color: _globalLocationSharing ? colors.primary : colors.error, size: 20),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _globalLocationSharing
+                      ? colors.primary.withValues(alpha: 0.12)
+                      : colors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _globalLocationSharing
+                      ? Icons.location_on_rounded
+                      : Icons.location_off_rounded,
+                  color: _globalLocationSharing ? colors.primary : colors.error,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TranslatedText('Location Sharing', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                    TranslatedText(
+                      'Location Sharing',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    TranslatedText(_globalLocationSharing ? 'Your location is visible to connections' : 'Hidden from everyone', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      _globalLocationSharing
+                          ? 'Your location is visible to connections'
+                          : 'Hidden from everyone',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Switch(value: _globalLocationSharing, onChanged: _onGlobalToggled, activeThumbColor: colors.primary),
+              Switch(
+                value: _globalLocationSharing,
+                onChanged: _onGlobalToggled,
+                activeThumbColor: colors.primary,
+              ),
             ],
           ),
           if (!_globalLocationSharing) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(
+                color: colors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 14, color: colors.error),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: colors.error,
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: TranslatedText('Individual toggles are disabled while global sharing is off.', style: TextStyle(fontSize: 12, color: colors.error))),
+                  Expanded(
+                    child: TranslatedText(
+                      'Individual toggles are disabled while global sharing is off.',
+                      style: TextStyle(fontSize: 12, color: colors.error),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1098,7 +1641,13 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     );
   }
 
-  Widget _buildSection({required dynamic colors, required String title, required IconData icon, required List<Map<String, dynamic>> people, required String emptyMessage}) {
+  Widget _buildSection({
+    required dynamic colors,
+    required String title,
+    required IconData icon,
+    required List<Map<String, dynamic>> people,
+    required String emptyMessage,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1106,12 +1655,29 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
           children: [
             Icon(icon, size: 18, color: colors.primary),
             const SizedBox(width: 8),
-            TranslatedText(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colors.textPrimary)),
+            TranslatedText(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
+            ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: colors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-              child: TranslatedText('${people.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.primary)),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TranslatedText(
+                '${people.length}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.primary,
+                ),
+              ),
             ),
           ],
         ),
@@ -1120,12 +1686,25 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24),
-            decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.15))),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colors.textSecondary.withValues(alpha: 0.15),
+              ),
+            ),
             child: Column(
               children: [
-                Icon(icon, size: 32, color: colors.textSecondary.withValues(alpha: 0.4)),
+                Icon(
+                  icon,
+                  size: 32,
+                  color: colors.textSecondary.withValues(alpha: 0.4),
+                ),
                 const SizedBox(height: 8),
-                TranslatedText(emptyMessage, style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+                TranslatedText(
+                  emptyMessage,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                ),
               ],
             ),
           )
@@ -1139,64 +1718,154 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     final connectionId = person['connectionId'] as String;
     final isSharing = _sharingMap[connectionId] ?? true;
     final name = person['name'] as String;
-    final initials = name.trim().split(' ').where((e) => e.isNotEmpty).map((e) => e[0]).take(2).join();
+    final initials = name
+        .trim()
+        .split(' ')
+        .where((e) => e.isNotEmpty)
+        .map((e) => e[0])
+        .take(2)
+        .join();
     final effectivelySharing = isSharing && _globalLocationSharing;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: colors.textSecondary.withValues(alpha: 0.15)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.textSecondary.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
             child: Row(
               children: [
-                CircleAvatar(radius: 22, backgroundColor: colors.primary.withValues(alpha: 0.12), child: TranslatedText(initials, style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 14))),
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colors.primary.withValues(alpha: 0.12),
+                  child: TranslatedText(
+                    initials,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TranslatedText(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                      TranslatedText(
+                        name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       TranslatedText(
-                        person['role'] == 'Guardian' && (person['relationship'] as String).isNotEmpty ? '${person['role']} · ${person['relationship']}' : person['role'] as String,
-                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                        person['role'] == 'Guardian' &&
+                                (person['relationship'] as String).isNotEmpty
+                            ? '${person['role']} · ${person['relationship']}'
+                            : person['role'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                IconButton(icon: Icon(Icons.person_remove_outlined, color: colors.error, size: 20), onPressed: () => _confirmRemove(person)),
+                IconButton(
+                  icon: Icon(
+                    Icons.person_remove_outlined,
+                    color: colors.error,
+                    size: 20,
+                  ),
+                  onPressed: () => _confirmRemove(person),
+                ),
               ],
             ),
           ),
-          if ((person['phone'] as String).isNotEmpty || (person['email'] as String).isNotEmpty)
+          if ((person['phone'] as String).isNotEmpty ||
+              (person['email'] as String).isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Column(
                 children: [
-                  if ((person['phone'] as String).isNotEmpty) _contactRow(colors, Icons.phone_outlined, person['phone'] as String),
-                  if ((person['email'] as String).isNotEmpty) ...[const SizedBox(height: 5), _contactRow(colors, Icons.email_outlined, person['email'] as String)],
+                  if ((person['phone'] as String).isNotEmpty)
+                    _contactRow(
+                      colors,
+                      Icons.phone_outlined,
+                      person['phone'] as String,
+                    ),
+                  if ((person['email'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    _contactRow(
+                      colors,
+                      Icons.email_outlined,
+                      person['email'] as String,
+                    ),
+                  ],
                 ],
               ),
             ),
           Container(
             decoration: BoxDecoration(
-              color: effectivelySharing ? colors.primary.withValues(alpha: 0.05) : colors.textSecondary.withValues(alpha: 0.05),
-              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+              color: effectivelySharing
+                  ? colors.primary.withValues(alpha: 0.05)
+                  : colors.textSecondary.withValues(alpha: 0.05),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Icon(effectivelySharing ? Icons.location_on_rounded : Icons.location_off_rounded, size: 16, color: effectivelySharing ? colors.primary : colors.textSecondary),
+                Icon(
+                  effectivelySharing
+                      ? Icons.location_on_rounded
+                      : Icons.location_off_rounded,
+                  size: 16,
+                  color: effectivelySharing
+                      ? colors.primary
+                      : colors.textSecondary,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TranslatedText(
-                    effectivelySharing ? 'Seeing your location' : !_globalLocationSharing ? 'Blocked — global sharing is off' : 'Location hidden from this person',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: effectivelySharing ? colors.primary : colors.textSecondary),
+                    effectivelySharing
+                        ? 'Seeing your location'
+                        : !_globalLocationSharing
+                        ? 'Blocked — global sharing is off'
+                        : 'Location hidden from this person',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: effectivelySharing
+                          ? colors.primary
+                          : colors.textSecondary,
+                    ),
                   ),
                 ),
-                Switch(value: isSharing, onChanged: _globalLocationSharing ? (val) => _onPersonToggled(person, val) : null, activeThumbColor: colors.primary),
+                Switch(
+                  value: isSharing,
+                  onChanged: _globalLocationSharing
+                      ? (val) => _onPersonToggled(person, val)
+                      : null,
+                  activeThumbColor: colors.primary,
+                ),
               ],
             ),
           ),
@@ -1209,13 +1878,25 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
     return GestureDetector(
       onLongPress: () {
         Clipboard.setData(ClipboardData(text: text));
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TranslatedText('Copied: $text'), duration: const Duration(seconds: 1), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: TranslatedText('Copied: $text'),
+            duration: const Duration(seconds: 1),
+            backgroundColor: Colors.green,
+          ),
+        );
       },
       child: Row(
         children: [
           Icon(icon, size: 13, color: colors.textSecondary),
           const SizedBox(width: 8),
-          Expanded(child: TranslatedText(text, style: TextStyle(fontSize: 13, color: colors.textPrimary), overflow: TextOverflow.ellipsis)),
+          Expanded(
+            child: TranslatedText(
+              text,
+              style: TextStyle(fontSize: 13, color: colors.textPrimary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

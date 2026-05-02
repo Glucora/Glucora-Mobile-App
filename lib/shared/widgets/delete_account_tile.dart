@@ -1,3 +1,4 @@
+// lib\shared\widgets\delete_account_tile.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
