@@ -1,6 +1,5 @@
 // BLE Branch
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,11 +10,9 @@ import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ai_prediction_screen.dart';
 import 'recommendations_screen.dart';
-import 'manual_log_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/glucose_chart_painter.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 
 Timer? _timeTicker;
