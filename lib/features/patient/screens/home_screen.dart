@@ -563,8 +563,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 child: _recommendationsCard(context),
                               ),
-                              const SizedBox(height: 16),
-                              GestureDetector(
+                              // Roaa
+/*                                const SizedBox(height: 16),
+ */                         /*      GestureDetector(
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -573,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 child: _carePlanCard(context),
-                              ),
+                              ),  */
                             ],
                           ),
                         ),
@@ -610,7 +611,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: _recommendationsCard(context),
                         ),
-                        const SizedBox(height: 16),
+                         const SizedBox(height: 16),
                         GestureDetector(
                           onTap: () => Navigator.push(
                             context,
@@ -619,7 +620,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           child: _carePlanCard(context),
-                        ),
+                        ), 
                       ],
                     ),
 
