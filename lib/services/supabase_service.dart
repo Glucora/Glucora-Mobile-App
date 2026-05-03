@@ -27,7 +27,7 @@ Future<int?> getPatientProfileId(String authUserId) async {
 
 // ─── GLUCOSE ──────────────────────────────────────────────────────────────────
 
-/// Returns the most recent glucose reading row for this patient.
+/// Returns the most recent glucose reading row for this patient. (roaa)
 Future<Map<String, dynamic>?> getLatestGlucoseReading(
   int patientProfileId,
 ) async {
@@ -52,6 +52,12 @@ Future<Map<String, dynamic>?> getLatestGlucoseReading(
   }
 }
 
+// dELETE FUNCTIONALITY IN MANUAL LOGGING (Roaa)
+/// Delete a glucose reading by id.
+Future<void> deleteGlucoseLog(String id) async {
+  await _db.from('glucose_readings').delete().eq('id', id);
+}
+
 // ─── AI PREDICTIONS ───────────────────────────────────────────────────────────
 
 /// Returns the most recent LSTM prediction row for this patient.
@@ -71,7 +77,6 @@ Future<Map<String, dynamic>?> getLatestPrediction(int patientProfileId) async {
     return null;
   }
 }
-
 
 /// Fetch the latest `limit` recommendations for a patient.
 Future<List<Map<String, dynamic>>> getLatestRecommendations({
@@ -221,20 +226,24 @@ Future<void> insertGlucoseLog(
   double value,
   String? notes,
   String mealTime,
+  String unit,
 ) async {
   final userId = _db.auth.currentUser!.id;
   final patientId = await getPatientProfileId(userId);
   if (patientId == null) return;
 
+  // Convert mmol/L → mg/dL before storing (DB column is always mg/dL)
+  final double valueMgDl = unit == 'mmol/L' ? value * 18.0182 : value;
+
   await _db.from('glucose_readings').insert({
-    'value_mg_dl': value,
+    'value_mg_dl': valueMgDl, // ← use converted value
     'source': 'manual',
     'trend': 'stable',
     'patient_id': patientId,
     'is_predicted': false,
     'meal_time': mealTime,
     if (notes != null && notes.isNotEmpty) 'notes': notes,
-    'recorded_at': DateTime.now().toIso8601String(),
+    'recorded_at': DateTime.now().toUtc().toIso8601String(), // ← add .toUtc()
   });
 }
 
@@ -319,6 +328,7 @@ Future<String?> getDeviceBattery(String userId) async {
     return null;
   }
 }
+
 /// Inserts a new AI predicted glucose value from the BLE hardware.
 /// [predictedValue] - The raw value predicted by the hardware's AI model.
 /// Uses the Supabase Auth UUID as the `patient_id`.

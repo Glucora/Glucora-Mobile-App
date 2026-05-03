@@ -1,4 +1,3 @@
-
 // lib\core\models\glucose_log.dart
 // Model matches the actual glucose_readings schema
 class GlucoseLog {
@@ -10,7 +9,8 @@ class GlucoseLog {
   final bool isPredicted;
   final DateTime recordedAt;
   final String? notes;
-  final String? mealTime; 
+  // Roaa
+  final String? mealTime;
 
   GlucoseLog({
     required this.id,
@@ -21,9 +21,9 @@ class GlucoseLog {
     required this.isPredicted,
     required this.recordedAt,
     this.notes,
-    this.mealTime, 
+    // Roaa
+    this.mealTime,
   });
-
 
   factory GlucoseLog.fromJson(Map<String, dynamic> json) {
     return GlucoseLog(
@@ -33,9 +33,11 @@ class GlucoseLog {
       source: json['source'] ?? 'unknown',
       trend: json['trend'] ?? 'stable',
       isPredicted: json['is_predicted'] ?? false,
-      recordedAt: DateTime.parse(json['recorded_at']),
+      // Roaa
+      recordedAt: DateTime.parse(json['recorded_at']).toUtc(),
       notes: json['notes'],
-      mealTime: json['meal_time'], // ✅ NEW
+      // Roaa
+      mealTime: json['meal_time'],
     );
   }
 }
