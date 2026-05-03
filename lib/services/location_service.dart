@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LocationService {
   static Future<void> initializeService() async {
-     if (kIsWeb) {
+    if (kIsWeb) {
       print('Location service disabled on web');
       return;
     }
@@ -25,7 +25,9 @@ class LocationService {
       );
 
       await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(channel);
     }
 
@@ -49,8 +51,19 @@ class LocationService {
     );
   }
 
-  static void startSharingLocation(String userId) async {
-    if (kIsWeb) return; // ✅ add this line at the very top
+  static Future<void> startSharingLocation(String userId) async {
+    if (kIsWeb) return; // ← move to top
+
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
     final service = FlutterBackgroundService();
     bool isRunning = await service.isRunning();
     if (!isRunning) {
@@ -93,31 +106,32 @@ void onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  positionStream = Geolocator.getPositionStream(
-    locationSettings: AndroidSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10,
-      intervalDuration: const Duration(seconds: 10),
-      foregroundNotificationConfig: const ForegroundNotificationConfig(
-        notificationText: "Patient tracking is active",
-        notificationTitle: "Glucora Live",
-        enableWakeLock: true,
-      ),
-    ),
-  ).listen((Position position) async {
-    if (currentUserId == null) return;
+  positionStream =
+      Geolocator.getPositionStream(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+          intervalDuration: const Duration(seconds: 10),
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationText: "Patient tracking is active",
+            notificationTitle: "Glucora Live",
+            enableWakeLock: true,
+          ),
+        ),
+      ).listen((Position position) async {
+        if (currentUserId == null) return;
 
-    try {
-      await supabase.from('patient_locations').upsert({
-        'patient_id': currentUserId,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'sharing_enabled': true,
-        'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'patient_id');
-    } catch (e) {
-      // ignore: avoid_print
-      print("Background Error: $e");
-    }
-  });
+        try {
+          await supabase.from('patient_locations').upsert({
+            'patient_id': currentUserId,
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'sharing_enabled': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'patient_id');
+        } catch (e) {
+          // ignore: avoid_print
+          print("Background Error: $e");
+        }
+      });
 }

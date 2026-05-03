@@ -8,7 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
 
-
 // Modular model used by both screens
 class LocationPatientInfo {
   final String patientUserId;
@@ -252,6 +251,7 @@ class _LocationViewState extends State<LocationView> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.flutter_application_1',
               ),
               MarkerLayer(
                 markers: [
