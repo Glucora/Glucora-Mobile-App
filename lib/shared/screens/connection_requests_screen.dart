@@ -94,6 +94,13 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   late TabController _tabController;
   late _RoleConfig _config;
   List<ConnectionRequest> _requests = [];
+    @override
+    void didChangeDependencies() {
+      super.didChangeDependencies();
+      if (mounted) {
+        setState(() {});
+      }
+    }
 
   List<ConnectionRequest> get _incoming => _requests
       .where(

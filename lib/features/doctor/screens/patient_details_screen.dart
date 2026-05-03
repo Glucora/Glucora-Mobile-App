@@ -934,32 +934,31 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-  Widget _tirRow(String label, int percent, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: TranslatedText(
-            label,
-            style: const TextStyle(fontSize: 11, color: Colors.black87),
-          ),
-        ),
-        TranslatedText(
-          '$percent%',
+// ── _tirRow — hardcoded Colors.black87 ──
+Widget _tirRow(String label, int percent, Color color) {
+  return Row(
+    children: [
+      Container(
+        width: 10, height: 10,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 6),
+      Expanded(
+        child: TranslatedText(
+          label,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
+              fontSize: 11,
+              color: Colors.grey.shade600), // ✅ was Colors.black87
         ),
-      ],
-    );
-  }
+      ),
+      TranslatedText(
+        '$percent%',
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: color),
+      ),
+    ],
+  );
+}
 
   Widget _tirBar(double percent, Color color) {
     final flex = percent.toInt().clamp(1, 100);
@@ -1097,33 +1096,30 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-  Widget _pumpStat(String label, String value, String sub, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TranslatedText(
-          value,
+// ── _pumpStat — hardcoded Colors.black87 and Colors.grey ──
+Widget _pumpStat(String label, String value, String sub, Color color) {
+  final colors = context.colors; // ✅ use theme colors
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TranslatedText(value,
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        TranslatedText(
-          label,
-          style: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+      const SizedBox(height: 2),
+      TranslatedText(label,
+          style: TextStyle(  // ✅ was Colors.black87
             fontSize: 10,
-            color: Colors.black87,
+            color: colors.textPrimary,
             fontWeight: FontWeight.w600,
             height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 1),
-        TranslatedText(sub, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-      ],
-    );
-  }
+          )),
+      const SizedBox(height: 1),
+      TranslatedText(sub,
+          style: TextStyle(  // ✅ was Colors.grey
+              fontSize: 10, color: colors.textSecondary)),
+    ],
+  );
+}
 
   Widget _buildAIDStatusCard(BuildContext context) {
     final colors = context.colors;
@@ -1190,12 +1186,13 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const TranslatedText(
+                    TranslatedText(
                       'AI-Powered AID System',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                      ),
+                        color: colors.textPrimary
+                        ),
                     ),
                     TranslatedText(
                       'Model: $modelVersion • ${aidEnabled ? 'Adaptive mode' : 'Manual mode'}',
@@ -1281,32 +1278,33 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-  Widget _aidRow(IconData icon, String label, String value, Color valueColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: Colors.grey),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TranslatedText(
-              label,
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-          ),
-          const SizedBox(width: 8),
-          TranslatedText(
-            value,
+// ── _aidRow — hardcoded Colors.black54 ──
+Widget _aidRow(IconData icon, String label, String value, Color valueColor) {
+  final colors = context.colors; // ✅ add this
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 11),
+    child: Row(
+      children: [
+        Icon(icon, size: 15, color: Colors.grey),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TranslatedText(
+            label,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: valueColor,
-            ),
+                fontSize: 12,
+                color: colors.textSecondary), // ✅ was Colors.black54
           ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(width: 8),
+        TranslatedText(value,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: valueColor)),
+      ],
+    ),
+  );
+}
 
   Widget _buildAlertsCard(BuildContext context) {
     if (_alerts.isEmpty) {
@@ -1409,9 +1407,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               const SizedBox(height: 6),
               TranslatedText(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.black87,
+                 color: Theme.of(context).colorScheme.onSurface, // Or .primary
                   height: 1.4,
                 ),
               ),

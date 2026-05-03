@@ -438,17 +438,18 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
 
                           // ── Macros — now live from backend ──
                           Row(children: [
-                            _macro("🍞", "Carbs",
-                                "${_totalCarbs.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 230, 175, 93), colors),
-                            const SizedBox(width: 10),
-                            _macro("🥩", "Protein",
-                                "${_totalProtein.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 88, 138, 90), colors),
-                            const SizedBox(width: 10),
-                            _macro("🥑", "Fat",
-                                "${_totalFat.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 76, 137, 187), colors),
+                            // Replace the three _macro calls in build:
+                          _macro("🍞", "Carbs",
+                              "${_totalCarbs.toStringAsFixed(1)}g",
+                              const Color(0xFFD4890A), colors), // ✅ darker orange-brown
+                          const SizedBox(width: 10),
+                          _macro("🥩", "Protein",
+                              "${_totalProtein.toStringAsFixed(1)}g",
+                              const Color(0xFF2E7D32), colors), // ✅ darker green
+                          const SizedBox(width: 10),
+                          _macro("🥑", "Fat",
+                              "${_totalFat.toStringAsFixed(1)}g",
+                              const Color(0xFF1565C0), colors), // ✅ darker blue
                           ]),
 
                           const SizedBox(height: 20),
@@ -555,27 +556,28 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                 color: Colors.white.withValues(alpha: 0.75))),
       ]);
 
-  Widget _macro(String emoji, String label, String value, Color bg,
-          GlucoraColors colors) =>
-      Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-          decoration: BoxDecoration(
-              color: bg, borderRadius: BorderRadius.circular(14)),
-          child: Column(children: [
-            TranslatedText(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 4),
-            TranslatedText(value,
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary)),
-            TranslatedText(label,
-                style: TextStyle(
-                    fontSize: 11, color: colors.textSecondary)),
-          ]),
-        ),
-      );
+Widget _macro(String emoji, String label, String value, Color bg,
+        GlucoraColors colors) =>
+    Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+            color: bg, borderRadius: BorderRadius.circular(14)),
+        child: Column(children: [
+          TranslatedText(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(height: 4),
+          TranslatedText(value,
+              style: const TextStyle(  // ✅ always white/dark on colored bg
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
+          TranslatedText(label,
+              style: const TextStyle(  // ✅ always white on colored bg
+                  fontSize: 11,
+                  color: Colors.white70)),
+        ]),
+      ),
+    );
 
   Widget _tile(BuildContext context, FoodEntry e, int i) {
     final colors = context.colors;
