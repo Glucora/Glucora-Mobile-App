@@ -73,7 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    SettingsSwitchTile(
+                    // Roaa
+           /*          SettingsSwitchTile(
                       icon: Icons.notifications_outlined,
                       title: 'Notifications',
                       subtitle: 'Receive system alerts and updates',
@@ -84,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         widget.onNotificationsChanged(_notifications);
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 16), */
                     SettingsSwitchTile(
                       icon: Icons.dark_mode_outlined,
                       title: 'Dark Mode',
