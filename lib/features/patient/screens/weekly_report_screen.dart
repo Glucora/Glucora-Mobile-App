@@ -138,7 +138,7 @@ Future<void> _showHistory() async {
       );
       // BEFORE — crashes if _stats is null
       final stats = _stats;
-      final weekLabel = formatWeekRange(stats!.weekStart, stats!.weekEnd);
+      final weekLabel = formatWeekRange(stats!.weekStart, stats.weekEnd);
             
       doc.addPage(
         pw.MultiPage(

@@ -3,7 +3,6 @@ import 'package:glucora_ai_companion/core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/core/models/weekly_report_model.dart';
 import 'package:glucora_ai_companion/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../screens/weekly_report_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class WeeklyHistorySheet extends StatefulWidget {

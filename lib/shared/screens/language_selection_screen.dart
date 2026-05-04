@@ -203,7 +203,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                   animation: animation,
                   builder: (context, child) => Transform.translate(
                     offset: Offset(0, 20 * (1 - animation.value)),
-                    child: Opacity(opacity: animation.value, child: child),
+                    child: Opacity(opacity: animation.value.clamp(0.0, 1.0), child: child),
                   ),
                   child: _LanguageTile(
                     locale: locale,
