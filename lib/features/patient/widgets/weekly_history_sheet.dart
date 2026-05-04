@@ -55,7 +55,7 @@ class WeeklyHistorySheet extends StatelessWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: weeks.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              separatorBuilder: (_, _) => const SizedBox(height: 4),
               itemBuilder: (context, index) {
                 final monday = weeks[index];
                 final stats = computeWeeklyStats(monday);

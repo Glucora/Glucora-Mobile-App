@@ -28,7 +28,7 @@ class RecommendationRepository extends BaseRepository {
       'message': message,
       'is_read': false,
       'created_at': DateTime.now().toUtc().toIso8601String(),
-      if (predictionId != null) 'prediction_id': predictionId,
+      'prediction_id': ?predictionId,
     };
     return await db
         .from('ai_recommendations')

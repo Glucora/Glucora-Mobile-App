@@ -548,7 +548,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       key: ValueKey('patient_list_$_query$_filterStatus'),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       itemCount: patients.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final patient = patients[index];
         return KeyedSubtree(

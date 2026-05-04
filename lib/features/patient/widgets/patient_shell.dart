@@ -1374,13 +1374,14 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
           .eq('id', _patientLocationRowId!);
     } catch (e) {
       setState(() => _globalLocationSharing = !value);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('Failed to update: $e'),
             backgroundColor: context.colors.error,
           ),
         );
+      }
     }
   }
 
@@ -1397,13 +1398,14 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
           .eq('id', int.parse(connectionId));
     } catch (e) {
       setState(() => _sharingMap[connectionId] = !value);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('Failed: $e'),
             backgroundColor: context.colors.error,
           ),
         );
+      }
     }
   }
 
@@ -1426,21 +1428,23 @@ class _ConnectionsScreenState extends State<_ConnectionsScreen> {
         }
         _sharingMap.remove(person['connectionId'] as String);
       });
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('${person['name']} removed.'),
             backgroundColor: context.colors.error,
           ),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: TranslatedText('Failed to remove: $e'),
             backgroundColor: context.colors.error,
           ),
         );
+      }
     }
   }
 

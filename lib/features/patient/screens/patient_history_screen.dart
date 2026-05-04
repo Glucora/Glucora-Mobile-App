@@ -5,7 +5,6 @@ import '../widgets/csv_export_sheet.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
-
 // ── Graph filter enums ────────────────────────────────────────────────────
 
 enum _GraphType { glucose, insulin, failures }

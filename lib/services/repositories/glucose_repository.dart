@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/models/glucose_log_model.dart';
 import 'base_repository.dart';
 

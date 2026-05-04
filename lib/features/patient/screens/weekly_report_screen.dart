@@ -2,15 +2,13 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-
+import 'package:glucora_ai_companion/core/models/history_entry_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
-
-import '../../../core/models/history_entry_model.dart';
 import '../widgets/weekly_history_sheet.dart';
 import '../../../core/models/weekly_report_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';

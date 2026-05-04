@@ -1,5 +1,3 @@
-// lib/core/models/medication_model.dart
-
 class MedicationReminder {
   final int id;
   final String remindAt;
@@ -16,6 +14,17 @@ class MedicationReminder {
       id: json['id'] as int,
       remindAt: json['remind_at'] ?? '',
       isActive: json['is_active'] ?? true,
+    );
+  }
+
+  MedicationReminder copyWith({
+    String? remindAt,
+    bool? isActive,
+  }) {
+    return MedicationReminder(
+      id: id,
+      remindAt: remindAt ?? this.remindAt,
+      isActive: isActive ?? this.isActive,
     );
   }
 }
@@ -48,6 +57,24 @@ class Medication {
       reminders: reminderList
           .map((r) => MedicationReminder.fromJson(r))
           .toList(),
+    );
+  }
+
+  Medication copyWith({
+    String? name,
+    String? notes,
+    int? frequency,
+    bool? isActive,
+    List<MedicationReminder>? reminders,
+    
+  }) {
+    return Medication(
+      id: id,
+      name: name ?? this.name,
+      notes: notes ?? this.notes,
+      frequency: frequency ?? this.frequency,
+      isActive: isActive ?? this.isActive,
+      reminders: reminders ?? this.reminders,
     );
   }
 }

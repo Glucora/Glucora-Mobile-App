@@ -157,7 +157,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             right: -60,
             child: AnimatedBuilder(
               animation: _pulseController,
-              builder: (_, __) => Transform.scale(
+              builder: (_, _) => Transform.scale(
                 scale: _pulse.value,
                 child: Container(
                   width: 260,
@@ -175,7 +175,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             left: -80,
             child: AnimatedBuilder(
               animation: _pulseController,
-              builder: (_, __) => Transform.scale(
+              builder: (_, _) => Transform.scale(
                 scale: 1.1 - (_pulse.value - 0.95),
                 child: Container(
                   width: 200,
@@ -204,7 +204,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           // ── Orbiting particles ───────────────────────────────────
           AnimatedBuilder(
             animation: _orbit,
-            builder: (_, __) {
+            builder: (_, _) {
               return Stack(
                 children: List.generate(5, (i) {
                   final angle = _orbit.value + (i * 2 * math.pi / 5);
@@ -245,7 +245,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     _floatController,
                     _pulseController,
                   ]),
-                  builder: (_, __) => Transform.translate(
+                  builder: (_, _) => Transform.translate(
                     offset: Offset(0, _float.value),
                     child: FadeTransition(
                       opacity: _logoOpacity,
@@ -519,9 +519,9 @@ class _GetStartedButtonState extends State<_GetStartedButton>
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, animation, __) =>
+              pageBuilder: (_, animation, _) =>
                   const OnboardingLanguageScreen(),
-              transitionsBuilder: (_, animation, __, child) {
+              transitionsBuilder: (_, animation, _, child) {
                 return FadeTransition(
                   opacity: animation,
                   child: SlideTransition(

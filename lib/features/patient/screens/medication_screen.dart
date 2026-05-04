@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/notifications_service.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:glucora_ai_companion/providers/glucose_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/core/models/medication_model.dart';
@@ -20,14 +21,13 @@ class _MedicationScreenState extends State<MedicationScreen> {
   final _nameCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _freqCtrl = TextEditingController();
-
-  // FIX: track saving state separately so the sheet can read it via ValueNotifier
-  // (avoids calling setState on a closed sheet)
   final _savingNotifier = ValueNotifier<bool>(false);
 
-  List<Medication> _medications = [];
-  bool _loading = true;
-  String? _error;
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _init());
+  }
 
   @override
   void dispose() {
@@ -38,63 +38,23 @@ class _MedicationScreenState extends State<MedicationScreen> {
     super.dispose();
   }
 
-  // ════════════════════════════════════════════════════
-  // FETCH
-  // ════════════════════════════════════════════════════
-  Future<void> _loadMedications() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Not logged in');
-
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) throw Exception('No patient profile');
-
-      if (kDebugMode) print('Loading meds for patient: $patientId');
-
-      final medsResponse = await supabase
-          .from('medications')
-          .select('*, medication_reminder(*)')
-          .eq('patient_id', patientId)
-          .order('created_at', ascending: false);
-
-      if (kDebugMode) print('Meds response: $medsResponse');
-
-      if (!mounted) return;
-      setState(() {
-        _medications = (medsResponse as List)
-            .map((e) => Medication.fromJson(e))
-            .toList();
-        _loading = false;
-      });
-
-      if (kDebugMode) print('Loaded ${_medications.length} medications');
-    } catch (e, stack) {
-      if (kDebugMode) print('LOAD ERROR: $e\nSTACK: $stack');
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'Failed to load medications: $e';
-      });
+  Future<void> _init() async {
+    final provider = context.read<GlucoseProvider>();
+    if (provider.patientProfileId == null) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) await provider.init(user.id);
+    } else {
+      await provider.loadMedications();
     }
   }
 
-  // ════════════════════════════════════════════════════
-  // ADD MEDICATION
-  // ════════════════════════════════════════════════════
+  // ── Save medication ────────────────────────────────────────────────────────
+
   Future<void> _saveMedication(
     List<TimeOfDay> reminders,
-    BuildContext
-    sheetContext, // FIX: receive sheet's context to pop it correctly
+    BuildContext sheetContext,
   ) async {
-    if (_savingNotifier.value) return; // guard against double-tap
-
-    // FIX: dismiss keyboard immediately when save is tapped
+    if (_savingNotifier.value) return;
     FocusScope.of(sheetContext).unfocus();
 
     final name = _nameCtrl.text.trim();
@@ -103,79 +63,46 @@ class _MedicationScreenState extends State<MedicationScreen> {
     _savingNotifier.value = true;
 
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (kDebugMode) print('USER ID: $userId');
-      if (userId == null) throw Exception('Not logged in');
+      final provider = context.read<GlucoseProvider>();
 
-      final patientId = await getPatientProfileId(userId);
-      if (kDebugMode) print('PATIENT ID: $patientId');
-      if (patientId == null) throw Exception('No patient profile found');
+      final medId = await provider.insertMedication(
+        name: name,
+        notes: _notesCtrl.text.trim().isEmpty
+            ? null
+            : _notesCtrl.text.trim(),
+        frequency: int.tryParse(_freqCtrl.text.trim()),
+      );
 
-      if (kDebugMode) print('Inserting medication...');
-      final medResponse = await supabase
-          .from('medications')
-          .insert({
-            'patient_id': patientId,
-            'name': name,
-            'notes': _notesCtrl.text.trim().isEmpty
-                ? null
-                : _notesCtrl.text.trim(),
-            'frequency': int.tryParse(_freqCtrl.text.trim()),
-            'is_active': true,
-          })
-          .select()
-          .single();
-
-      if (kDebugMode) print('Medication inserted: $medResponse');
-      final medId = medResponse['id'] as int;
+      if (medId == null) throw Exception('Failed to create medication');
 
       for (final time in reminders) {
         final hh = time.hour.toString().padLeft(2, '0');
         final mm = time.minute.toString().padLeft(2, '0');
         final remindAt = '$hh:$mm:00';
 
-        if (kDebugMode) print('Inserting reminder: $remindAt');
-        final reminderResponse = await supabase
-            .from('medication_reminder')
-            .insert({
-              'medication_id': medId,
-              'remind_at': remindAt,
-              'is_active': true,
-            })
-            .select()
-            .single();
-
-        if (kDebugMode) print('Reminder inserted: $reminderResponse');
-        final reminderId = reminderResponse['id'] as int;
-        final notificationId = (medId * 1000) + reminderId;
-
-        if (kDebugMode) {
-          print('Scheduling notification id=$notificationId for $remindAt');
-        }
-
-        // FIX: scheduleReminder now handles the exact-alarm exception gracefully
-        await NotificationService.scheduleReminder(
-          id: notificationId,
-          medName: name,
+        final reminderId = await provider.insertMedicationReminder(
+          medId: medId,
           remindAt: remindAt,
         );
-        if (kDebugMode) print('Notification scheduled OK');
+
+        if (reminderId != null) {
+          final notificationId = (medId * 1000) + reminderId;
+          await NotificationService.scheduleReminder(
+            id: notificationId,
+            medName: name,
+            remindAt: remindAt,
+          );
+        }
       }
 
-      // Clear controllers
       _nameCtrl.clear();
       _notesCtrl.clear();
       _freqCtrl.clear();
 
-      // FIX: close the sheet AFTER all DB work is done, using the Navigator
-      // attached to the sheet's context (not the screen's context).
       if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-
-      // Reload list on the main screen
-      await _loadMedications();
-    } catch (e, stack) {
-      if (kDebugMode) print('SAVE ERROR: $e\nSTACK: $stack');
+      await provider.loadMedications();
+    } catch (e) {
+      if (kDebugMode) print('SAVE ERROR: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -186,92 +113,52 @@ class _MedicationScreenState extends State<MedicationScreen> {
         );
       }
     } finally {
-      // FIX: always reset saving flag; safe because it's a ValueNotifier,
-      // not a setState call — no risk of "setState called after dispose"
       _savingNotifier.value = false;
     }
   }
 
-  // ════════════════════════════════════════════════════
-  // TOGGLE ACTIVE
-  // ════════════════════════════════════════════════════
-  Future<void> _toggleMedication(int medId, bool current) async {
-    try {
-      await Supabase.instance.client
-          .from('medications')
-          .update({'is_active': !current})
-          .eq('id', medId);
+  // ── Toggle ─────────────────────────────────────────────────────────────────
 
-      if (current) {
-        // Deactivating — cancel all notifications
-        final reminders = await Supabase.instance.client
-            .from('medication_reminder')
-            .select('id')
-            .eq('medication_id', medId);
-
-        final ids = (reminders as List)
-            .map((r) => (medId * 1000) + (r['id'] as int))
-            .toList();
-        await NotificationService.cancelAll(ids);
-      } else {
-        // Reactivating — reschedule
-        final med = _medications.firstWhere((m) => m.id == medId);
-        for (final r in med.reminders) {
-          await NotificationService.scheduleReminder(
-            id: (med.id * 1000) + r.id,
-            medName: med.name,
-            remindAt: r.remindAt,
-          );
-        }
-      }
-
-      await _loadMedications();
-    } catch (e) {
-      if (kDebugMode) print('Failed to toggle medication: $e');
-    }
-  }
-
-  // ════════════════════════════════════════════════════
-  // DELETE
-  // ════════════════════════════════════════════════════
-  Future<void> _deleteMedication(int medId) async {
-    try {
-      final reminders = await Supabase.instance.client
-          .from('medication_reminder')
-          .select('id')
-          .eq('medication_id', medId);
-
-      final ids = (reminders as List)
+  Future<void> _toggleMedication(
+      int medId, bool current, Medication med) async {
+    final provider = context.read<GlucoseProvider>();
+    if (current) {
+      final reminders =
+          await provider.getMedicationReminders(medId);
+      final ids = reminders
           .map((r) => (medId * 1000) + (r['id'] as int))
           .toList();
       await NotificationService.cancelAll(ids);
-
-      await Supabase.instance.client
-          .from('medication_reminder')
-          .delete()
-          .eq('medication_id', medId);
-
-      await Supabase.instance.client
-          .from('medications')
-          .delete()
-          .eq('id', medId);
-
-      await _loadMedications();
-    } catch (e) {
-      if (kDebugMode) print('Failed to delete medication: $e');
+    } else {
+      for (final r in med.reminders) {
+        await NotificationService.scheduleReminder(
+          id: (med.id * 1000) + r.id,
+          medName: med.name,
+          remindAt: r.remindAt,
+        );
+      }
     }
+    await provider.toggleMedication(medId, current);
   }
 
-  // ════════════════════════════════════════════════════
-  // ADD SHEET
-  // FIX: uses Builder / MediaQuery inside the sheet itself so the padding
-  //      responds to the keyboard appearing/disappearing in real-time.
-  // ════════════════════════════════════════════════════
+  // ── Delete ─────────────────────────────────────────────────────────────────
+
+  Future<void> _deleteMedication(int medId) async {
+    final provider = context.read<GlucoseProvider>();
+    final reminders = await provider.getMedicationReminders(medId);
+    final ids = reminders
+        .map((r) => (medId * 1000) + (r['id'] as int))
+        .toList();
+    await NotificationService.cancelAll(ids);
+    await provider.deleteMedication(medId);
+  }
+
+  // ── Add sheet ──────────────────────────────────────────────────────────────
+
   void _showAddSheet(BuildContext context) {
     final colors = context.colors;
     List<TimeOfDay> reminders = [];
 
-    // Clear controllers when opening the sheet so old data doesn't linger
     _nameCtrl.clear();
     _notesCtrl.clear();
     _freqCtrl.clear();
@@ -280,130 +167,97 @@ class _MedicationScreenState extends State<MedicationScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      // FIX: use a Builder inside the sheet so MediaQuery.of(ctx) gives the
-      //      sheet's own insets (which update when the keyboard opens).
       builder: (sheetCtx) => StatefulBuilder(
         builder: (ctx, setSheet) {
-          // FIX: read viewInsets from the sheet's own context — this is what
-          //      makes the sheet push up when the keyboard appears.
           final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
-
           return Container(
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
+                  top: Radius.circular(24)),
             ),
             padding: EdgeInsets.only(
               left: 20,
               right: 20,
               top: 24,
-              bottom: bottomInset + 24, // FIX: correct inset source
+              bottom: bottomInset + 24,
             ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle bar
                   Center(
                     child: Container(
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: colors.textSecondary.withValues(alpha: 0.3),
+                        color: colors.textSecondary
+                            .withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  TranslatedText(
-                    'Add Medication',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
+                  TranslatedText('Add Medication',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary)),
                   const SizedBox(height: 20),
-
-                  _field(
-                    ctx,
-                    _nameCtrl,
-                    'Medication name',
-                    Icons.medication_rounded,
-                  ),
+                  _field(ctx, _nameCtrl, 'Medication name',
+                      Icons.medication_rounded),
                   const SizedBox(height: 12),
-                  _field(
-                    ctx,
-                    _notesCtrl,
-                    'Notes (optional)',
-                    Icons.notes_rounded,
-                  ),
+                  _field(ctx, _notesCtrl, 'Notes (optional)',
+                      Icons.notes_rounded),
                   const SizedBox(height: 12),
-
-                  // Frequency field
                   TextField(
                     controller: _freqCtrl,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly
+                    ],
+                    style: TextStyle(
+                        fontSize: 14, color: colors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Frequency (times/day)',
                       labelStyle: TextStyle(
-                        fontSize: 13,
-                        color: colors.textSecondary,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.repeat_rounded,
-                        size: 20,
-                        color: colors.primary,
-                      ),
+                          fontSize: 13, color: colors.textSecondary),
+                      prefixIcon: Icon(Icons.repeat_rounded,
+                          size: 20, color: colors.primary),
                       filled: true,
                       fillColor: colors.background,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
+                          horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: colors.primary,
-                          width: 1.5,
-                        ),
-                      ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: colors.primary, width: 1.5)),
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Reminders row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TranslatedText(
-                        'Reminders',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
+                      TranslatedText('Reminders',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary)),
                       GestureDetector(
                         onTap: () async {
                           final currentFreq =
-                              int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                              int.tryParse(_freqCtrl.text.trim()) ??
+                                  0;
                           if (currentFreq <= 0) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Enter frequency first'),
-                                duration: Duration(seconds: 2),
-                              ),
+                                  content:
+                                      Text('Enter frequency first'),
+                                  duration: Duration(seconds: 2)),
                             );
                             return;
                           }
@@ -411,8 +265,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Max $currentFreq reminder${currentFreq > 1 ? 's' : ''} for this frequency',
-                                ),
+                                    'Max $currentFreq reminder${currentFreq > 1 ? 's' : ''} for this frequency'),
                                 duration: const Duration(seconds: 2),
                               ),
                             );
@@ -428,36 +281,30 @@ class _MedicationScreenState extends State<MedicationScreen> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: colors.primary.withValues(alpha: 0.1),
+                            color:
+                                colors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.add_alarm_rounded,
-                                size: 14,
-                                color: colors.primary,
-                              ),
+                              Icon(Icons.add_alarm_rounded,
+                                  size: 14, color: colors.primary),
                               const SizedBox(width: 4),
-                              Builder(
-                                builder: (context) {
-                                  final currentFreq =
-                                      int.tryParse(_freqCtrl.text.trim()) ?? 0;
-                                  return Text(
-                                    currentFreq > 0
-                                        ? 'Add time (${reminders.length}/$currentFreq)'
-                                        : 'Add time',
-                                    style: TextStyle(
+                              Builder(builder: (context) {
+                                final currentFreq = int.tryParse(
+                                        _freqCtrl.text.trim()) ??
+                                    0;
+                                return Text(
+                                  currentFreq > 0
+                                      ? 'Add time (${reminders.length}/$currentFreq)'
+                                      : 'Add time',
+                                  style: TextStyle(
                                       fontSize: 12,
-                                      color: colors.primary,
-                                    ),
-                                  );
-                                },
-                              ),
+                                      color: colors.primary),
+                                );
+                              }),
                             ],
                           ),
                         ),
@@ -465,28 +312,22 @@ class _MedicationScreenState extends State<MedicationScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-
-                  // Reminder chips
                   if (reminders.isEmpty)
-                    TranslatedText(
-                      'No reminders added yet',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                      ),
-                    )
+                    TranslatedText('No reminders added yet',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary))
                   else
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: reminders.asMap().entries.map((entry) {
+                      children:
+                          reminders.asMap().entries.map((entry) {
                         final i = entry.key;
                         final t = entry.value;
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: colors.primary,
                             borderRadius: BorderRadius.circular(20),
@@ -494,67 +335,54 @@ class _MedicationScreenState extends State<MedicationScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.alarm_rounded,
-                                size: 13,
-                                color: Colors.white,
-                              ),
+                              const Icon(Icons.alarm_rounded,
+                                  size: 13, color: Colors.white),
                               const SizedBox(width: 4),
-                              TranslatedText(
-                                t.format(ctx),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              TranslatedText(t.format(ctx),
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white)),
                               const SizedBox(width: 6),
                               GestureDetector(
-                                onTap: () =>
-                                    setSheet(() => reminders.removeAt(i)),
+                                onTap: () => setSheet(
+                                    () => reminders.removeAt(i)),
                                 child: const Icon(
-                                  Icons.close_rounded,
-                                  size: 13,
-                                  color: Colors.white,
-                                ),
+                                    Icons.close_rounded,
+                                    size: 13,
+                                    color: Colors.white),
                               ),
                             ],
                           ),
                         );
                       }).toList(),
                     ),
-
                   const SizedBox(height: 24),
-
-                  // Save button — uses ValueListenableBuilder so it reacts to
-                  // _savingNotifier without needing setState on the main widget
                   ValueListenableBuilder<bool>(
                     valueListenable: _savingNotifier,
-                    builder: (_, saving, __) => SizedBox(
+                    builder: (_, saving, _) => SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        // FIX: onPressed is null while saving (disables button)
                         onPressed: saving
                             ? null
                             : () {
-                                final currentFreq =
-                                    int.tryParse(_freqCtrl.text.trim()) ?? 0;
+                                final currentFreq = int.tryParse(
+                                        _freqCtrl.text.trim()) ??
+                                    0;
                                 if (currentFreq > 0 &&
                                     reminders.length != currentFreq) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}',
-                                      ),
+                                          'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}'),
                                       backgroundColor: Colors.orange,
-                                      duration: const Duration(seconds: 3),
+                                      duration:
+                                          const Duration(seconds: 3),
                                     ),
                                   );
                                   return;
                                 }
-                                // FIX: pass sheetCtx so _saveMedication can
-                                //      dismiss the keyboard & pop the sheet
-                                //      from the correct Navigator.
                                 _saveMedication(reminders, ctx);
                               },
                         style: ElevatedButton.styleFrom(
@@ -562,25 +390,19 @@ class _MedicationScreenState extends State<MedicationScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                              borderRadius: BorderRadius.circular(14)),
                         ),
                         child: saving
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Save Medication',
+                                    strokeWidth: 2,
+                                    color: Colors.white))
+                            : const Text('Save Medication',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ),
@@ -593,152 +415,145 @@ class _MedicationScreenState extends State<MedicationScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════
-  // BUILD
-  // ════════════════════════════════════════════════════
-  @override
-  void initState() {
-    super.initState();
-    _loadMedications();
-  }
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    final activeMeds = _medications.where((m) => m.isActive).toList();
-    final inactiveMeds = _medications.where((m) => !m.isActive).toList();
+    return Consumer<GlucoseProvider>(
+      builder: (context, provider, _) {
+        final activeMeds =
+            provider.medications.where((m) => m.isActive).toList();
+        final inactiveMeds =
+            provider.medications.where((m) => !m.isActive).toList();
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        return SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TranslatedText(
-                      'Medications',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TranslatedText('Medications',
+                            style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: colors.textPrimary)),
+                        Text('${activeMeds.length} active',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary)),
+                      ],
                     ),
-                    Text(
-                      '${activeMeds.length} active',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
+                    GestureDetector(
+                      onTap: () => _showAddSheet(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.add_rounded,
+                            color: Colors.white, size: 22),
                       ),
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () => _showAddSheet(context),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: colors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? Center(
-                    child: TranslatedText(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadMedications,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_medications.isEmpty)
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 80),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.medication_liquid_rounded,
-                                      size: 56,
-                                      color: colors.textSecondary,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    TranslatedText(
-                                      'No medications yet.\nTap + to add one.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: colors.textSecondary,
+              ),
+              Expanded(
+                child: provider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : provider.errorMessage != null
+                        ? Center(
+                            child: TranslatedText(
+                              provider.errorMessage!,
+                              style:
+                                  const TextStyle(color: Colors.red),
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: provider.loadMedications,
+                            child: SingleChildScrollView(
+                              physics:
+                                  const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  if (provider.medications.isEmpty)
+                                    Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 80),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                                Icons
+                                                    .medication_liquid_rounded,
+                                                size: 56,
+                                                color:
+                                                    colors.textSecondary),
+                                            const SizedBox(height: 12),
+                                            TranslatedText(
+                                                'No medications yet.\nTap + to add one.',
+                                                textAlign:
+                                                    TextAlign.center,
+                                                style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: colors
+                                                        .textSecondary)),
+                                          ],
+                                        ),
                                       ),
-                                    ),
+                                    )
+                                  else ...[
+                                    if (activeMeds.isNotEmpty) ...[
+                                      _sectionLabel('Active', colors),
+                                      const SizedBox(height: 10),
+                                      ...activeMeds.map((m) =>
+                                          _medCard(context, m)),
+                                    ],
+                                    if (inactiveMeds.isNotEmpty) ...[
+                                      const SizedBox(height: 20),
+                                      _sectionLabel(
+                                          'Inactive', colors),
+                                      const SizedBox(height: 10),
+                                      ...inactiveMeds.map((m) =>
+                                          _medCard(context, m)),
+                                    ],
                                   ],
-                                ),
+                                  const SizedBox(height: 30),
+                                ],
                               ),
-                            )
-                          else ...[
-                            if (activeMeds.isNotEmpty) ...[
-                              _sectionLabel('Active', colors),
-                              const SizedBox(height: 10),
-                              ...activeMeds.map((m) => _medCard(context, m)),
-                            ],
-                            if (inactiveMeds.isNotEmpty) ...[
-                              const SizedBox(height: 20),
-                              _sectionLabel('Inactive', colors),
-                              const SizedBox(height: 10),
-                              ...inactiveMeds.map((m) => _medCard(context, m)),
-                            ],
-                          ],
-                          const SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
-                  ),
+                            ),
+                          ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ════════════════════════════════════════════════════
-  // WIDGETS
-  // ════════════════════════════════════════════════════
-  Widget _sectionLabel(String label, GlucoraColors colors) => TranslatedText(
-    label,
-    style: TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: colors.textSecondary,
-    ),
-  );
+  // ── Widgets ────────────────────────────────────────────────────────────────
+
+  Widget _sectionLabel(String label, GlucoraColors colors) =>
+      TranslatedText(label,
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary));
 
   Widget _medCard(BuildContext context, Medication med) {
     final colors = context.colors;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -751,10 +566,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -763,7 +577,6 @@ class _MedicationScreenState extends State<MedicationScreen> {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Icon bubble
                 Container(
                   width: 44,
                   height: 44,
@@ -773,81 +586,65 @@ class _MedicationScreenState extends State<MedicationScreen> {
                         : colors.textSecondary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    Icons.medication_rounded,
-                    size: 22,
-                    color: med.isActive ? colors.primary : colors.textSecondary,
-                  ),
+                  child: Icon(Icons.medication_rounded,
+                      size: 22,
+                      color: med.isActive
+                          ? colors.primary
+                          : colors.textSecondary),
                 ),
                 const SizedBox(width: 12),
-
-                // Name + details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TranslatedText(
-                        med.name,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: med.isActive
-                              ? colors.textPrimary
-                              : colors.textSecondary,
-                        ),
-                      ),
-                      if (med.notes != null && med.notes!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        TranslatedText(
-                          med.notes!,
+                      TranslatedText(med.name,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: med.isActive
+                                  ? colors.textPrimary
+                                  : colors.textSecondary)),
+                      if (med.notes != null &&
+                          med.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        TranslatedText(med.notes!,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary,
+                                fontStyle: FontStyle.italic)),
                       ],
                       if (med.frequency != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
-                              Icons.repeat_rounded,
-                              size: 12,
-                              color: colors.textSecondary,
-                            ),
+                            Icon(Icons.repeat_rounded,
+                                size: 12,
+                                color: colors.textSecondary),
                             const SizedBox(width: 4),
-                            TranslatedText(
-                              '${med.frequency}x per day',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: colors.textSecondary,
-                              ),
-                            ),
+                            TranslatedText('${med.frequency}x per day',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: colors.textSecondary)),
                           ],
                         ),
                       ],
                     ],
                   ),
                 ),
-
-                // Toggle switch
                 Switch(
                   value: med.isActive,
                   activeThumbColor: colors.primary,
-                  onChanged: (_) => _toggleMedication(med.id, med.isActive),
+                  onChanged: (_) =>
+                      _toggleMedication(med.id, med.isActive, med),
                 ),
               ],
             ),
           ),
-
-          // Reminders
           if (med.reminders.isNotEmpty) ...[
             Divider(
-              height: 1,
-              thickness: 1,
-              color: colors.textSecondary.withValues(alpha: 0.1),
-            ),
+                height: 1,
+                thickness: 1,
+                color: colors.textSecondary.withValues(alpha: 0.1)),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
               child: Column(
@@ -855,20 +652,14 @@ class _MedicationScreenState extends State<MedicationScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.alarm_rounded,
-                        size: 12,
-                        color: colors.textSecondary,
-                      ),
+                      Icon(Icons.alarm_rounded,
+                          size: 12, color: colors.textSecondary),
                       const SizedBox(width: 4),
-                      TranslatedText(
-                        'Reminders',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textSecondary,
-                        ),
-                      ),
+                      TranslatedText('Reminders',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -876,69 +667,54 @@ class _MedicationScreenState extends State<MedicationScreen> {
                     spacing: 8,
                     runSpacing: 6,
                     children: med.reminders
-                        .map(
-                          (r) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: med.isActive
-                                  ? colors.primary.withValues(alpha: 0.1)
-                                  : colors.textSecondary.withValues(
-                                      alpha: 0.08,
-                                    ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.access_time_rounded,
-                                  size: 11,
-                                  color: med.isActive
-                                      ? colors.primary
-                                      : colors.textSecondary,
-                                ),
-                                const SizedBox(width: 4),
-                                TranslatedText(
-                                  _formatTime(r.remindAt),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: med.isActive
-                                        ? colors.primary
-                                        : colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+                        .map((r) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: med.isActive
+                                    ? colors.primary
+                                        .withValues(alpha: 0.1)
+                                    : colors.textSecondary
+                                        .withValues(alpha: 0.08),
+                                borderRadius:
+                                    BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.access_time_rounded,
+                                      size: 11,
+                                      color: med.isActive
+                                          ? colors.primary
+                                          : colors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  TranslatedText(
+                                      _formatTime(r.remindAt),
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: med.isActive
+                                              ? colors.primary
+                                              : colors.textSecondary)),
+                                ],
+                              ),
+                            ))
                         .toList(),
                   ),
                 ],
               ),
             ),
           ],
-
-          // Delete button
           Divider(
-            height: 1,
-            thickness: 1,
-            color: colors.textSecondary.withValues(alpha: 0.1),
-          ),
+              height: 1,
+              thickness: 1,
+              color: colors.textSecondary.withValues(alpha: 0.1)),
           TextButton.icon(
             onPressed: () => _confirmDelete(context, med),
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              size: 16,
-              color: colors.error,
-            ),
-            label: TranslatedText(
-              'Remove',
-              style: TextStyle(fontSize: 13, color: colors.error),
-            ),
+            icon: Icon(Icons.delete_outline_rounded,
+                size: 16, color: colors.error),
+            label: TranslatedText('Remove',
+                style: TextStyle(fontSize: 13, color: colors.error)),
           ),
         ],
       ),
@@ -951,45 +727,35 @@ class _MedicationScreenState extends State<MedicationScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: TranslatedText(
-          'Remove Medication',
-          style: TextStyle(color: colors.textPrimary),
-        ),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: TranslatedText('Remove Medication',
+            style: TextStyle(color: colors.textPrimary)),
         content: TranslatedText(
-          'Are you sure you want to remove "${med.name}"?',
-          style: TextStyle(color: colors.textSecondary),
-        ),
+            'Are you sure you want to remove "${med.name}"?',
+            style: TextStyle(color: colors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: TranslatedText(
-              'Cancel',
-              style: TextStyle(color: colors.textSecondary),
-            ),
+            child: TranslatedText('Cancel',
+                style: TextStyle(color: colors.textSecondary)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _deleteMedication(med.id);
             },
-            child: TranslatedText(
-              'Remove',
-              style: TextStyle(color: colors.error),
-            ),
+            child: TranslatedText('Remove',
+                style: TextStyle(color: colors.error)),
           ),
         ],
       ),
     );
   }
 
-  Widget _field(
-    BuildContext context,
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    TextInputType type = TextInputType.text,
-  }) {
+  Widget _field(BuildContext context, TextEditingController ctrl,
+      String label, IconData icon,
+      {TextInputType type = TextInputType.text}) {
     final colors = context.colors;
     return TextField(
       controller: ctrl,
@@ -997,22 +763,20 @@ class _MedicationScreenState extends State<MedicationScreen> {
       style: TextStyle(fontSize: 14, color: colors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
+        labelStyle:
+            TextStyle(fontSize: 13, color: colors.textSecondary),
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         filled: true,
         fillColor: colors.background,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+            horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colors.primary, width: 1.5),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                BorderSide(color: colors.primary, width: 1.5)),
       ),
     );
   }
@@ -1026,8 +790,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
       hour = hour > 12
           ? hour - 12
           : hour == 0
-          ? 12
-          : hour;
+              ? 12
+              : hour;
       return '$hour:$minute $period';
     } catch (_) {
       return remindAt;

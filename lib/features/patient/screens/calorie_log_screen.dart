@@ -1,11 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; 
+import 'package:glucora_ai_companion/providers/glucose_provider.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/core/models/food_entry_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CalorieLogScreen extends StatefulWidget {
   const CalorieLogScreen({super.key});
@@ -24,69 +24,44 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
   static const int _dailyGoal = 2000;
   String _selectedMeal = 'Snack';
   static const _mealOptions = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
-
-  List<FoodEntry> _entries = [];
-  bool _loading = true;
   bool _saving = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadLogs();
+    Future.microtask(() => _init());
   }
 
-  // ════════════════════════════════════════════════════
-  // COMPUTED
-  // ════════════════════════════════════════════════════
-  int get _total => _entries.fold(0, (s, e) => s + e.calories);
-  double get _progress => (_total / _dailyGoal).clamp(0.0, 1.0);
-  double get _totalCarbs => _entries.fold(0.0, (s, e) => s + (e.carbsG ?? 0));
-  double get _totalProtein =>
-      _entries.fold(0.0, (s, e) => s + (e.proteinG ?? 0));
-  double get _totalFat => _entries.fold(0.0, (s, e) => s + (e.fatG ?? 0));
-
-  // ════════════════════════════════════════════════════
-  // FETCH
-  // ════════════════════════════════════════════════════
-  Future<void> _loadLogs() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Not logged in');
-
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) throw Exception('No patient profile');
-
-      // Only fetch today's logs
-      final startOfDay = DateTime.now().toLocal();
-      final from = DateTime(startOfDay.year, startOfDay.month, startOfDay.day)
-          .toUtc()
-          .toIso8601String();
-
-      final response = await supabase
-          .from('food_logs')
-          .select()
-          .eq('patient_id', patientId)
-          .gte('logged_at', from)
-          .order('logged_at', ascending: false);
-
-      setState(() {
-        _entries = (response as List)
-            .map((e) => FoodEntry.fromJson(e))
-            .toList();
-        _loading = false;
-      });
-    } catch (e) {
-      if (kDebugMode) print('Failed to load food logs: $e');
-      setState(() { _loading = false; _error = 'Failed to load logs'; });
+  Future<void> _init() async {
+    final provider = context.read<GlucoseProvider>();
+    if (provider.patientProfileId == null) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) await provider.init(user.id);
+    } else {
+      await provider.loadFoodLogs();
     }
   }
 
-  // ════════════════════════════════════════════════════
-  // INSERT
-  // ════════════════════════════════════════════════════
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  int _total(List<FoodEntry> entries) =>
+      entries.fold(0, (s, e) => s + e.calories);
+
+  double _progress(List<FoodEntry> entries) =>
+      (_total(entries) / _dailyGoal).clamp(0.0, 1.0);
+
+  double _totalCarbs(List<FoodEntry> entries) =>
+      entries.fold(0.0, (s, e) => s + (e.carbsG ?? 0));
+
+  double _totalProtein(List<FoodEntry> entries) =>
+      entries.fold(0.0, (s, e) => s + (e.proteinG ?? 0));
+
+  double _totalFat(List<FoodEntry> entries) =>
+      entries.fold(0.0, (s, e) => s + (e.fatG ?? 0));
+
+  // ── Add entry ─────────────────────────────────────────────────────────────
+
   Future<void> _addEntry() async {
     final name = _nameController.text.trim();
     final cal = int.tryParse(_calController.text.trim());
@@ -96,61 +71,42 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
     final protein = double.tryParse(_proteinController.text.trim());
     final fat = double.tryParse(_fatController.text.trim());
 
-    setState(() => _saving = true);
+    setState(() { _saving = true; _error = null; });
 
     try {
-      final supabase = Supabase.instance.client;
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('Not logged in');
-
-      final patientId = await getPatientProfileId(userId);
-      if (patientId == null) throw Exception('No patient profile');
-
-      await supabase.from('food_logs').insert({
-        'patient_id': patientId,
-        'name': name,
-        'calories': cal,
-        'carbs_g': ?carbs,
-        'protein_g': ?protein,
-        'fat_g': ?fat,
-        'meal_type': _selectedMeal,
-        'logged_at': DateTime.now().toIso8601String(),
-      });
+      await context.read<GlucoseProvider>().insertFoodLog(
+            name: name,
+            calories: cal,
+            carbs: carbs,
+            protein: protein,
+            fat: fat,
+            mealType: _selectedMeal,
+          );
 
       _nameController.clear();
       _calController.clear();
       _carbsController.clear();
       _proteinController.clear();
       _fatController.clear();
-      _selectedMeal = 'Snack';
+      setState(() => _selectedMeal = 'Snack');
 
       if (mounted) Navigator.pop(context);
-      await _loadLogs();
     } catch (e) {
-      if (kDebugMode) print('Failed to save food log: $e');
-      setState(() { _saving = false; _error = 'Failed to save'; });
+      setState(() => _error = 'Failed to save');
+    } finally {
+      setState(() => _saving = false);
     }
   }
 
-  // ════════════════════════════════════════════════════
-  // DELETE
-  // ════════════════════════════════════════════════════
-  Future<void> _deleteEntry(int index) async {
-    final entry = _entries[index];
+  // ── Delete entry ──────────────────────────────────────────────────────────
+
+  Future<void> _deleteEntry(FoodEntry entry) async {
     if (entry.id == null) return;
-
-    try {
-      final supabase = Supabase.instance.client;
-      await supabase.from('food_logs').delete().eq('id', entry.id!);
-      await _loadLogs();
-    } catch (e) {
-      if (kDebugMode) print('Failed to delete food log: $e');
-    }
+    await context.read<GlucoseProvider>().deleteFoodLog(entry.id!);
   }
 
-  // ════════════════════════════════════════════════════
-  // BOTTOM SHEET
-  // ════════════════════════════════════════════════════
+  // ── Bottom sheet ──────────────────────────────────────────────────────────
+
   void _showAddSheet(BuildContext context) {
     final colors = context.colors;
     showModalBottomSheet(
@@ -192,8 +148,6 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary)),
                 const SizedBox(height: 20),
-
-                // Name + Calories
                 _field(context, _nameController, "Food name",
                     Icons.fastfood_rounded),
                 const SizedBox(height: 12),
@@ -201,8 +155,6 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                     Icons.local_fire_department_rounded,
                     type: TextInputType.number),
                 const SizedBox(height: 12),
-
-                // Macros row
                 Row(children: [
                   Expanded(
                     child: _field(context, _carbsController, "Carbs (g)",
@@ -211,7 +163,8 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _field(context, _proteinController, "Protein (g)",
+                    child: _field(
+                        context, _proteinController, "Protein (g)",
                         Icons.fitness_center_rounded,
                         type: TextInputType.number),
                   ),
@@ -223,8 +176,6 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                   ),
                 ]),
                 const SizedBox(height: 16),
-
-                // Meal type selector
                 TranslatedText("Meal type",
                     style: TextStyle(
                         fontSize: 12, color: colors.textSecondary)),
@@ -257,7 +208,6 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 24),
-
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -265,7 +215,6 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                         style: const TextStyle(
                             color: Colors.red, fontSize: 12)),
                   ),
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -297,217 +246,249 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════
-  // BUILD
-  // ════════════════════════════════════════════════════
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final remaining = _dailyGoal - _total;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TranslatedText("Calorie Tracker",
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary)),
-                GestureDetector(
-                  onTap: () => _showAddSheet(context),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                        color: colors.primary,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.add_rounded,
-                        color: Colors.white, size: 22),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _loadLogs,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Summary card ──
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                  colors: [
-                                    colors.primary,
-                                    colors.primaryDark
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _chip("Consumed", "$_total",
-                                        "kcal", colors),
-                                    Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 80,
-                                          height: 80,
-                                          child:
-                                              CircularProgressIndicator(
-                                            value: _progress,
-                                            strokeWidth: 7,
-                                            backgroundColor: Colors
-                                                .white
-                                                .withValues(alpha: 0.3),
-                                            valueColor:
-                                                const AlwaysStoppedAnimation(
-                                                    Colors.white),
-                                          ),
-                                        ),
-                                        Column(children: [
-                                          TranslatedText(
-                                              "${(_progress * 100).toStringAsFixed(0)}%",
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.bold,
-                                                  fontSize: 16)),
-                                          TranslatedText("of goal",
-                                              style: TextStyle(
-                                                  color: Colors.white
-                                                      .withValues(
-                                                          alpha: 0.75),
-                                                  fontSize: 10)),
-                                        ]),
-                                      ],
-                                    ),
-                                    _chip(
-                                        "Remaining",
-                                        remaining > 0
-                                            ? "$remaining"
-                                            : "0",
-                                        "kcal",
-                                        colors),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: _progress,
-                                    minHeight: 6,
-                                    backgroundColor: Colors.white
-                                        .withValues(alpha: 0.25),
-                                    valueColor:
-                                        const AlwaysStoppedAnimation(
-                                            Colors.white),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TranslatedText("Daily goal: $_dailyGoal kcal",
-                                    style: TextStyle(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.8),
-                                        fontSize: 12)),
-                              ],
-                            ),
-                          ),
+    return Consumer<GlucoseProvider>(
+      builder: (context, provider, _) {
+        final entries = provider.foodLogs;
+        final total = _total(entries);
+        final progress = _progress(entries);
+        final remaining = _dailyGoal - total;
 
-                          const SizedBox(height: 20),
-
-                          // ── Macros — now live from backend ──
-                          Row(children: [
-                            _macro("🍞", "Carbs",
-                                "${_totalCarbs.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 230, 175, 93), colors),
-                            const SizedBox(width: 10),
-                            _macro("🥩", "Protein",
-                                "${_totalProtein.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 88, 138, 90), colors),
-                            const SizedBox(width: 10),
-                            _macro("🥑", "Fat",
-                                "${_totalFat.toStringAsFixed(1)}g",
-                                const Color.fromARGB(255, 76, 137, 187), colors),
-                          ]),
-
-                          const SizedBox(height: 20),
-
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              TranslatedText("Today's Entries",
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary)),
-                              TranslatedText("${_entries.length} items",
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: colors.textSecondary)),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          if (_entries.isEmpty)
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 40),
-                                child: Column(children: [
-                                  Icon(Icons.no_food_rounded,
-                                      size: 48,
-                                      color: colors.textSecondary),
-                                  const SizedBox(height: 12),
-                                  TranslatedText(
-                                      "No entries yet.\nTap + to add your first meal.",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: colors.textSecondary)),
-                                ]),
-                              ),
-                            )
-                          else
-                            ...List.generate(_entries.length,
-                                (i) => _tile(context, _entries[i], i)),
-
-                          const SizedBox(height: 20),
-                        ],
+        return SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TranslatedText("Calorie Tracker",
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary)),
+                    GestureDetector(
+                      onTap: () => _showAddSheet(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.add_rounded,
+                            color: Colors.white, size: 22),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: provider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: provider.loadFoodLogs,
+                        child: SingleChildScrollView(
+                          physics:
+                              const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              // ── Summary card ──
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                      colors: [
+                                        colors.primary,
+                                        colors.primaryDark
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight),
+                                  borderRadius:
+                                      BorderRadius.circular(20),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment
+                                              .spaceBetween,
+                                      children: [
+                                        _chip("Consumed", "$total",
+                                            "kcal", colors),
+                                        Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: 80,
+                                              height: 80,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                value: progress,
+                                                strokeWidth: 7,
+                                                backgroundColor: Colors
+                                                    .white
+                                                    .withValues(
+                                                        alpha: 0.3),
+                                                valueColor:
+                                                    const AlwaysStoppedAnimation(
+                                                        Colors.white),
+                                              ),
+                                            ),
+                                            Column(children: [
+                                              TranslatedText(
+                                                  "${(progress * 100).toStringAsFixed(0)}%",
+                                                  style: const TextStyle(
+                                                      color:
+                                                          Colors.white,
+                                                      fontWeight:
+                                                          FontWeight
+                                                              .bold,
+                                                      fontSize: 16)),
+                                              TranslatedText(
+                                                  "of goal",
+                                                  style: TextStyle(
+                                                      color: Colors
+                                                          .white
+                                                          .withValues(
+                                                              alpha:
+                                                                  0.75),
+                                                      fontSize: 10)),
+                                            ]),
+                                          ],
+                                        ),
+                                        _chip(
+                                            "Remaining",
+                                            remaining > 0
+                                                ? "$remaining"
+                                                : "0",
+                                            "kcal",
+                                            colors),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        minHeight: 6,
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.25),
+                                        valueColor:
+                                            const AlwaysStoppedAnimation(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TranslatedText(
+                                        "Daily goal: $_dailyGoal kcal",
+                                        style: TextStyle(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.8),
+                                            fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              // ── Macros ──
+                              Row(children: [
+                                _macro(
+                                    "🍞",
+                                    "Carbs",
+                                    "${_totalCarbs(entries).toStringAsFixed(1)}g",
+                                    const Color.fromARGB(
+                                        255, 230, 175, 93),
+                                    colors),
+                                const SizedBox(width: 10),
+                                _macro(
+                                    "🥩",
+                                    "Protein",
+                                    "${_totalProtein(entries).toStringAsFixed(1)}g",
+                                    const Color.fromARGB(
+                                        255, 88, 138, 90),
+                                    colors),
+                                const SizedBox(width: 10),
+                                _macro(
+                                    "🥑",
+                                    "Fat",
+                                    "${_totalFat(entries).toStringAsFixed(1)}g",
+                                    const Color.fromARGB(
+                                        255, 76, 137, 187),
+                                    colors),
+                              ]),
+
+                              const SizedBox(height: 20),
+
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TranslatedText("Today's Entries",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: colors.textPrimary)),
+                                  TranslatedText(
+                                      "${entries.length} items",
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: colors.textSecondary)),
+                                ],
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              if (entries.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 40),
+                                    child: Column(children: [
+                                      Icon(Icons.no_food_rounded,
+                                          size: 48,
+                                          color: colors.textSecondary),
+                                      const SizedBox(height: 12),
+                                      TranslatedText(
+                                          "No entries yet.\nTap + to add your first meal.",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color:
+                                                  colors.textSecondary)),
+                                    ]),
+                                  ),
+                                )
+                              else
+                                ...entries.map(
+                                    (e) => _tile(context, e)),
+
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ════════════════════════════════════════════════════
-  // WIDGETS
-  // ════════════════════════════════════════════════════
+  // ── Widgets ───────────────────────────────────────────────────────────────
+
   Widget _field(BuildContext context, TextEditingController ctrl,
       String label, IconData icon,
       {TextInputType type = TextInputType.text}) {
@@ -559,11 +540,13 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
           GlucoraColors colors) =>
       Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          padding: const EdgeInsets.symmetric(
+              vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
               color: bg, borderRadius: BorderRadius.circular(14)),
           child: Column(children: [
-            TranslatedText(emoji, style: const TextStyle(fontSize: 20)),
+            TranslatedText(emoji,
+                style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 4),
             TranslatedText(value,
                 style: TextStyle(
@@ -577,10 +560,9 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
         ),
       );
 
-  Widget _tile(BuildContext context, FoodEntry e, int i) {
+  Widget _tile(BuildContext context, FoodEntry e) {
     final colors = context.colors;
 
-    // Meal icon
     IconData mealIcon;
     switch (e.mealType?.toLowerCase()) {
       case 'breakfast':
@@ -652,19 +634,21 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
             ],
           ),
         ),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          TranslatedText("${e.calories}",
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary)),
-          const TranslatedText("kcal",
-              style: TextStyle(
-                  fontSize: 10, color: Color(0xFF888888))),
-        ]),
+        Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TranslatedText("${e.calories}",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colors.primary)),
+              const TranslatedText("kcal",
+                  style: TextStyle(
+                      fontSize: 10, color: Color(0xFF888888))),
+            ]),
         const SizedBox(width: 8),
         GestureDetector(
-          onTap: () => _deleteEntry(i),
+          onTap: () => _deleteEntry(e),
           child: Icon(Icons.close_rounded,
               size: 18, color: colors.textSecondary),
         ),

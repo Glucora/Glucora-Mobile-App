@@ -108,7 +108,7 @@ class AdminProvider extends ChangeNotifier {
       await _alertRepo.toggleRule(ruleId, isEnabled);
       final index = alertRules.indexWhere((r) => r.id == ruleId);
       if (index != -1) {
-        alertRules[index].isEnabled = isEnabled;
+        alertRules[index] = alertRules[index].copyWith(isEnabled: isEnabled);
         notifyListeners();
       }
     } catch (e) {
@@ -212,9 +212,9 @@ class AdminProvider extends ChangeNotifier {
   Future<void> toggleUserStatus(String userId, bool isActive) async {
     try {
       await _userRepo.toggleStatus(userId, isActive);
-      final index = users.indexWhere((u) => u.id == userId);
+     final index = users.indexWhere((u) => u.id == userId);
       if (index != -1) {
-        users[index].isActive = isActive;
+        users[index] = users[index].copyWith(isActive: isActive);
         notifyListeners();
       }
     } catch (e) {
@@ -293,5 +293,28 @@ class AdminProvider extends ChangeNotifier {
   void clearError() {
     errorMessage = null;
     notifyListeners();
+  }
+  Future<void> deleteUser(String userId, String role) async {
+    try {
+      await _userRepo.deleteUser(userId, role);
+      users.removeWhere((u) => u.id == userId);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to delete user: $e');
+    }
+  }
+
+  Future<void> updateUserRoleAndStatus(
+      String userId, String role, bool isActive) async {
+    try {
+      await _userRepo.updateUserRoleAndStatus(userId, role, isActive);
+      final index = users.indexWhere((u) => u.id == userId);
+      if (index != -1) {
+        users[index] = users[index].copyWith(role: role, isActive: isActive);
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError('Failed to update user: $e');
+    }
   }
 }

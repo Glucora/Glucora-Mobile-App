@@ -1,4 +1,3 @@
-// lib\core\models\food_entry_model.dart
 class FoodEntry {
   final int? id;
   final String name;
@@ -38,6 +37,27 @@ class FoodEntry {
       loggedAt: json['logged_at'] != null
           ? DateTime.tryParse(json['logged_at'])
           : null,
+    );
+  }
+
+  FoodEntry copyWith({
+    String? name,
+    int? calories,
+    double? carbsG,
+    double? proteinG,
+    double? fatG,
+    String? mealType,
+    DateTime? loggedAt,
+  }) {
+    return FoodEntry(
+      id: id,
+      name: name ?? this.name,
+      calories: calories ?? this.calories,
+      carbsG: carbsG ?? this.carbsG,
+      proteinG: proteinG ?? this.proteinG,
+      fatG: fatG ?? this.fatG,
+      mealType: mealType ?? this.mealType,
+      loggedAt: loggedAt ?? this.loggedAt,
     );
   }
 }
