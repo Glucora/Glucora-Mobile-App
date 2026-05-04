@@ -171,7 +171,7 @@ class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
                                 vertical: 4,
                               ),
                               itemCount: filtered.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const SizedBox(height: 8),
                               itemBuilder: (context, index) =>
                                   _alertCard(context, filtered[index]),
