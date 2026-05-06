@@ -1,3 +1,4 @@
+// lib\shared\screens\connection_requests_screen.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -151,7 +152,8 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
             final userData = row['users'] as Map<String, dynamic>?;
             final fullName = userData?['full_name'] ?? 'Unknown User';
             final personId = userData?['id'] as String? ?? '';
-            final profilePictureUrl = userData?['profile_picture_url'] as String?;
+            final profilePictureUrl =
+                userData?['profile_picture_url'] as String?;
             all.add(
               ConnectionRequest(
                 id: row['id'].toString(),
@@ -377,6 +379,17 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          //Roaa
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: colors.textPrimary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
+          //Roaa end-----
           TranslatedText(
             'Connection Requests',
             style: TextStyle(
