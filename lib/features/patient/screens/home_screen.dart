@@ -417,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: _recommendationsCard(
                                         context, provider),
                                   ),
-                                  const SizedBox(height: 16),
+/*                                   const SizedBox(height: 16),
                                   GestureDetector(
                                     onTap: () => Navigator.push(
                                       context,
@@ -426,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               const PatientCarePlanScreen()),
                                     ),
                                     child: _carePlanCard(context),
-                                  ),
+                                  ), */
                                 ],
                               ),
                             ),
