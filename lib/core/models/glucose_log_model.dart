@@ -1,15 +1,16 @@
 // lib\core\models\glucose_log.dart
-// Model matches the actual glucose_readings schema
+enum GlucoseTrend { risingRapid, rising, stable, falling, fallingRapid }
+
+enum GlucoseSource { sensor, manual, predicted }
+
 class GlucoseLog {
   final String id;
   final int patientId;
   final double value;
-  final String source;
-  final String trend;
-  final bool isPredicted;
+  final GlucoseSource source;   // replaces: String source + bool isPredicted
+  final GlucoseTrend trend;     // replaces: String trend
   final DateTime recordedAt;
   final String? notes;
-  // Roaa
   final String? mealTime;
 
   const GlucoseLog({
@@ -18,33 +19,43 @@ class GlucoseLog {
     required this.value,
     required this.source,
     required this.trend,
-    required this.isPredicted,
     required this.recordedAt,
     this.notes,
-    // Roaa
     this.mealTime,
   });
+
+  // Convenience getter — replaces isPredicted bool
+  bool get isPredicted => source == GlucoseSource.predicted;
 
   factory GlucoseLog.fromJson(Map<String, dynamic> json) {
     return GlucoseLog(
       id: json['id'].toString(),
       patientId: json['patient_id'] as int,
       value: double.parse(json['value_mg_dl'].toString()),
-      source: json['source'] ?? 'unknown',
-      trend: json['trend'] ?? 'stable',
-      isPredicted: json['is_predicted'] ?? false,
-      // Roaa
+      source: GlucoseSource.values.byName(
+        (json['source'] as String? ?? 'sensor').toLowerCase(),
+      ),
+      trend: GlucoseTrend.values.byName(
+        _normalizeTrend(json['trend'] as String? ?? 'stable'),
+      ),
       recordedAt: DateTime.parse(json['recorded_at']).toUtc(),
-      notes: json['notes'],
-      mealTime: json['meal_time'],
+      notes: json['notes'] as String?,
+      mealTime: json['meal_time'] as String?,
     );
+  }
+
+  // Handles DB strings like "rising_rapid" -> "risingRapid"
+  static String _normalizeTrend(String raw) {
+    final parts = raw.toLowerCase().split('_');
+    if (parts.length == 1) return parts[0];
+    return parts[0] + parts.sublist(1).map((p) => 
+      p[0].toUpperCase() + p.substring(1)).join();
   }
 
   GlucoseLog copyWith({
     double? value,
-    String? source,
-    String? trend,
-    bool? isPredicted,
+    GlucoseSource? source,
+    GlucoseTrend? trend,
     DateTime? recordedAt,
     String? notes,
     String? mealTime,
@@ -55,7 +66,6 @@ class GlucoseLog {
       value: value ?? this.value,
       source: source ?? this.source,
       trend: trend ?? this.trend,
-      isPredicted: isPredicted ?? this.isPredicted,
       recordedAt: recordedAt ?? this.recordedAt,
       notes: notes ?? this.notes,
       mealTime: mealTime ?? this.mealTime,

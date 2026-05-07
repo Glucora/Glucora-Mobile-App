@@ -1,3 +1,4 @@
+// lib\core\models\food_entry_model.dart
 class FoodEntry {
   final int? id;
   final String name;

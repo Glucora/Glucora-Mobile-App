@@ -51,10 +51,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final parsed = double.tryParse(val);
     if (parsed == null) return;
 
-    final notes =
-        _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+    final notes = _notesCtrl.text.trim().isEmpty
+        ? null
+        : _notesCtrl.text.trim();
 
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
     try {
       await context.read<GlucoseProvider>().insertLog(parsed, notes, _mealTime);
@@ -80,15 +84,19 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 20),
-                TranslatedText("Manual Log",
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary)),
+                TranslatedText(
+                  "Manual Log",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                TranslatedText("Log your glucose reading manually",
-                    style:
-                        TextStyle(fontSize: 13, color: colors.textSecondary)),
+                TranslatedText(
+                  "Log your glucose reading manually",
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                ),
                 const SizedBox(height: 20),
 
                 Container(
@@ -97,105 +105,140 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                     color: colors.surface,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                        color: colors.textSecondary.withValues(alpha: 0.2),
-                        width: 1),
+                      color: colors.textSecondary.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4))
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TranslatedText("New Reading",
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary)),
+                      TranslatedText(
+                        "New Reading",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
-                      Row(children: [
-                        Expanded(
+                      Row(
+                        children: [
+                          Expanded(
                             child: _field(
-                                context, _glucoseCtrl, "Glucose value",
-                                Icons.water_drop_rounded,
-                                type: TextInputType.number)),
-                        const SizedBox(width: 10),
-                        Container(
-                          height: 52,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
+                              context,
+                              _glucoseCtrl,
+                              "Glucose value",
+                              Icons.water_drop_rounded,
+                              type: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            height: 52,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
                               color: colors.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: colors.textSecondary
-                                      .withValues(alpha: 0.2))),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _unit,
-                              style: TextStyle(
+                                color: colors.textSecondary.withValues(
+                                  alpha: 0.2,
+                                ),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _unit,
+                                style: TextStyle(
                                   fontSize: 13,
                                   color: colors.textPrimary,
-                                  fontWeight: FontWeight.w500),
-                              items: ["mg/dL", "mmol/L"]
-                                  .map((u) => DropdownMenuItem(
-                                      value: u, child: TranslatedText(u)))
-                                  .toList(),
-                              onChanged: (v) => setState(() => _unit = v!),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                items: ["mg/dL", "mmol/L"]
+                                    .map(
+                                      (u) => DropdownMenuItem(
+                                        value: u,
+                                        child: TranslatedText(u),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) => setState(() => _unit = v!),
+                              ),
                             ),
                           ),
-                        ),
-                      ]),
+                        ],
+                      ),
 
                       const SizedBox(height: 12),
-                      TranslatedText("Meal time",
-                          style: TextStyle(
-                              fontSize: 12, color: colors.textSecondary)),
+                      TranslatedText(
+                        "Meal time",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
 
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: _mealOptions
-                            .map((mt) => GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _mealTime = mt),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: _mealTime == mt
-                                          ? colors.primary
-                                          : colors.background,
-                                      borderRadius:
-                                          BorderRadius.circular(20),
-                                    ),
-                                    child: TranslatedText(mt,
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: _mealTime == mt
-                                                ? Colors.white
-                                                : colors.textSecondary)),
+                            .map(
+                              (mt) => GestureDetector(
+                                onTap: () => setState(() => _mealTime = mt),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
                                   ),
-                                ))
+                                  decoration: BoxDecoration(
+                                    color: _mealTime == mt
+                                        ? colors.primary
+                                        : colors.background,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: TranslatedText(
+                                    mt,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: _mealTime == mt
+                                          ? Colors.white
+                                          : colors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
                             .toList(),
                       ),
 
                       const SizedBox(height: 12),
-                      _field(context, _notesCtrl, "Notes (optional)",
-                          Icons.notes_rounded),
+                      _field(
+                        context,
+                        _notesCtrl,
+                        "Notes (optional)",
+                        Icons.notes_rounded,
+                      ),
                       const SizedBox(height: 16),
 
                       if (_error != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: TranslatedText(_error!,
-                              style: const TextStyle(
-                                  color: Colors.red, fontSize: 12)),
+                          child: TranslatedText(
+                            _error!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
 
                       SizedBox(
@@ -204,21 +247,29 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         child: ElevatedButton(
                           onPressed: _saving ? null : _save,
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primary,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14))),
+                            backgroundColor: colors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                           child: _saving
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2))
-                              : const TranslatedText("Save Reading",
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const TranslatedText(
+                                  "Save Reading",
                                   style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -230,14 +281,21 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TranslatedText("Recent Logs",
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary)),
-                    TranslatedText("${provider.logs.length} entries",
-                        style: TextStyle(
-                            fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      "Recent Logs",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    TranslatedText(
+                      "${provider.logs.length} entries",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -258,9 +316,13 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     );
   }
 
-  Widget _field(BuildContext context, TextEditingController ctrl, String label,
-      IconData icon,
-      {TextInputType type = TextInputType.text}) {
+  Widget _field(
+    BuildContext context,
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    TextInputType type = TextInputType.text,
+  }) {
     final colors = context.colors;
     return TextField(
       controller: ctrl,
@@ -272,14 +334,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         prefixIcon: Icon(icon, size: 20, color: colors.primary),
         filled: true,
         fillColor: colors.surface,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: colors.primary, width: 1.5)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
+        ),
       ),
     );
   }
@@ -289,18 +355,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
     IconData trendIcon;
     Color trendColor;
-    switch (log.trend.toLowerCase()) {
-      case 'up':
-      case 'rising':
+    switch (log.trend) {
+      case GlucoseTrend.risingRapid:
+      case GlucoseTrend.rising:
         trendIcon = Icons.arrow_upward_rounded;
         trendColor = Colors.red;
         break;
-      case 'down':
-      case 'falling':
+      case GlucoseTrend.fallingRapid:
+      case GlucoseTrend.falling:
         trendIcon = Icons.arrow_downward_rounded;
         trendColor = Colors.blue;
         break;
-      default:
+      case GlucoseTrend.stable:
         trendIcon = Icons.remove_rounded;
         trendColor = Colors.green;
     }
@@ -312,7 +378,9 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.15), width: 1),
+          color: colors.textSecondary.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,11 +394,14 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TranslatedText("${log.value} mg/dL",
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary)),
+                    TranslatedText(
+                      "${log.value} mg/dL",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colors.textPrimary,
+                      ),
+                    ),
                     Icon(trendIcon, color: trendColor, size: 20),
                   ],
                 ),
@@ -340,42 +411,58 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                     if (log.mealTime != null) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: colors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: TranslatedText(log.mealTime!,
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: colors.primary)),
+                        child: TranslatedText(
+                          log.mealTime!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: colors.primary,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                     ],
-                    TranslatedText(log.source,
-                        style: TextStyle(
-                            fontSize: 12, color: colors.textSecondary)),
+                    TranslatedText(
+                      log.source.name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                TranslatedText(_formatDate(log.recordedAt),
-                    style: TextStyle(
-                        fontSize: 11, color: colors.textSecondary)),
+                TranslatedText(
+                  _formatDate(log.recordedAt),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                ),
                 if (log.notes != null && log.notes!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.notes_rounded,
-                          size: 13, color: colors.textSecondary),
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 13,
+                        color: colors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: TranslatedText(log.notes!,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: colors.textSecondary,
-                                fontStyle: FontStyle.italic)),
+                        child: TranslatedText(
+                          log.notes!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       ),
                     ],
                   ),

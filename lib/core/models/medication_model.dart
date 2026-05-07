@@ -1,3 +1,4 @@
+// lib\core\models\medication_model.dart
 class MedicationReminder {
   final int id;
   final String remindAt;

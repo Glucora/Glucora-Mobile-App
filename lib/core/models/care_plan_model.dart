@@ -1,3 +1,4 @@
+// lib\core\models\care_plan_model.dart
 class CarePlan {
   final int targetGlucoseMin;
   final int targetGlucoseMax;
@@ -19,11 +20,29 @@ class CarePlan {
     this.maxAutoBolus = 4.0,
     this.nextAppointment,
     this.doctorNotes = '',
-  }) : basalProgram = basalProgram ?? [
-          BasalSegment(startHour: 0, endHour: 6, rate: 0.85),
-          BasalSegment(startHour: 6, endHour: 12, rate: 1.0),
-          BasalSegment(startHour: 12, endHour: 24, rate: 0.9),
-        ];
+  }) : basalProgram =
+           basalProgram ??
+           [
+             BasalSegment(startHour: 0, endHour: 6, rate: 0.85),
+             BasalSegment(startHour: 6, endHour: 12, rate: 1.0),
+             BasalSegment(startHour: 12, endHour: 24, rate: 0.9),
+           ];
+           
+  factory CarePlan.fromJson(Map<String, dynamic> json) {
+    return CarePlan(
+      targetGlucoseMin: json['target_glucose_min'] ?? 70,
+      targetGlucoseMax: json['target_glucose_max'] ?? 180,
+      insulinType: json['insulin_type'] ?? 'NovoLog (Fast-Acting)',
+      insulinToCarbRatio: (json['carb_ratio'] ?? 12).toDouble(),
+      sensitivityFactor: (json['insulin_sensitivity_factor'] ?? 45).toDouble(),
+      maxAutoBolus: (json['max_auto_dose_units'] ?? 4.0).toDouble(),
+      nextAppointment: json['next_appointment'] != null
+          ? DateTime.parse(json['next_appointment'])
+          : null,
+      doctorNotes: json['notes'] ?? '',
+      basalProgram: [], // fetched separately from care_plan_basal_segments
+    );
+  }
 
   CarePlan copyWith({
     int? targetGlucoseMin,
@@ -61,11 +80,7 @@ class BasalSegment {
     required this.rate,
   });
 
-  BasalSegment copyWith({
-    int? startHour,
-    int? endHour,
-    double? rate,
-  }) {
+  BasalSegment copyWith({int? startHour, int? endHour, double? rate}) {
     return BasalSegment(
       startHour: startHour ?? this.startHour,
       endHour: endHour ?? this.endHour,

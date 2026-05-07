@@ -11,6 +11,8 @@ import 'patient_profile_controller.dart';
 import 'edit_profile_screen.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/connections_screen.dart';
 import 'package:glucora_ai_companion/features/patient/widgets/bluetooth_pairing_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/repositories/patient_repository.dart';
 
 // ─────────────────────────────────────────────────────────────
 // PatientProfileTab  (StatefulWidget – UI only)
@@ -49,10 +51,15 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
     ),
   ];
 
+  late final String _userId;
+
   @override
   void initState() {
     super.initState();
-    _controller = PatientProfileController()..init();
+    _userId = Supabase.instance.client.auth.currentUser!.id;
+    _controller = PatientProfileController(
+      PatientRepository(Supabase.instance.client),
+    )..init(_userId);
   }
 
   @override
@@ -74,16 +81,32 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
           phone: s.phone,
           height: s.height,
           weight: s.weight,
-          onSave: _controller.saveProfile,
+          onSave:
+              ({
+                required String name,
+                required String email,
+                required String phone,
+                required int age,
+                required double heightCm,
+                required double weightKg,
+              }) => _controller.saveProfile(
+                userId: _userId,
+                name: name,
+                email: email,
+                phone: phone,
+                age: age,
+                heightCm: heightCm,
+                weightKg: weightKg,
+              ),
         ),
       ),
     );
-    if (result != null) _controller.loadProfile();
+    if (result != null) _controller.loadProfile(_userId);
   }
 
   Future<void> _switchToGuardian() async {
     try {
-      await _controller.switchToGuardian();
+      await _controller.switchToGuardian(_userId);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const GuardianMainScreen()),
@@ -120,7 +143,7 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
           notificationsEnabled: _notificationsEnabled,
           onNotificationsChanged: (v) =>
               setState(() => _notificationsEnabled = v),
-          onPictureChanged: _controller.loadProfile,
+          onPictureChanged: () => _controller.loadProfile(_userId),
           onEditProfile: _openEditProfile,
           onLogout: () => showLogoutDialog(context),
           faqs: _faqs,
@@ -136,47 +159,45 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
   }
 
   List<Widget> _buildSettingsCards(BuildContext context) => [
-        _SettingsCard(
-          icon: Icons.bluetooth_rounded,
-          title: 'Bluetooth Pairing',
-          subtitle: 'Connect your CGM sensor or pump',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const BluetoothPairingScreen()),
-          ),
+    _SettingsCard(
+      icon: Icons.bluetooth_rounded,
+      title: 'Bluetooth Pairing',
+      subtitle: 'Connect your CGM sensor or pump',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BluetoothPairingScreen()),
+      ),
+    ),
+    const SizedBox(height: 16),
+    _SettingsCard(
+      icon: Icons.people_outline_rounded,
+      title: 'My Connections & Sharing',
+      subtitle: 'Doctors, guardians & location sharing',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ConnectionsScreen()),
+      ),
+    ),
+    const SizedBox(height: 16),
+    _SettingsCard(
+      icon: Icons.person_add_alt_1_rounded,
+      title: 'Connect with Care Team',
+      subtitle: 'Find and connect with doctors & guardians',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ConnectionRequestsScreen(role: 'patient'),
         ),
-        const SizedBox(height: 16),
-        _SettingsCard(
-          icon: Icons.people_outline_rounded,
-          title: 'My Connections & Sharing',
-          subtitle: 'Doctors, guardians & location sharing',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ConnectionsScreen()),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SettingsCard(
-          icon: Icons.person_add_alt_1_rounded,
-          title: 'Connect with Care Team',
-          subtitle: 'Find and connect with doctors & guardians',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  const ConnectionRequestsScreen(role: 'patient'),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        buildSwitchRoleCard(
-          context,
-          title: 'Switch to Guardian View',
-          subtitle: 'Switch your role to guardian',
-          onTap: _switchToGuardian,
-        ),
-      ];
+      ),
+    ),
+    const SizedBox(height: 16),
+    buildSwitchRoleCard(
+      context,
+      title: 'Switch to Guardian View',
+      subtitle: 'Switch your role to guardian',
+      onTap: _switchToGuardian,
+    ),
+  ];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -231,8 +252,7 @@ class _PatientInfoCard extends StatelessWidget {
                 iconColor: colors.primary,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => const WeeklyReportScreen()),
+                  MaterialPageRoute(builder: (_) => const WeeklyReportScreen()),
                 ),
               ),
             ),
@@ -245,7 +265,8 @@ class _PatientInfoCard extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const PatientHistoryScreen()),
+                    builder: (_) => const PatientHistoryScreen(),
+                  ),
                 ),
               ),
             ),
@@ -390,10 +411,7 @@ class _SettingsCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   TranslatedText(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                 ],
               ),

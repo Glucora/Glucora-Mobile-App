@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/services/repositories/patient_repository.dart';
 
 // ─────────────────────────────────────────────────────────────
 // PatientProfileState  (Value Object / Snapshot)
@@ -60,80 +61,36 @@ class PatientProfileState {
 //
 // The UI layer (PatientProfileTab) never calls Supabase directly.
 // ─────────────────────────────────────────────────────────────
+
 class PatientProfileController extends ChangeNotifier {
-  final _supabase = Supabase.instance.client;
+  final PatientRepository _repo;
+  PatientProfileController(this._repo);
 
   PatientProfileState _state = const PatientProfileState();
   PatientProfileState get state => _state;
-
-  // Bumped on every successful load so widgets using ValueKey can fully
-  // rebuild (e.g. to bust image cache).
   int _reloadKey = 0;
   int get reloadKey => _reloadKey;
+  RealtimeChannel? _channel;
 
-  RealtimeChannel? _profileChannel;
-
-  // ── Lifecycle ────────────────────────────────────────────
-  void init() {
-    loadProfile();
-    _subscribeToRealtime();
+  void init(String userId) {
+    loadProfile(userId);
+    _channel = _repo.subscribeToProfileChanges(
+      userId: userId,
+      onChanged: () => loadProfile(userId),
+    );
   }
 
-  @override
-  void dispose() {
-    _profileChannel?.unsubscribe();
-    super.dispose();
-  }
-
-  // ── Data Loading ─────────────────────────────────────────
-  Future<void> loadProfile() async {
+  Future<void> loadProfile(String userId) async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-
-      var userData = await _supabase
-          .from('users')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      userData ??= await _supabase
-          .from('users')
-          .insert({
-            'id': user.id,
-            'email': user.email,
-            'full_name': 'New User',
-          })
-          .select()
-          .single();
-
-      var patientData = await _supabase
-          .from('patient_profile')
-          .select()
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-      patientData ??= await _supabase
-          .from('patient_profile')
-          .insert({'user_id': user.id, 'height_cm': 0, 'weight_kg': 0})
-          .select()
-          .single();
-
-      final rawUrl = userData?['profile_picture_url'] as String? ?? '';
-      final baseUrl =
-          rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
-      final cachedUrl = baseUrl.isNotEmpty
-          ? '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}'
-          : '';
-
+      final profile = await _repo.getProfile(userId);
       _state = PatientProfileState(
-        name: userData?['full_name'] ?? 'No Name',
-        phone: userData?['phone_no'] ?? '',
-        email: userData?['email'] ?? '',
-        age: (userData?['age'] ?? 0).toInt(),
-        height: '${patientData?['height_cm'] ?? 0} cm',
-        weight: '${patientData?['weight_kg'] ?? 0} kg',
-        profilePictureUrl: cachedUrl,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        age: profile.age,
+        height: profile.height,
+        weight: profile.weight,
+        profilePictureUrl: profile.profilePictureUrl,
         isLoading: false,
       );
       _reloadKey++;
@@ -144,29 +101,8 @@ class PatientProfileController extends ChangeNotifier {
     }
   }
 
-  // ── Real-time subscription ────────────────────────────────
-  void _subscribeToRealtime() {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-
-    _profileChannel = _supabase
-        .channel('patient_profile_$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'users',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'id',
-            value: userId,
-          ),
-          callback: (_) => loadProfile(),
-        )
-        .subscribe();
-  }
-
-  // ── Save edits ────────────────────────────────────────────
   Future<void> saveProfile({
+    required String userId,
     required String name,
     required String email,
     required String phone,
@@ -174,41 +110,24 @@ class PatientProfileController extends ChangeNotifier {
     required double heightCm,
     required double weightKg,
   }) async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
-
-    await _supabase.auth.updateUser(
-      UserAttributes(
-        email: email != user.email ? email : null,
-        data: {'full_name': name, 'phone': phone},
-      ),
+    await _repo.updateProfile(
+      userId: userId,
+      fullName: name,
+      email: email,
+      phone: phone,
+      age: age,
+      heightCm: heightCm,
+      weightKg: weightKg,
     );
-
-    await _supabase
-        .from('users')
-        .update({
-          'full_name': name,
-          'email': email,
-          'phone_no': phone,
-          'age': age,
-        })
-        .eq('id', user.id);
-
-    await _supabase
-        .from('patient_profile')
-        .update({'weight_kg': weightKg, 'height_cm': heightCm})
-        .eq('user_id', user.id);
-
-    await loadProfile();
+    await loadProfile(userId);
   }
 
-  // ── Role switch ───────────────────────────────────────────
-  Future<void> switchToGuardian() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return;
-    await _supabase
-        .from('users')
-        .update({'role': 'guardian'})
-        .eq('id', userId);
+  Future<void> switchToGuardian(String userId) =>
+      _repo.switchRole(userId, 'guardian');
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 }
