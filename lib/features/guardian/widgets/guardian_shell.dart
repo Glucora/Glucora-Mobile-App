@@ -4,7 +4,7 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/connection_requests_screen.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_navigation.dart';
 import 'package:glucora_ai_companion/shared/widgets/base_profile_tab.dart';
 import 'package:glucora_ai_companion/shared/widgets/shared_profile_field.dart';
 import '../screens/guardian_home_screen.dart';

@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_navigation.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class RoleSelectionScreen extends StatefulWidget {

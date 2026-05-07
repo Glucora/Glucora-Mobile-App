@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/admin/screens/admin_main_screen.dart';
 import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_navigation.dart';
 import 'package:glucora_ai_companion/features/auth/screens/signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
