@@ -208,9 +208,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$name');
       await file.writeAsBytes(pdfBytes);
-      await Share.shareXFiles([
-        XFile(file.path, mimeType: 'application/pdf'),
-      ], subject: 'Glucora Weekly Report');
+await SharePlus.instance.share(
+  ShareParams(
+    files: [
+      XFile(file.path, mimeType: 'application/pdf'),
+    ],
+    subject: 'Glucora Weekly Report',
+  ),
+);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
