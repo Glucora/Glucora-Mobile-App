@@ -6,7 +6,8 @@ import '../../../core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 
 class CsvExportSheet extends StatefulWidget {
-  const CsvExportSheet({super.key});
+  final List<HistoryEntry> entries;
+  const CsvExportSheet({super.key, required this.entries}); 
 
   @override
   State<CsvExportSheet> createState() => _CsvExportSheetState();
@@ -192,13 +193,15 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
         ),
         child: Column(
           children: [
-            _datePickerRow(context,
+            _datePickerRow(
+              context,
               label: 'From',
               value: _customStart,
               onPick: (d) => setState(() => _customStart = d),
             ),
             const Divider(height: 1, color: Color(0xFFF0F0F0)),
-            _datePickerRow(context,
+            _datePickerRow(
+              context,
               label: 'To',
               value: _customEnd,
               onPick: (d) => setState(() => _customEnd = d),
@@ -253,7 +256,9 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: value != null ? colors.textPrimary : colors.textSecondary,
+                color: value != null
+                    ? colors.textPrimary
+                    : colors.textSecondary,
               ),
             ),
             const SizedBox(width: 6),
@@ -269,7 +274,11 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(context, Icons.filter_list_outlined, 'Include Entry Types'),
+        _sectionHeader(
+          context,
+          Icons.filter_list_outlined,
+          'Include Entry Types',
+        ),
         const SizedBox(height: 14),
         Container(
           decoration: BoxDecoration(
@@ -285,7 +294,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
           ),
           child: Column(
             children: [
-              _typeRow(context,
+              _typeRow(
+                context,
                 icon: Icons.monitor_heart_outlined,
                 iconColor: colors.accent,
                 label: 'CGM Readings',
@@ -293,7 +303,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 onChanged: (v) => setState(() => _includeCgm = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(context,
+              _typeRow(
+                context,
                 icon: Icons.fingerprint,
                 iconColor: const Color(0xFF5B8CF5),
                 label: 'Manual Logs',
@@ -301,7 +312,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 onChanged: (v) => setState(() => _includeManual = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(context,
+              _typeRow(
+                context,
                 icon: Icons.water_drop_outlined,
                 iconColor: const Color(0xFF9B59B6),
                 label: 'Insulin Doses',
@@ -309,7 +321,8 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
                 onChanged: (v) => setState(() => _includeInsulin = v ?? false),
               ),
               const Divider(height: 1, color: Color(0xFFF0F0F0)),
-              _typeRow(context,
+              _typeRow(
+                context,
                 icon: Icons.warning_amber_rounded,
                 iconColor: const Color(0xFFFF6B6B),
                 label: 'Device Failures',
@@ -469,7 +482,7 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
       ],
     };
 
-    final entries = patientLogEntries.where((e) {
+    final entries = widget.entries.where((e) {
       return allowed.contains(e.type) &&
           !e.timestamp.isBefore(startDate) &&
           !e.timestamp.isAfter(endDate);
@@ -517,9 +530,12 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
 
     if (!mounted) return;
 
-    await Share.shareXFiles([
-      XFile(file.path, mimeType: 'text/csv'),
-    ], subject: 'Glucora Export – glucora_export_$stamp.csv');
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: 'text/csv')],
+        subject: 'Glucora Export – glucora_export_$stamp.csv',
+      ),
+    );
 
     setState(() => _isExporting = false);
     if (mounted) Navigator.pop(context);

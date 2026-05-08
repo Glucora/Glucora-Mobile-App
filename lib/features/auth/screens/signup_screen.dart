@@ -152,7 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
 
-      print('Auth error: ${e.message}');
+       debugPrint('Auth error: ${e.message}');
 
       if (e.message.contains('User already registered')) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +174,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      print('Sign up error: $e');
+       debugPrint('Sign up error: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

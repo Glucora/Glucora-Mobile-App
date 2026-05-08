@@ -5,61 +5,25 @@ import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/screens/settings_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
-/// Configuration model for a single FAQ entry.
 class FaqEntry {
   final String question;
   final String answer;
   const FaqEntry(this.question, this.answer);
 }
 
-/// A reusable profile shell widget shared across Admin, Doctor, Guardian,
-/// and Patient roles. Role-specific sections are injected via slots.
-///
-/// Usage:
-/// ```dart
-/// BaseProfileTab(
-///   name: _name,
-///   age: _age,
-///   roleBadge: 'Administrator',        // optional — shown below age
-///   infoCard: Column(...),             // your info rows/columns
-///   faqs: [...],
-///   onEditProfile: _editProfile,
-///   onLogout: () => _showLogoutDialog(context),
-///   profilePictureUrl: _profilePictureUrl,
-///   notificationsEnabled: _notificationsEnabled,
-///   onNotificationsChanged: (v) => setState(() => _notificationsEnabled = v),
-///   extraSettingsWidgets: [...],       // optional — appended inside SettingsScreen
-///   aboveLogout: [...],               // optional widgets before Logout button
-/// )
-/// ```
 class BaseProfileTab extends StatefulWidget {
   final String name;
   final int age;
-
-  /// Optional role badge shown below age (e.g. "Administrator").
   final String? roleBadge;
-
   final String profilePictureUrl;
-
-  /// The info card widget (email, phone, address, etc.) shown below the avatar.
   final Widget infoCard;
-
   final List<FaqEntry> faqs;
-
   final VoidCallback onEditProfile;
   final VoidCallback onLogout;
-
   final bool notificationsEnabled;
   final ValueChanged<bool> onNotificationsChanged;
-
-  /// Called when the profile picture is tapped and changed — typically reloads data.
   final VoidCallback onPictureChanged;
-
-  /// Extra widgets appended after the standard notification toggle inside SettingsScreen.
   final List<Widget> extraSettingsWidgets;
-
-  /// Optional widgets inserted between the FAQs and the Logout button
-  /// (e.g. "Switch to Guardian" button for patient, "Switch to Patient" for guardian).
   final List<Widget> aboveLogout;
 
   const BaseProfileTab({
@@ -111,7 +75,10 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: colors.textSecondary,
+                  ),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -119,6 +86,7 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
                         notificationsEnabled: widget.notificationsEnabled,
                         onNotificationsChanged: widget.onNotificationsChanged,
                         additionalSettings: widget.extraSettingsWidgets,
+                        onLogout: widget.onLogout,
                       ),
                     ),
                   ),
@@ -154,7 +122,11 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: widget.onEditProfile,
-                        child: Icon(Icons.edit, size: 18, color: colors.primary),
+                        child: Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: colors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -166,7 +138,10 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
                   if (widget.roleBadge != null) ...[
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -209,30 +184,6 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
               const SizedBox(height: 24),
               ...widget.aboveLogout,
             ],
-
-            // ── Logout button ─────────────────────────────────────
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: widget.onLogout,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: colors.error),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: TranslatedText(
-                  'Log Out',
-                  style: TextStyle(
-                    color: colors.error,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 30),
           ],
         ),
@@ -240,7 +191,12 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
     );
   }
 
-  Widget _faqItem(BuildContext context, int index, String question, String answer) {
+  Widget _faqItem(
+    BuildContext context,
+    int index,
+    String question,
+    String answer,
+  ) {
     final colors = context.colors;
     final isOpen = _openFaqIndex == index;
 
@@ -277,7 +233,10 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
                 AnimatedRotation(
                   turns: isOpen ? 0.25 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -285,7 +244,11 @@ class _BaseProfileTabState extends State<BaseProfileTab> {
               const SizedBox(height: 10),
               TranslatedText(
                 answer,
-                style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  height: 1.4,
+                ),
               ),
             ],
           ],
@@ -304,45 +267,51 @@ void showLogoutDialog(BuildContext context) {
       final colors = context.colors;
       return AlertDialog(
         title: const TranslatedText('Log Out'),
-        content: const TranslatedText('Are you sure to log out of your account?'),
+        content: const TranslatedText(
+          'Are you sure to log out of your account?',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: TranslatedText('Cancel', style: TextStyle(color: colors.textSecondary)),
+            child: TranslatedText(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               // Store the original context before closing dialog
               final originalContext = context;
-              
+
               // Close the dialog
               if (ctx.mounted) {
                 Navigator.of(ctx).pop();
               }
-              
+
               // Small delay to ensure dialog is fully dismissed
               await Future.delayed(const Duration(milliseconds: 50));
-              
+
               try {
                 await Supabase.instance.client.auth.signOut();
               } catch (e) {
                 debugPrint('Sign out error: $e');
               }
-              
+
               // Use the original context for navigation
               if (originalContext.mounted) {
-                Navigator.of(originalContext).pushNamedAndRemoveUntil(
-                  '/login-screen',
-                  (route) => false,
-                );
+                Navigator.of(
+                  originalContext,
+                ).pushNamedAndRemoveUntil('/login-screen', (route) => false);
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.error,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const TranslatedText('Logout'),
           ),
@@ -370,5 +339,55 @@ Widget buildInfoCard(BuildContext context, {required Widget child}) {
       ],
     ),
     child: child,
+  );
+}
+Widget buildSwitchRoleCard(BuildContext context, {
+  required String title,
+  required String subtitle,
+  required VoidCallback onTap,
+}) {
+  return Builder(
+    builder: (context) {
+      final colors = context.colors;
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.3)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.swap_horiz_rounded, color: colors.primary, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TranslatedText(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                    const SizedBox(height: 2),
+                    TranslatedText(subtitle, style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }

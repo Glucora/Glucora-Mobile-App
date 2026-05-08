@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_navigation.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
 
-Future<void> _saveRoleToProfiles({
+/* Future<void> _saveRoleToProfiles({
   required String userId,
   required String role,
 }) async {
@@ -26,7 +26,7 @@ Future<void> _saveRoleToProfiles({
       .eq('id', userId)
       .select()
       .single();
-}
+} */
 
 Future<void> _selectRole(String role) async {
   if (_saving) return;

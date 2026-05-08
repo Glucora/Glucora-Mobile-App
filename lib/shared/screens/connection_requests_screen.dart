@@ -1,3 +1,4 @@
+// lib\shared\screens\connection_requests_screen.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,30 +19,31 @@ class _RoleConfig {
     required this.connectionsTable,
     required this.requestedByValue,
   });
-}
 
-_RoleConfig _configForRole(String role) {
-  switch (role) {
-    case 'doctor':
-      return const _RoleConfig(
-        profileIdField: 'doctor_id',
-        connectionsTable: 'doctor_patient_connections',
-        requestedByValue: 'doctor',
-      );
-    case 'guardian':
-      return const _RoleConfig(
-        profileIdField: 'guardian_id',
-        connectionsTable: 'guardian_patient_connections',
-        requestedByValue: 'guardian',
-      );
-    case 'patient':
-      return const _RoleConfig(
-        profileIdField: 'patient_id',
-        connectionsTable: 'doctor_patient_connections',
-        requestedByValue: 'patient',
-      );
-    default:
-      throw Exception('Unknown role: $role');
+  // ✅ OOP improvement: factory constructor instead of free-standing function
+  factory _RoleConfig.forRole(String role) {
+    switch (role) {
+      case 'doctor':
+        return const _RoleConfig(
+          profileIdField: 'doctor_id',
+          connectionsTable: 'doctor_patient_connections',
+          requestedByValue: 'doctor',
+        );
+      case 'guardian':
+        return const _RoleConfig(
+          profileIdField: 'guardian_id',
+          connectionsTable: 'guardian_patient_connections',
+          requestedByValue: 'guardian',
+        );
+      case 'patient':
+        return const _RoleConfig(
+          profileIdField: 'patient_id',
+          connectionsTable: 'doctor_patient_connections',
+          requestedByValue: 'patient',
+        );
+      default:
+        throw Exception('Unknown role: $role');
+    }
   }
 }
 
@@ -122,7 +124,8 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
   @override
   void initState() {
     super.initState();
-    _config = _configForRole(widget.role);
+    // ✅ Updated to use factory constructor
+    _config = _RoleConfig.forRole(widget.role);
     _tabController = TabController(length: 3, vsync: this);
     _fetchRequests();
   }
@@ -158,7 +161,8 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
             final userData = row['users'] as Map<String, dynamic>?;
             final fullName = userData?['full_name'] ?? 'Unknown User';
             final personId = userData?['id'] as String? ?? '';
-            final profilePictureUrl = userData?['profile_picture_url'] as String?;
+            final profilePictureUrl =
+                userData?['profile_picture_url'] as String?;
             all.add(
               ConnectionRequest(
                 id: row['id'].toString(),
@@ -384,6 +388,17 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Roaa
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: colors.textPrimary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Roaa end-----
           TranslatedText(
             'Connection Requests',
             style: TextStyle(
@@ -569,7 +584,6 @@ class _RequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // ✅ Profile Picture instead of CircleAvatar
               ProfilePicture(
                 userId: request.personId,
                 imageUrl: request.profilePictureUrl,
@@ -940,7 +954,6 @@ class _SearchSheetState extends State<_SearchSheet> {
       ),
       child: Row(
         children: [
-          // ✅ Profile Picture in search results
           ProfilePicture(
             userId: p['targetId'],
             imageUrl: p['profile_picture_url'],

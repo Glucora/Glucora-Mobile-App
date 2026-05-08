@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/models/history_entry_model.dart';
 import 'history_detail_screen.dart';
 import '../widgets/csv_export_sheet.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/services/repositories/glucose_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ── Graph filter enums ────────────────────────────────────────────────────
 
@@ -74,66 +74,71 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   String _activeFilter = 'All';
   _GraphType _graphType = _GraphType.glucose;
   _GraphSpan _graphSpan = _GraphSpan.day;
-  bool _loading = true;
+  bool _loading = false;
   String? _error;
-
-  final List<String> _filters = [
-    'All', 'CGM Reading', 'Manual Log',
-    'Insulin', 'CGM Failure', 'Pump Failure',
-  ];
 
   @override
   void initState() {
     super.initState();
-    patientLogEntries = []; 
     _loadHistory();
   }
 
-  // ✅ Fetch from Supabase
   Future<void> _loadHistory() async {
-  if (!mounted) return;
-  setState(() { _loading = true; _error = null; });
-  try {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('Not logged in');
-
-    final patientId = await getPatientProfileId(userId);
-    if (patientId == null) throw Exception('No patient profile');
-
-    final response = await supabase
-        .from('event_history')
-        .select()
-        .eq('patient_id', patientId)
-        .order('occurred_at', ascending: false)
-        .limit(200);
-
     if (!mounted) return;
     setState(() {
-      patientLogEntries = (response as List) // ✅ replaces the list entirely
-          .map((e) => HistoryEntry.fromJson(e))
-          .toList();
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() { 
-      _loading = false; 
-      _error = 'Failed to load history: $e'; 
-    });
+    try {
+      final repo = GlucoseRepository(Supabase.instance.client);
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+ 
+      final patientId = await repo.getPatientProfileId(userId);
+      if (patientId == null) throw Exception('No patient profile');
+
+      final rows = await repo.getEventHistory(patientId);
+      
+      debugPrint('ROW COUNT: ${rows.length}');
+      if (rows.isNotEmpty) debugPrint('FIRST ROW: ${rows.first}');
+
+      if (!mounted) return;
+      setState(() {
+        patientLogEntries = rows.map((e) => HistoryEntry.fromJson(e)).toList();
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Failed to load history: $e';
+      });
+    }
   }
-}
+
+  final List<String> _filters = [
+    'All',
+    'CGM Reading',
+    'Manual Log',
+    'Insulin',
+    'CGM Failure',
+    'Pump Failure',
+  ];
+
   // ── Computed ───────────────────────────────────────────────────────────
+
   List<HistoryEntry> get _filtered {
     if (_activeFilter == 'All') return patientLogEntries;
     const map = {
-      'CGM Reading':  HistoryEntryType.cgmReading,
-      'Manual Log':   HistoryEntryType.manualGlucoseLog,
-      'Insulin':      HistoryEntryType.insulinDelivery,
-      'CGM Failure':  HistoryEntryType.cgmDeviceFailure,
+      'CGM Reading': HistoryEntryType.cgmReading,
+      'Manual Log': HistoryEntryType.manualGlucoseLog,
+      'Insulin': HistoryEntryType.insulinDelivery,
+      'CGM Failure': HistoryEntryType.cgmDeviceFailure,
       'Pump Failure': HistoryEntryType.micropumpFailure,
     };
-    return patientLogEntries.where((e) => e.type == map[_activeFilter]).toList();
+    return patientLogEntries
+        .where((e) => e.type == map[_activeFilter])
+        .toList();
   }
 
   int _countForType(HistoryEntryType t) =>
@@ -297,115 +302,73 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   // ── Build ──────────────────────────────────────────────────────────────
- @override
-Widget build(BuildContext context) {
-  final colors = context.colors;
-  final filtered = _filtered;
 
-  // ✅ Loading state
-  if (_loading) {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final filtered = _filtered;
+
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(body: Center(child: Text(_error!)));
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
-      body: const Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  // ✅ Error state
-  if (_error != null) {
-    return Scaffold(
-      backgroundColor: colors.background,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: colors.error),
-            const SizedBox(height: 12),
-            Text(_error!,
-                style: TextStyle(color: colors.error),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadHistory,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ✅ rest of your existing build unchanged from here
-  return Scaffold(
-    backgroundColor: colors.background,
-    bottomNavigationBar: _buildNavBar(context),
-    body: SafeArea(
-      child: RefreshIndicator( // ✅ pull to refresh
-        onRefresh: _loadHistory,
+      bottomNavigationBar: _buildNavBar(context),
+      body: SafeArea(
         child: OrientationBuilder(
           builder: (context, orientation) {
             final isLandscape = orientation == Orientation.landscape;
             return CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(
-                    child: _buildHeader(context, isLandscape)),
+                SliverToBoxAdapter(child: _buildHeader(context, isLandscape)),
                 SliverToBoxAdapter(child: _buildGraphCard(context)),
-                SliverToBoxAdapter(
-                    child: _buildSummaryCounts(context)),
+                SliverToBoxAdapter(child: _buildSummaryCounts(context)),
                 if (!isLandscape)
-                  SliverToBoxAdapter(
-                      child: _buildFilterChipsScroll(context)),
+                  SliverToBoxAdapter(child: _buildFilterChipsScroll(context)),
                 SliverToBoxAdapter(
-                    child: _buildListLabel(context, filtered.length)),
+                  child: _buildListLabel(context, filtered.length),
+                ),
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.history_rounded,
-                              size: 48,
-                              color: colors.textSecondary),
-                          const SizedBox(height: 12),
-                          Text(
-                            patientLogEntries.isEmpty
-                                ? 'No history recorded yet'
-                                : 'No entries for this filter',
-                            style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 15),
-                          ),
-                        ],
+                      child: TranslatedText(
+                        'No entries for this filter.',
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ),
                 if (filtered.isNotEmpty && !isLandscape)
                   SliverPadding(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) =>
-                            _HistoryCard(entry: filtered[i]),
+                        (ctx, i) => _HistoryCard(entry: filtered[i]),
                         childCount: filtered.length,
                       ),
                     ),
                   ),
                 if (filtered.isNotEmpty && isLandscape)
                   SliverPadding(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 0,
-                        mainAxisExtent: 120,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 0,
+                            mainAxisExtent: 120,
+                          ),
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) =>
-                            _HistoryCard(entry: filtered[i]),
+                        (ctx, i) => _HistoryCard(entry: filtered[i]),
                         childCount: filtered.length,
                       ),
                     ),
@@ -415,9 +378,9 @@ Widget build(BuildContext context) {
           },
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   // ── Header ─────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, bool isLandscape) {
@@ -477,7 +440,7 @@ Widget build(BuildContext context) {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (_) => const CsvExportSheet(),
+            builder: (_) => CsvExportSheet(entries: patientLogEntries),
           ),
         ),
       ],
@@ -526,16 +489,40 @@ Widget build(BuildContext context) {
     final colors = context.colors;
     return Row(
       children: [
-        _graphTypeChip(context, _GraphType.glucose, Icons.show_chart_rounded, 'Glucose', colors.accent),
+        _graphTypeChip(
+          context,
+          _GraphType.glucose,
+          Icons.show_chart_rounded,
+          'Glucose',
+          colors.accent,
+        ),
         const SizedBox(width: 8),
-        _graphTypeChip(context, _GraphType.insulin, Icons.water_drop_outlined, 'Insulin', const Color(0xFF9B59B6)),
+        _graphTypeChip(
+          context,
+          _GraphType.insulin,
+          Icons.water_drop_outlined,
+          'Insulin',
+          const Color(0xFF9B59B6),
+        ),
         const SizedBox(width: 8),
-        _graphTypeChip(context, _GraphType.failures, Icons.warning_amber_rounded, 'Failures', colors.error),
+        _graphTypeChip(
+          context,
+          _GraphType.failures,
+          Icons.warning_amber_rounded,
+          'Failures',
+          colors.error,
+        ),
       ],
     );
   }
 
-  Widget _graphTypeChip(BuildContext context, _GraphType type, IconData icon, String label, Color activeColor) {
+  Widget _graphTypeChip(
+    BuildContext context,
+    _GraphType type,
+    IconData icon,
+    String label,
+    Color activeColor,
+  ) {
     final colors = context.colors;
     final isActive = _graphType == type;
     return Expanded(
@@ -580,12 +567,22 @@ Widget build(BuildContext context) {
         const SizedBox(width: 8),
         _graphSpanChip(context, _GraphSpan.week, '7 Days', colors.primaryDark),
         const SizedBox(width: 8),
-        _graphSpanChip(context, _GraphSpan.month, '30 Days', colors.primaryDark),
+        _graphSpanChip(
+          context,
+          _GraphSpan.month,
+          '30 Days',
+          colors.primaryDark,
+        ),
       ],
     );
   }
 
-  Widget _graphSpanChip(BuildContext context, _GraphSpan span, String label, Color activeColor) {
+  Widget _graphSpanChip(
+    BuildContext context,
+    _GraphSpan span,
+    String label,
+    Color activeColor,
+  ) {
     final colors = context.colors;
     final isActive = _graphSpan == span;
     return Expanded(
@@ -598,7 +595,9 @@ Widget build(BuildContext context) {
             color: isActive ? activeColor : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive ? activeColor : colors.textSecondary.withValues(alpha: 0.3),
+              color: isActive
+                  ? activeColor
+                  : colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
           child: TranslatedText(
@@ -619,7 +618,9 @@ Widget build(BuildContext context) {
     switch (_graphType) {
       case _GraphType.glucose:
         final pts = _glucosePoints(start, end);
-        if (pts.isEmpty) return _emptyChart(context, 'No glucose data in this period');
+        if (pts.isEmpty) {
+          return _emptyChart(context, 'No glucose data in this period');
+        }
         return CustomPaint(
           painter: _GlucoseLinePainter(points: pts, start: start, end: end),
           child: const SizedBox.expand(),
@@ -758,14 +759,26 @@ Widget build(BuildContext context) {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
         children: [
-          _countChip(context, 'CGM',
-              _countForType(HistoryEntryType.cgmReading), colors.accent),
+          _countChip(
+            context,
+            'CGM',
+            _countForType(HistoryEntryType.cgmReading),
+            colors.accent,
+          ),
           const SizedBox(width: 8),
-          _countChip(context, 'Manual',
-              _countForType(HistoryEntryType.manualGlucoseLog), const Color(0xFF5B8CF5)),
+          _countChip(
+            context,
+            'Manual',
+            _countForType(HistoryEntryType.manualGlucoseLog),
+            const Color(0xFF5B8CF5),
+          ),
           const SizedBox(width: 8),
-          _countChip(context, 'Insulin',
-              _countForType(HistoryEntryType.insulinDelivery), const Color(0xFF9B59B6)),
+          _countChip(
+            context,
+            'Insulin',
+            _countForType(HistoryEntryType.insulinDelivery),
+            const Color(0xFF9B59B6),
+          ),
           const SizedBox(width: 8),
           _countChip(context, 'Failures', failureCount, colors.error),
         ],
@@ -773,7 +786,12 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _countChip(BuildContext context, String label, int count, Color color) {
+  Widget _countChip(
+    BuildContext context,
+    String label,
+    int count,
+    Color color,
+  ) {
     final colors = context.colors;
     return Expanded(
       child: Container(
@@ -903,7 +921,9 @@ Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha:0.2))),
+        border: Border(
+          top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
