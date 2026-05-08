@@ -37,7 +37,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     try {
       // Get current session to check if we're authenticated
       final session = Supabase.instance.client.auth.currentSession;
-      print('Reset password - Session: ${session?.user.email ?? "NULL"}');
+       debugPrint('Reset password - Session: ${session?.user.email ?? "NULL"}');
 
       if (session == null) {
         throw AuthException(
@@ -49,7 +49,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         UserAttributes(password: _passwordController.text),
       );
 
-      print('Password updated successfully');
+       debugPrint('Password updated successfully');
 
       if (!mounted) return;
 
@@ -69,7 +69,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         (route) => false,
       );
     } on AuthException catch (e) {
-      print('Auth error: ${e.message}');
+       debugPrint('Auth error: ${e.message}');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -78,7 +78,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
       );
     } catch (e) {
-      print('Unexpected error: $e');
+       debugPrint('Unexpected error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -211,10 +211,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter a new password';
-                  if (value.length < 6)
+                  }
+                  if (value.length < 6) {
                     return 'Password must be at least 6 characters';
+                  }
                   return null;
                 },
               ),
@@ -245,10 +247,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   fillColor: colors.surface,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please confirm your password';
-                  if (value != _passwordController.text)
+                  }
+                  if (value != _passwordController.text) {
                     return 'Passwords do not match';
+                  }
                   return null;
                 },
               ),

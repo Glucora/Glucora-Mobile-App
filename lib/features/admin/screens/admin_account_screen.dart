@@ -25,6 +25,14 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   String? _error;
   bool _notificationsEnabled = true;
 
+  // ✅ Incremented on every _fetchUserData call.
+  // Passed as ValueKey to BaseProfileTab so Flutter fully destroys and
+  // recreates the widget tree — including ProfilePicture — on each reload,
+  // preventing any stale in-memory image cache from the previous key.
+  int _reloadKey = 0;
+
+  RealtimeChannel? _profileChannel;
+
   static const List<FaqEntry> _faqs = [
     FaqEntry(
       'How do I manage system users?',
@@ -48,6 +56,36 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
   void initState() {
     super.initState();
     _fetchUserData();
+    _subscribeToProfileChanges();
+  }
+
+  @override
+  void dispose() {
+    _profileChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeToProfileChanges() {
+    final supabase = Supabase.instance.client;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _profileChannel = supabase
+        .channel('admin_profile_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'users',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) {
+            if (mounted) _fetchUserData();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _fetchUserData() async {
@@ -65,20 +103,37 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
           .eq('id', session.user.id)
           .single();
 
+      if (!mounted) return;
+
       setState(() {
         _name = response['full_name'] as String? ?? 'Admin User';
         _email = response['email'] as String? ?? '';
         _phone = response['phone_no'] as String? ?? '';
         _age = response['age'] as int? ?? 0;
         _address = response['address'] as String? ?? '';
-        _profilePictureUrl = response['profile_picture_url'] as String? ?? '';
+
+        // ✅ Strip any existing cache-buster from the stored URL first,
+        // then append a fresh timestamp. Without stripping, the URL grows
+        // indefinitely and the "base" URL comparison never matches,
+        // causing Flutter to treat it as a new network resource but still
+        // serve the cached bytes for that path from its HTTP cache.
+        final rawUrl = response['profile_picture_url'] as String? ?? '';
+        final baseUrl = rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
+        _profilePictureUrl = baseUrl.isNotEmpty
+            ? '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}'
+            : '';
+
+        // ✅ Bump key so BaseProfileTab gets a new ValueKey → full rebuild
+        _reloadKey++;
         _loading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -154,9 +209,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
         result['address'],
         result['age'],
       );
-      if (result['profile_picture_url'] != null) {
-        setState(() => _profilePictureUrl = result['profile_picture_url']);
-      }
+      await _fetchUserData();
     }
   }
 
@@ -184,6 +237,10 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
     }
 
     return BaseProfileTab(
+      // ✅ New key on every reload → Flutter destroys the old widget entirely
+      // (including its internal Image cache entry) and builds a fresh one.
+      // This is the nuclear option that guarantees no stale image survives.
+      key: ValueKey(_reloadKey),
       name: _name,
       age: _age,
       roleBadge: 'Administrator',
@@ -266,7 +323,15 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
   void _onPictureChanged() {
     final userId = Supabase.instance.client.auth.currentUser!.id;
     ProfilePictureService.getProfilePictureUrl(userId).then((url) {
-      if (mounted) setState(() => _profilePictureUrl = url ?? '');
+      if (mounted) {
+        final rawUrl = url ?? '';
+        final baseUrl = rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
+        setState(() {
+          _profilePictureUrl = baseUrl.isNotEmpty
+              ? '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}'
+              : '';
+        });
+      }
     });
   }
 
@@ -350,7 +415,6 @@ class _EditAdminProfileScreenState extends State<_EditAdminProfileScreen> {
       'email': updatedEmail.isEmpty ? widget.email : updatedEmail,
       'phone': updatedPhone.isEmpty ? widget.phone : updatedPhone,
       'address': updatedAddress.isEmpty ? widget.address : updatedAddress,
-      'profile_picture_url': _profilePictureUrl,
     });
   }
 }

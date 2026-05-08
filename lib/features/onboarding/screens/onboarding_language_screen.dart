@@ -87,7 +87,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                   Text(
                     'Select Your Language',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colors.textPrimary,
                     ),
@@ -97,7 +97,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                     'Choose your preferred language for the app',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: colors.textSecondary,
                     ),
                   ),

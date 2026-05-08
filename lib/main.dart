@@ -13,13 +13,13 @@ import 'package:glucora_ai_companion/core/utils/app_strings.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/role_selection_screen.dart';
-import 'features/patient/widgets/patient_shell.dart';
+import 'features/patient/widgets/bluetooth_pairing_screen.dart';
+import 'features/patient/widgets/patient_navigation.dart';
 import 'features/doctor/widgets/doctor_shell.dart';
 import 'features/admin/screens/admin_main_screen.dart';
 import 'features/guardian/widgets/guardian_shell.dart';
@@ -29,12 +29,9 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
-import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
-import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
-import 'package:glucora_ai_companion/services/ble/ble_hardware_repository.dart';
+import 'package:glucora_ai_companion/providers/admin_provider.dart';
+import 'package:glucora_ai_companion/providers/glucose_provider.dart';
 
-import 'package:glucora_ai_companion/services/supabase_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -97,9 +94,9 @@ void main() async {
           type: OtpType.recovery,
           tokenHash: tokenHash,
         );
-        print('Cold start recovery session established');
+        debugPrint('Cold start recovery session established');
       } catch (e) {
-        print('Cold start verifyOTP failed: $e');
+        debugPrint('Cold start verifyOTP failed: $e');
       }
     }
   }
@@ -120,6 +117,8 @@ class GlucoraApp extends StatelessWidget {
           value: localizationService,
         ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => GlucoseProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -175,7 +174,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
-    AiPredictionUploadService.instance.startListening();
+      AiPredictionUploadService.instance.startListening();
     }
   }
 

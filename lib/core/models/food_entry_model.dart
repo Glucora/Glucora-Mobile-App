@@ -40,4 +40,25 @@ class FoodEntry {
           : null,
     );
   }
+
+  FoodEntry copyWith({
+    String? name,
+    int? calories,
+    double? carbsG,
+    double? proteinG,
+    double? fatG,
+    String? mealType,
+    DateTime? loggedAt,
+  }) {
+    return FoodEntry(
+      id: id,
+      name: name ?? this.name,
+      calories: calories ?? this.calories,
+      carbsG: carbsG ?? this.carbsG,
+      proteinG: proteinG ?? this.proteinG,
+      fatG: fatG ?? this.fatG,
+      mealType: mealType ?? this.mealType,
+      loggedAt: loggedAt ?? this.loggedAt,
+    );
+  }
 }

@@ -1,3 +1,4 @@
+// lib\shared\widgets\delete_account_tile.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
@@ -189,7 +190,7 @@ class DeleteAccountTile extends StatelessWidget {
       
       final role = userData['role'] as String? ?? '';
 
-      print('Deleting account for role: $role');
+        debugPrint('Deleting account for role: $role');
 
       // Delete role-specific data first (using try-catch for each, like your friend's code)
       if (role == 'patient') {
