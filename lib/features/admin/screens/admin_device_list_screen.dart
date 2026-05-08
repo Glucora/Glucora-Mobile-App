@@ -19,7 +19,11 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AdminProvider>().loadDevices());
+      Future.microtask(() {
+    if (!mounted) return;
+
+    context.read<AdminProvider>().loadDevices();
+  });
   }
 
   @override
@@ -143,7 +147,7 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                           vertical: 4,
                         ),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (_, _) =>
                             const SizedBox(height: 8),
                         itemBuilder: (context, index) =>
                             _deviceCard(context, filtered[index]),

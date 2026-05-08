@@ -15,7 +15,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AdminProvider>().loadDashboard());
+     Future.microtask(() {
+    if (!mounted) return;
+
+    context.read<AdminProvider>().loadDashboard();
+  });
   }
 
   @override

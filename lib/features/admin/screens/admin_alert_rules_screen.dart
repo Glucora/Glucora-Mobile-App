@@ -15,12 +15,16 @@ class AdminAlertRulesScreen extends StatefulWidget {
 class _AdminAlertRulesScreenState extends State<AdminAlertRulesScreen> {
   String _severityFilter = 'All';
 
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() =>
-        context.read<AdminProvider>().loadAlerts());
-  }
+@override
+void initState() {
+  super.initState();
+
+  Future.microtask(() {
+    if (!mounted) return;
+
+    context.read<AdminProvider>().loadAlerts();
+  });
+}
 
   List<AdminAlert> _filtered(List<AdminAlert> alerts) {
     if (_severityFilter == 'All') return alerts;

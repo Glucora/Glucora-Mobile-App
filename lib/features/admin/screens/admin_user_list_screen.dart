@@ -21,7 +21,11 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AdminProvider>().loadUsers());
+      Future.microtask(() {
+    if (!mounted) return;
+
+    context.read<AdminProvider>().loadUsers();
+  });
     _searchController.addListener(_onSearchChanged);
   }
 

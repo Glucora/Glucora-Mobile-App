@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
         try {
           LocationService.startSharingLocation(user.id);
         } catch (e) {
-          print('Could not start location: $e');
+           debugPrint('Could not start location: $e');
         }
         targetScreen = const PatientNavigation();
       } else if (normalizedRole == 'doctor') {
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         await NotificationService.saveTokenToSupabase();
       } catch (e) {
-        print('Notification token save failed: $e'); // ✅ don't block login
+         debugPrint('Notification token save failed: $e'); // ✅ don't block login
       }
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     } catch (e) {
-      print('Login error: $e'); // ✅ print actual error for debugging
+       debugPrint('Login error: $e'); // ✅ print actual error for debugging
       if (mounted) {
         _showErrorSnackBar('Could not load user role: $e');
       }
