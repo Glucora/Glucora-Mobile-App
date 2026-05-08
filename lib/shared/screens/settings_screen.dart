@@ -27,12 +27,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late bool _notifications;
+  // late bool _notifications;
 
   @override
   void initState() {
     super.initState();
-    _notifications = widget.notificationsEnabled;
+    // _notifications = widget.notificationsEnabled;
   }
 
   @override
