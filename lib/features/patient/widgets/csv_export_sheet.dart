@@ -516,9 +516,14 @@ class _CsvExportSheetState extends State<CsvExportSheet> {
 
     if (!mounted) return;
 
-    await Share.shareXFiles([
+    await SharePlus.instance.share(
+  ShareParams(
+    files: [
       XFile(file.path, mimeType: 'text/csv'),
-    ], subject: 'Glucora Export – glucora_export_$stamp.csv');
+    ],
+    subject: 'Glucora Export – glucora_export_$stamp.csv',
+  ),
+);
 
     setState(() => _isExporting = false);
     if (mounted) Navigator.pop(context);
