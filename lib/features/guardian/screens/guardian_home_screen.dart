@@ -107,8 +107,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       return;
     }
     final uri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-    else _showErrorSnackBar('Could not launch phone dialer');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      _showErrorSnackBar('Could not launch phone dialer');
+    }
   }
 
   Future<void> _sendSMS(String phoneNumber) async {
@@ -117,8 +120,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       return;
     }
     final uri = Uri(scheme: 'sms', path: phoneNumber);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-    else _showErrorSnackBar('Could not launch messaging app');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      _showErrorSnackBar('Could not launch messaging app');
+    }
   }
 
   void _navigateToDetail(GuardianPatient patient) {

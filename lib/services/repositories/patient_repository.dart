@@ -52,8 +52,8 @@ class PatientRepository extends BaseRepository {
               .maybeSingle(),
         ]);
 
-        var userData = results[0] as Map<String, dynamic>?;
-        var patientData = results[1] as Map<String, dynamic>?;
+        var userData = results[0];
+        var patientData = results[1];
 
         // Auto-create missing rows — same logic that was in the controller
         userData ??= await db
@@ -73,7 +73,7 @@ class PatientRepository extends BaseRepository {
             .single();
 
         final rawUrl =
-            userData?['profile_picture_url'] as String? ?? '';
+            userData['profile_picture_url'] as String? ?? '';
         final baseUrl =
             rawUrl.contains('?') ? rawUrl.split('?').first : rawUrl;
         final profilePictureUrl = baseUrl.isNotEmpty
@@ -81,12 +81,12 @@ class PatientRepository extends BaseRepository {
             : '';
 
         return PatientProfile(
-          name: userData?['full_name'] ?? 'No Name',
-          email: userData?['email'] ?? '',
-          phone: userData?['phone_no'] ?? '',
-          age: (userData?['age'] as num?)?.toInt() ?? 0,
-          height: '${patientData?['height_cm'] ?? 0} cm',
-          weight: '${patientData?['weight_kg'] ?? 0} kg',
+          name: userData['full_name'] ?? 'No Name',
+          email: userData['email'] ?? '',
+          phone: userData['phone_no'] ?? '',
+          age: (userData['age'] as num?)?.toInt() ?? 0,
+          height: '${patientData['height_cm'] ?? 0} cm',
+          weight: '${patientData['weight_kg'] ?? 0} kg',
           profilePictureUrl: profilePictureUrl,
         );
       });
