@@ -556,7 +556,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                     color: colors.textPrimary)),
             TranslatedText(label,
                 style: TextStyle(
-                    fontSize: 11, color: colors.textSecondary)),
+                    fontSize: 11, color: colors.textPrimary)),
           ]),
         ),
       );

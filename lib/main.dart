@@ -31,6 +31,7 @@ import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_lang
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
 import 'package:glucora_ai_companion/providers/admin_provider.dart';
 import 'package:glucora_ai_companion/providers/glucose_provider.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -93,9 +94,9 @@ void main() async {
           type: OtpType.recovery,
           tokenHash: tokenHash,
         );
-          debugPrint('Cold start recovery session established');
+        debugPrint('Cold start recovery session established');
       } catch (e) {
-          debugPrint('Cold start verifyOTP failed: $e');
+        debugPrint('Cold start verifyOTP failed: $e');
       }
     }
   }
@@ -110,15 +111,15 @@ class GlucoraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-   return MultiProvider(
-  providers: [
-    ChangeNotifierProvider<LocalizationService>.value(
-      value: localizationService,
-    ),
-    ChangeNotifierProvider(create: (_) => ThemeProvider()),
-    ChangeNotifierProvider(create: (_) => AdminProvider()),
-    ChangeNotifierProvider(create: (_) => GlucoseProvider()),
-  ],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<LocalizationService>.value(
+          value: localizationService,
+        ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => GlucoseProvider()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
@@ -173,7 +174,7 @@ class _StartupGateState extends State<_StartupGate> {
         .toLowerCase();
     if (normalizedRole == 'patient') {
       LocationService.startSharingLocation(user.id);
-    AiPredictionUploadService.instance.startListening();
+      AiPredictionUploadService.instance.startListening();
     }
   }
 

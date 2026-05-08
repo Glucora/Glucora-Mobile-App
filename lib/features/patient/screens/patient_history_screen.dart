@@ -4,7 +4,10 @@ import 'history_detail_screen.dart';
 import '../widgets/csv_export_sheet.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:glucora_ai_companion/shared/widgets/translated_text.dart'; // ← Add this import
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
+import 'package:glucora_ai_companion/services/repositories/glucose_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 // ── Graph filter enums ────────────────────────────────────────────────────
 
 enum _GraphType { glucose, insulin, failures }
@@ -71,6 +74,47 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   String _activeFilter = 'All';
   _GraphType _graphType = _GraphType.glucose;
   _GraphSpan _graphSpan = _GraphSpan.day;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final repo = GlucoseRepository(Supabase.instance.client);
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not logged in');
+ 
+      final patientId = await repo.getPatientProfileId(userId);
+      if (patientId == null) throw Exception('No patient profile');
+
+      final rows = await repo.getEventHistory(patientId);
+      
+      debugPrint('ROW COUNT: ${rows.length}');
+      if (rows.isNotEmpty) debugPrint('FIRST ROW: ${rows.first}');
+
+      if (!mounted) return;
+      setState(() {
+        patientLogEntries = rows.map((e) => HistoryEntry.fromJson(e)).toList();
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Failed to load history: $e';
+      });
+    }
+  }
 
   final List<String> _filters = [
     'All',
@@ -264,6 +308,14 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     final colors = context.colors;
     final filtered = _filtered;
 
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(body: Center(child: Text(_error!)));
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
       bottomNavigationBar: _buildNavBar(context),
@@ -279,13 +331,18 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 SliverToBoxAdapter(child: _buildSummaryCounts(context)),
                 if (!isLandscape)
                   SliverToBoxAdapter(child: _buildFilterChipsScroll(context)),
-                SliverToBoxAdapter(child: _buildListLabel(context, filtered.length)),
+                SliverToBoxAdapter(
+                  child: _buildListLabel(context, filtered.length),
+                ),
                 if (filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
                       child: TranslatedText(
                         'No entries for this filter.',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 15),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ),
@@ -383,7 +440,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (_) => const CsvExportSheet(),
+            builder: (_) => CsvExportSheet(entries: patientLogEntries),
           ),
         ),
       ],
@@ -432,16 +489,40 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     final colors = context.colors;
     return Row(
       children: [
-        _graphTypeChip(context, _GraphType.glucose, Icons.show_chart_rounded, 'Glucose', colors.accent),
+        _graphTypeChip(
+          context,
+          _GraphType.glucose,
+          Icons.show_chart_rounded,
+          'Glucose',
+          colors.accent,
+        ),
         const SizedBox(width: 8),
-        _graphTypeChip(context, _GraphType.insulin, Icons.water_drop_outlined, 'Insulin', const Color(0xFF9B59B6)),
+        _graphTypeChip(
+          context,
+          _GraphType.insulin,
+          Icons.water_drop_outlined,
+          'Insulin',
+          const Color(0xFF9B59B6),
+        ),
         const SizedBox(width: 8),
-        _graphTypeChip(context, _GraphType.failures, Icons.warning_amber_rounded, 'Failures', colors.error),
+        _graphTypeChip(
+          context,
+          _GraphType.failures,
+          Icons.warning_amber_rounded,
+          'Failures',
+          colors.error,
+        ),
       ],
     );
   }
 
-  Widget _graphTypeChip(BuildContext context, _GraphType type, IconData icon, String label, Color activeColor) {
+  Widget _graphTypeChip(
+    BuildContext context,
+    _GraphType type,
+    IconData icon,
+    String label,
+    Color activeColor,
+  ) {
     final colors = context.colors;
     final isActive = _graphType == type;
     return Expanded(
@@ -486,12 +567,22 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         const SizedBox(width: 8),
         _graphSpanChip(context, _GraphSpan.week, '7 Days', colors.primaryDark),
         const SizedBox(width: 8),
-        _graphSpanChip(context, _GraphSpan.month, '30 Days', colors.primaryDark),
+        _graphSpanChip(
+          context,
+          _GraphSpan.month,
+          '30 Days',
+          colors.primaryDark,
+        ),
       ],
     );
   }
 
-  Widget _graphSpanChip(BuildContext context, _GraphSpan span, String label, Color activeColor) {
+  Widget _graphSpanChip(
+    BuildContext context,
+    _GraphSpan span,
+    String label,
+    Color activeColor,
+  ) {
     final colors = context.colors;
     final isActive = _graphSpan == span;
     return Expanded(
@@ -504,7 +595,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             color: isActive ? activeColor : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive ? activeColor : colors.textSecondary.withValues(alpha: 0.3),
+              color: isActive
+                  ? activeColor
+                  : colors.textSecondary.withValues(alpha: 0.3),
             ),
           ),
           child: TranslatedText(
@@ -525,7 +618,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     switch (_graphType) {
       case _GraphType.glucose:
         final pts = _glucosePoints(start, end);
-        if (pts.isEmpty) return _emptyChart(context, 'No glucose data in this period');
+        if (pts.isEmpty) {
+          return _emptyChart(context, 'No glucose data in this period');
+        }
         return CustomPaint(
           painter: _GlucoseLinePainter(points: pts, start: start, end: end),
           child: const SizedBox.expand(),
@@ -664,14 +759,26 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
         children: [
-          _countChip(context, 'CGM',
-              _countForType(HistoryEntryType.cgmReading), colors.accent),
+          _countChip(
+            context,
+            'CGM',
+            _countForType(HistoryEntryType.cgmReading),
+            colors.accent,
+          ),
           const SizedBox(width: 8),
-          _countChip(context, 'Manual',
-              _countForType(HistoryEntryType.manualGlucoseLog), const Color(0xFF5B8CF5)),
+          _countChip(
+            context,
+            'Manual',
+            _countForType(HistoryEntryType.manualGlucoseLog),
+            const Color(0xFF5B8CF5),
+          ),
           const SizedBox(width: 8),
-          _countChip(context, 'Insulin',
-              _countForType(HistoryEntryType.insulinDelivery), const Color(0xFF9B59B6)),
+          _countChip(
+            context,
+            'Insulin',
+            _countForType(HistoryEntryType.insulinDelivery),
+            const Color(0xFF9B59B6),
+          ),
           const SizedBox(width: 8),
           _countChip(context, 'Failures', failureCount, colors.error),
         ],
@@ -679,7 +786,12 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _countChip(BuildContext context, String label, int count, Color color) {
+  Widget _countChip(
+    BuildContext context,
+    String label,
+    int count,
+    Color color,
+  ) {
     final colors = context.colors;
     return Expanded(
       child: Container(
@@ -809,7 +921,9 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border(top: BorderSide(color: colors.textSecondary.withValues(alpha:0.2))),
+        border: Border(
+          top: BorderSide(color: colors.textSecondary.withValues(alpha: 0.2)),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),

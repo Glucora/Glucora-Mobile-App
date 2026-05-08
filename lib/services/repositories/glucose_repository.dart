@@ -48,5 +48,28 @@ class GlucoseRepository extends BaseRepository {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       'recorded_at': DateTime.now().toIso8601String(),
     });
+
+    // ── also log to event_history ──
+    await db.from('event_history').insert({
+      'patient_id': patientProfileId,
+      'event_type': 'manual_glucose_log',
+      'occurred_at': DateTime.now().toIso8601String(),
+      'glucose_value': value.toInt(),
+      'glucose_trend': 'stable',
+      'log_method': mealTime,
+      if (notes != null && notes.isNotEmpty) 'patient_note': notes,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getEventHistory(
+    int patientProfileId,
+  ) async {
+    final response = await db
+        .from('event_history')
+        .select()
+        .eq('patient_id', patientProfileId)
+        .order('occurred_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(response);
   }
 }

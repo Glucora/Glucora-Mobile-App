@@ -105,6 +105,60 @@ class HistoryEntry {
       failureResolved: failureResolved ?? this.failureResolved,
     );
   }
-}
 
+  factory HistoryEntry.fromJson(Map<String, dynamic> json) {
+    final typeStr = json['event_type'] as String? ?? '';
+    final HistoryEntryType type;
+    switch (typeStr) {
+      case 'cgm_reading':
+        type = HistoryEntryType.cgmReading;
+        break;
+      case 'manual_glucose_log':
+        type = HistoryEntryType.manualGlucoseLog;
+        break;
+      case 'insulin_delivery':
+        type = HistoryEntryType.insulinDelivery;
+        break;
+      case 'cgm_device_failure':
+        type = HistoryEntryType.cgmDeviceFailure;
+        break;
+      case 'micropump_failure':
+        type = HistoryEntryType.micropumpFailure;
+        break;
+      default:
+        type = HistoryEntryType.cgmReading;
+    }
+
+    final ts = DateTime.parse(json['occurred_at'] as String);
+    final hour = ts.hour;
+    final minute = ts.minute.toString().padLeft(2, '0');
+    final period = hour < 12 ? 'AM' : 'PM';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final timeLabel = '$displayHour:$minute $period';
+
+    return HistoryEntry(
+      id: json['id']?.toString() ?? '',
+      timeLabel: timeLabel,
+      timestamp: ts,
+      type: type,
+      glucoseValue: json['glucose_value'] as int?,
+      glucoseTrend: json['glucose_trend'] as String?,
+      cgmDevice: json['cgm_device'] as String?,
+      sensorSession: json['sensor_session'] as String?,
+      logMethod: json['log_method'] as String?,
+      patientNote: json['patient_note'] as String?,
+      deliveryType: json['delivery_type'] as String?,
+      insulinUnits: (json['insulin_units'] as num?)?.toDouble(),
+      deliverySource: json['delivery_source'] as String?,
+      mealContext: json['meal_context'] as String?,
+      glucoseAtDelivery: json['glucose_at_delivery'] as int?,
+      cgmFailureKind: json['cgm_failure_kind'] as String?,
+      pumpFailureKind: json['pump_failure_kind'] as String?,
+      pumpModel: json['pump_model'] as String?,
+      pumpBatteryLevel: json['pump_battery_level'] as String?,
+      failureDurationMinutes: json['failure_duration_minutes'] as int?,
+      failureResolved: json['failure_resolved'] as bool?,
+    );
+  }
+}
 List<HistoryEntry> patientLogEntries = [];

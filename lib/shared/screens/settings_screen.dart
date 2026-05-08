@@ -182,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 16),
                     const DeleteAccountTile(),
-                    const SizedBox(height: 32), // ✅ Extra padding at bottom
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
