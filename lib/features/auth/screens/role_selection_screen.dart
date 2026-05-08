@@ -16,7 +16,7 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _saving = false;
 
-Future<void> _saveRoleToProfiles({
+/* Future<void> _saveRoleToProfiles({
   required String userId,
   required String role,
 }) async {
@@ -26,7 +26,7 @@ Future<void> _saveRoleToProfiles({
       .eq('id', userId)
       .select()
       .single();
-}
+} */
 
 Future<void> _selectRole(String role) async {
   if (_saving) return;
