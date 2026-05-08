@@ -13,7 +13,6 @@ import 'package:glucora_ai_companion/core/utils/app_strings.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'features/auth/screens/signup_screen.dart';
@@ -94,9 +93,9 @@ void main() async {
           type: OtpType.recovery,
           tokenHash: tokenHash,
         );
-        print('Cold start recovery session established');
+          debugPrint('Cold start recovery session established');
       } catch (e) {
-        print('Cold start verifyOTP failed: $e');
+          debugPrint('Cold start verifyOTP failed: $e');
       }
     }
   }

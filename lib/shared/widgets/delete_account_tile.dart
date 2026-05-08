@@ -190,7 +190,7 @@ class DeleteAccountTile extends StatelessWidget {
       
       final role = userData['role'] as String? ?? '';
 
-      print('Deleting account for role: $role');
+        debugPrint('Deleting account for role: $role');
 
       // Delete role-specific data first (using try-catch for each, like your friend's code)
       if (role == 'patient') {
