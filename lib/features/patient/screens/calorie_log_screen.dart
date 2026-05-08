@@ -113,7 +113,7 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => StatefulBuilder(
+      builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Container(
           decoration: BoxDecoration(
             color: colors.surface,
@@ -124,9 +124,10 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
             left: 20,
             right: 20,
             top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,29 +149,29 @@ class _CalorieLogScreenState extends State<CalorieLogScreen> {
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary)),
                 const SizedBox(height: 20),
-                _field(context, _nameController, "Food name",
+                _field(ctx, _nameController, "Food name",
                     Icons.fastfood_rounded),
                 const SizedBox(height: 12),
-                _field(context, _calController, "Calories (kcal)",
+                _field(ctx, _calController, "Calories (kcal)",
                     Icons.local_fire_department_rounded,
                     type: TextInputType.number),
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(
-                    child: _field(context, _carbsController, "Carbs (g)",
+                    child: _field(ctx, _carbsController, "Carbs (g)",
                         Icons.grain_rounded,
                         type: TextInputType.number),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _field(
-                        context, _proteinController, "Protein (g)",
+                        ctx, _proteinController, "Protein (g)",
                         Icons.fitness_center_rounded,
                         type: TextInputType.number),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _field(context, _fatController, "Fat (g)",
+                    child: _field(ctx, _fatController, "Fat (g)",
                         Icons.opacity_rounded,
                         type: TextInputType.number),
                   ),

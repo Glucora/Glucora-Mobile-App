@@ -804,7 +804,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         Expanded(
             child: TranslatedText(label,
                 style: const TextStyle(
-                    fontSize: 11, color: Colors.black87))),
+                    fontSize: 11, color: Colors.white))),
         TranslatedText('$percent%',
             style: TextStyle(
                 fontSize: 12,
