@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'history_entry_model.dart';
+import 'package:glucora_ai_companion/core/models/history_entry_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Glucose zone thresholds & colors

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'admin_user_list_screen.dart';
 import 'admin_device_list_screen.dart';
 import 'admin_alert_rules_screen.dart';
-import 'admin_role_management_screen.dart';
-import 'admin_assignments_screen.dart';  
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
@@ -39,32 +37,7 @@ class AdminMoreScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const AdminUserListScreen()),
             ),
           ),
-          const SizedBox(height: 10),
-          _menuCard(
-            context,
-            icon: Icons.assignment_ind,
-            color: const Color(0xFF9B59B6),
-            title: 'Role Management',
-            subtitle: 'Assign roles to users',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AdminRoleManagementScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _menuCard(
-            context,
-            icon: Icons.link,
-            color: const Color(0xFF5B8CF5),
-            title: 'Doctor–Patient Assignments',
-            subtitle: 'Manage which doctors oversee which patients',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminAssignmentsScreen()),  // ✅ This should work with proper import
-            ),
-          ),
+
           const SizedBox(height: 24),
           _sectionTitle(context, 'Device & Alert Management'),
           const SizedBox(height: 8),

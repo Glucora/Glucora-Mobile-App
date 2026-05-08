@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/models/history_entry_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-
 class HistoryDetailScreen extends StatelessWidget {
   final HistoryEntry entry;
 

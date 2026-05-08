@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/features/admin/screens/admin_main_screen.dart';
 import 'package:glucora_ai_companion/features/doctor/widgets/doctor_shell.dart';
 import 'package:glucora_ai_companion/features/guardian/widgets/guardian_shell.dart';
-import 'package:glucora_ai_companion/features/patient/widgets/patient_shell.dart';
+import 'package:glucora_ai_companion/features/patient/widgets/patient_navigation.dart';
 import 'package:glucora_ai_companion/features/auth/screens/signup_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/location_service.dart';
@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
         try {
           LocationService.startSharingLocation(user.id);
         } catch (e) {
-          print('Could not start location: $e');
+           debugPrint('Could not start location: $e');
         }
         targetScreen = const PatientNavigation();
       } else if (normalizedRole == 'doctor') {
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         await NotificationService.saveTokenToSupabase();
       } catch (e) {
-        print('Notification token save failed: $e'); // ✅ don't block login
+         debugPrint('Notification token save failed: $e'); // ✅ don't block login
       }
 
       Navigator.of(context).pushAndRemoveUntil(
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     } catch (e) {
-      print('Login error: $e'); // ✅ print actual error for debugging
+       debugPrint('Login error: $e'); // ✅ print actual error for debugging
       if (mounted) {
         _showErrorSnackBar('Could not load user role: $e');
       }

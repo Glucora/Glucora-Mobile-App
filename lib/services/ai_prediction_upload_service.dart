@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-
 import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
-import 'package:glucora_ai_companion/services/supabase_service.dart';
+import 'package:glucora_ai_companion/services/repositories/prediction_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AiPredictionUploadService {
   AiPredictionUploadService._();
@@ -12,7 +12,9 @@ class AiPredictionUploadService {
 
   StreamSubscription<BleHardwareData>? _subscription;
 
-  /// Starts listening to the BLE hardware stream and auto-uploads any new predictions to Supabase.
+  final PredictionRepository _predictionRepo =
+      PredictionRepository(Supabase.instance.client);
+
   void startListening() {
     if (_subscription != null) {
       if (kDebugMode) {
@@ -22,12 +24,11 @@ class AiPredictionUploadService {
     }
 
     if (kDebugMode) {
-      print(
-        '[AiPredictionUploadService] Starting to listen for AI predictions...',
-      );
+      print('[AiPredictionUploadService] Starting to listen for AI predictions...');
     }
 
-    _subscription = BleHardwareService.instance.dataStream.listen((data) async {
+    _subscription =
+        BleHardwareService.instance.dataStream.listen((data) async {
       if (data.predictionValue != null) {
         if (kDebugMode) {
           print(
@@ -35,12 +36,13 @@ class AiPredictionUploadService {
           );
         }
 
-        // As requested by the user, every emission gets uploaded directly.
-        final success = await insertAiPrediction(data.predictionValue!);
+        final success =
+            await _predictionRepo.insert(data.predictionValue!);
+
         if (kDebugMode) {
           if (success) {
             print(
-              '[AiPredictionUploadService] Successfully uploaded valid prediction: ${data.predictionValue}',
+              '[AiPredictionUploadService] Successfully uploaded prediction: ${data.predictionValue}',
             );
           } else {
             print(
@@ -52,14 +54,11 @@ class AiPredictionUploadService {
     });
   }
 
-  /// Stops tracking hardware predictions and cleans up the active subscription.
   void stopListening() {
     _subscription?.cancel();
     _subscription = null;
     if (kDebugMode) {
-      print(
-        '[AiPredictionUploadService] Stopped listening for AI predictions.',
-      );
+      print('[AiPredictionUploadService] Stopped listening for AI predictions.');
     }
   }
 }
