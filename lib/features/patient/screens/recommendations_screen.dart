@@ -100,16 +100,15 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
   Future<void> _init() async {
     final provider = context.read<GlucoseProvider>();
-    if (provider.patientProfileId == null) {
+    if (provider.authUserId == null) {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
         setState(() => _error = 'Please log in first.');
         return;
       }
       await provider.init(user.id);
-    } else {
-      await provider.loadRecommendations(limit: 3);
     }
+    // Always refresh from AI on open
     await _refreshFromAPI();
   }
 
@@ -119,10 +118,6 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
 
     try {
       final provider = context.read<GlucoseProvider>();
-      if (provider.patientProfileId == null) {
-        setState(() => _error = 'No patient profile found.');
-        return;
-      }
 
       final reading = provider.latestReading;
       double? currentGlucose;
@@ -149,14 +144,12 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         return;
       }
 
-      for (final rec in aiRecs) {
-        await provider.saveRecommendation(
-          category: rec.category,
-          message: rec.message,
-        );
-      }
-
-      await provider.loadRecommendations(limit: 3);
+      // Save new first, delete old after — user never sees empty state
+      await provider.replaceRecommendations(
+        recs: aiRecs
+            .map((r) => {'category': r.category, 'message': r.message})
+            .toList(),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _error =
@@ -215,7 +208,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                     ),
             ],
           ),
-          body: provider.isLoading
+          body: _refreshing && provider.recommendations.isEmpty
               ? _buildLoading(colors)
               : RefreshIndicator(
                   onRefresh: _refreshFromAPI,
@@ -306,8 +299,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         TranslatedText(
           'Tap the refresh button to get AI-generated recommendations.',
           textAlign: TextAlign.center,
-          style:
-              TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5),
+          style: TextStyle(
+              fontSize: 13, color: colors.textSecondary, height: 1.5),
         ),
       ]),
     );
@@ -344,8 +337,9 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               TranslatedText(card.title,
                   style: TextStyle(
                       fontSize: 14,

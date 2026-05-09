@@ -1,4 +1,4 @@
-// lib\providers\glucose_provider.dart
+// lib/providers/glucose_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/glucose_log_model.dart';
@@ -22,18 +22,22 @@ class GlucoseProvider extends ChangeNotifier {
   final FoodLogRepository _foodLogRepo;
   final DeviceRepository _deviceRepo;
   final MedicationRepository _medicationRepo;
+
   GlucoseProvider()
-    : _glucoseRepo = GlucoseRepository(Supabase.instance.client),
-      _recommendationRepo = RecommendationRepository(Supabase.instance.client),
-      _predictionRepo = PredictionRepository(Supabase.instance.client),
-      _iobRepo = IobRepository(Supabase.instance.client),
-      _carePlanRepo = CarePlanRepository(Supabase.instance.client),
-      _foodLogRepo = FoodLogRepository(Supabase.instance.client),
-      _deviceRepo = DeviceRepository(Supabase.instance.client),
-      _medicationRepo = MedicationRepository(Supabase.instance.client);
+      : _glucoseRepo = GlucoseRepository(Supabase.instance.client),
+        _recommendationRepo =
+            RecommendationRepository(Supabase.instance.client),
+        _predictionRepo = PredictionRepository(Supabase.instance.client),
+        _iobRepo = IobRepository(Supabase.instance.client),
+        _carePlanRepo = CarePlanRepository(Supabase.instance.client),
+        _foodLogRepo = FoodLogRepository(Supabase.instance.client),
+        _deviceRepo = DeviceRepository(Supabase.instance.client),
+        _medicationRepo = MedicationRepository(Supabase.instance.client);
+
   // ─── STATE ────────────────────────────────────────────────────────────────
 
   int? patientProfileId;
+  String? authUserId;
   Map<String, dynamic>? latestReading;
   Map<String, dynamic>? latestPrediction;
   Map<String, dynamic>? latestIob;
@@ -51,11 +55,11 @@ class GlucoseProvider extends ChangeNotifier {
 
   // ─── INIT ─────────────────────────────────────────────────────────────────
 
-  /// Call this once after login to resolve the patient profile id
-  Future<void> init(String authUserId) async {
+  Future<void> init(String userId) async {
     _setLoading(true);
+    authUserId = userId;
     try {
-      patientProfileId = await _glucoseRepo.getPatientProfileId(authUserId);
+      patientProfileId = await _glucoseRepo.getPatientProfileId(userId);
       if (patientProfileId != null) {
         await Future.wait([
           loadLatestReading(),
@@ -75,7 +79,8 @@ class GlucoseProvider extends ChangeNotifier {
     }
   }
 
-  // ─── GLUCOSE ──────────────────────────────────────────────────────────────
+  // ─── MEDICATIONS ──────────────────────────────────────────────────────────
+
   Future<void> loadMedications() async {
     if (patientProfileId == null) return;
     try {
@@ -83,16 +88,6 @@ class GlucoseProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('Failed to load medications: $e');
-    }
-  }
-
-  Future<void> deleteLog(String id) async {
-    try {
-      await _glucoseRepo.deleteLog(id);
-      logs.removeWhere((l) => l.id == id);
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to delete log: $e');
     }
   }
 
@@ -160,6 +155,8 @@ class GlucoseProvider extends ChangeNotifier {
     }
   }
 
+  // ─── DEVICE ───────────────────────────────────────────────────────────────
+
   Future<String?> loadDeviceBattery(String userId) async {
     try {
       return await _deviceRepo.getBattery(userId);
@@ -168,6 +165,8 @@ class GlucoseProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  // ─── FOOD LOGS ────────────────────────────────────────────────────────────
 
   Future<void> loadFoodLogs() async {
     if (patientProfileId == null) return;
@@ -214,6 +213,8 @@ class GlucoseProvider extends ChangeNotifier {
     }
   }
 
+  // ─── CARE PLAN ────────────────────────────────────────────────────────────
+
   Future<void> loadCarePlan() async {
     if (patientProfileId == null) return;
     try {
@@ -238,21 +239,13 @@ class GlucoseProvider extends ChangeNotifier {
 
   String _fmtDate(DateTime d) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
+
+  // ─── IOB ──────────────────────────────────────────────────────────────────
 
   Future<void> loadLatestIob() async {
     if (patientProfileId == null) return;
@@ -263,6 +256,8 @@ class GlucoseProvider extends ChangeNotifier {
       _setError('Failed to load IOB: $e');
     }
   }
+
+  // ─── PREDICTIONS ──────────────────────────────────────────────────────────
 
   Future<void> loadLatestPrediction() async {
     if (patientProfileId == null) return;
@@ -284,6 +279,8 @@ class GlucoseProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // ─── GLUCOSE LOGS ─────────────────────────────────────────────────────────
 
   Future<void> loadLatestReading() async {
     if (patientProfileId == null) return;
@@ -313,53 +310,91 @@ class GlucoseProvider extends ChangeNotifier {
       await loadLatestReading();
     } catch (e) {
       _setError('Failed to insert log: $e');
-      rethrow;
+      rethrow; // ← kept from your friend's change
+    }
+  }
+
+  Future<void> deleteLog(String id) async {
+    // ← kept from your friend's change
+    try {
+      await _glucoseRepo.deleteLog(id);
+      logs.removeWhere((l) => l.id == id);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to delete log: $e');
     }
   }
 
   // ─── RECOMMENDATIONS ──────────────────────────────────────────────────────
 
-  Future<void> loadRecommendations({int limit = 20}) async {
-    if (patientProfileId == null) return;
+  Future<void> loadRecommendations({int limit = 3}) async {
+    if (authUserId == null) return;
     try {
       recommendations = await _recommendationRepo.getLatest(
-        patientProfileId: patientProfileId!,
+        patientProfileId: authUserId!,
         limit: limit,
       );
-      unreadCount = await _recommendationRepo.getUnreadCount(patientProfileId!);
+      unreadCount =
+          recommendations.where((r) => r['is_read'] == false).length;
       notifyListeners();
     } catch (e) {
       _setError('Failed to load recommendations: $e');
     }
   }
 
-  Future<void> saveRecommendation({
-    required String category,
-    required String message,
-    String? predictionId,
-  }) async {
-    if (patientProfileId == null) return;
-    try {
-      await _recommendationRepo.save(
-        patientProfileId: patientProfileId!,
-        category: category,
-        message: message,
-        predictionId: predictionId,
+  /// Saves new recommendations first, THEN deletes old ones
+  /// so the user never sees an empty state
+  Future<void> replaceRecommendations({
+  required List<Map<String, String>> recs,
+}) async {
+  if (authUserId == null) return;
+  try {
+    final newIds = <String>[];
+    final newRows = <Map<String, dynamic>>[];
+
+    // Step 1: save new ones and collect returned rows directly
+    for (final rec in recs) {
+      final saved = await _recommendationRepo.save(
+        patientProfileId: authUserId!,
+        category: rec['category']!,
+        message: rec['message']!,
       );
-      await loadRecommendations();
-    } catch (e) {
-      _setError('Failed to save recommendation: $e');
+      if (saved != null) {
+        newIds.add(saved['id'].toString());
+        newRows.add(saved); // ← use the returned row directly
+      }
     }
+
+    // Step 2: delete old ones silently in background
+    if (newIds.isNotEmpty) {
+      _recommendationRepo.deleteAllExcept(
+        patientProfileId: authUserId!,
+        keepIds: newIds,
+      ); // ← no await, user doesn't need to wait for this
+    }
+
+    // Step 3: set recommendations directly from what was just saved
+    // no DB re-fetch — no stale data, no ordering issues
+    if (newRows.isNotEmpty) {
+      recommendations = newRows;
+      unreadCount = newRows.where((r) => r['is_read'] == false).length;
+      notifyListeners();
+    }
+  } catch (e) {
+    _setError('Failed to replace recommendations: $e');
   }
+}
 
   Future<void> markAsRead(String recommendationId) async {
     try {
       await _recommendationRepo.markAsRead(recommendationId);
-      final index = recommendations.indexWhere(
-        (r) => r['id'] == recommendationId,
-      );
+      final index =
+          recommendations.indexWhere((r) => r['id'] == recommendationId);
       if (index != -1) {
-        recommendations[index] = {...recommendations[index], 'is_read': true};
+        recommendations[index] = {
+          ...recommendations[index],
+          'is_read': true,
+        };
         if (unreadCount > 0) unreadCount--;
         notifyListeners();
       }
