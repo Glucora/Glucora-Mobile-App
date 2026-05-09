@@ -1,3 +1,4 @@
+// lib\services\repositories\glucose_repository.dart
 import '../../core/models/glucose_log_model.dart';
 import 'base_repository.dart';
 
@@ -46,7 +47,7 @@ class GlucoseRepository extends BaseRepository {
       'is_predicted': false,
       'meal_time': mealTime,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
-      'recorded_at': DateTime.now().toIso8601String(),
+      'recorded_at': DateTime.now().toUtc().toIso8601String(),
     });
 
     // ── also log to event_history ──
@@ -59,6 +60,10 @@ class GlucoseRepository extends BaseRepository {
       'log_method': mealTime,
       if (notes != null && notes.isNotEmpty) 'patient_note': notes,
     });
+  }
+
+  Future<void> deleteLog(String id) async {
+    await db.from('glucose_readings').delete().eq('id', id);
   }
 
   Future<List<Map<String, dynamic>>> getEventHistory(

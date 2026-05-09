@@ -1,3 +1,4 @@
+// lib\features\patient\screens\manual_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -16,6 +17,8 @@ class ManualLogScreen extends StatefulWidget {
 class _ManualLogScreenState extends State<ManualLogScreen> {
   final _glucoseCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _scrollController = ScrollController();
+  String? _newlyAddedLogId;
   String _mealTime = "Before Meal";
   String _unit = "mg/dL";
   bool _saving = false;
@@ -35,6 +38,15 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     Future.microtask(() => _init());
   }
 
+  // Dispose it properly
+  @override
+  void dispose() {
+    _glucoseCtrl.dispose();
+    _notesCtrl.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _init() async {
     final provider = context.read<GlucoseProvider>();
     if (provider.patientProfileId == null) {
@@ -46,14 +58,48 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   }
 
   Future<void> _save() async {
+    FocusScope.of(context).unfocus();
     final val = _glucoseCtrl.text.trim();
-    if (val.isEmpty) return;
+
+    if (val.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a glucose value'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final parsed = double.tryParse(val);
-    if (parsed == null) return;
+    if (parsed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    final minVal = _unit == 'mmol/L' ? 1.1 : 20.0;
+    final maxVal = _unit == 'mmol/L' ? 44.4 : 800.0;
+    if (parsed < minVal || parsed > maxVal) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Value out of range for $_unit. Expected $minVal–$maxVal',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final notes = _notesCtrl.text.trim().isEmpty
         ? null
         : _notesCtrl.text.trim();
+
+    final valueInMgDl = _unit == 'mmol/L' ? parsed * 18.0182 : parsed;
 
     setState(() {
       _saving = true;
@@ -61,13 +107,92 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     });
 
     try {
-      await context.read<GlucoseProvider>().insertLog(parsed, notes, _mealTime);
+      final provider = context.read<GlucoseProvider>();
+      await provider.insertLog(valueInMgDl, notes, _mealTime);
       _glucoseCtrl.clear();
       _notesCtrl.clear();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reading saved: ${parsed.toStringAsFixed(1)} $_unit'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        final updatedLogs = context.read<GlucoseProvider>().logs;
+        if (updatedLogs.isNotEmpty) {
+          setState(() => _newlyAddedLogId = updatedLogs.first.id);
+
+          // Scroll down to show the recent logs section
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              _scrollController.animateTo(
+                400, // enough to get past the form
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+
+          Future.delayed(const Duration(seconds: 4), () {
+            if (mounted) setState(() => _newlyAddedLogId = null);
+          });
+        }
+      }
     } catch (e) {
-      setState(() => _error = "Failed to save: $e");
+      setState(() => _error = 'Failed to save: $e');
     } finally {
       setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteLog(GlucoseLog log) async {
+    FocusManager.instance.primaryFocus?.unfocus(); // ← change this line
+    await Future.delayed(const Duration(milliseconds: 100)); // ← add this
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Reading'),
+        content: Text(
+          'Remove ${log.value.toStringAsFixed(1)} mg/dL logged at ${_formatDate(log.recordedAt)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // You'll need to add deleteLog to GlucoseProvider (see note below)
+      await context.read<GlucoseProvider>().deleteLog(log.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reading deleted'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -79,6 +204,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       builder: (context, provider, _) {
         return SafeArea(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +415,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         color: colors.textPrimary,
                       ),
                     ),
-                    TranslatedText(
+                    Text(
                       "${provider.logs.length} entries",
                       style: TextStyle(
                         fontSize: 12,
@@ -299,14 +425,53 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 if (provider.isLoading)
                   const Center(child: CircularProgressIndicator())
                 else if (provider.logs.isEmpty)
-                  const TranslatedText("No logs yet")
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.water_drop_outlined,
+                            size: 48,
+                            color: colors.textSecondary.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "No logs yet",
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: colors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Your readings will appear here",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.textSecondary.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
                 else
-                  ...provider.logs.map((log) => _logTile(context, log)),
-
+                  Column(
+                    children: [
+                      ...provider.logs.map(
+                        (log) => KeyedSubtree(
+                          key: ValueKey(log.id),
+                          child: _logTile(context, log),
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 30),
               ],
             ),
@@ -352,34 +517,19 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
   Widget _logTile(BuildContext context, GlucoseLog log) {
     final colors = context.colors;
-
-    IconData trendIcon;
-    Color trendColor;
-    switch (log.trend) {
-      case GlucoseTrend.risingRapid:
-      case GlucoseTrend.rising:
-        trendIcon = Icons.arrow_upward_rounded;
-        trendColor = Colors.red;
-        break;
-      case GlucoseTrend.fallingRapid:
-      case GlucoseTrend.falling:
-        trendIcon = Icons.arrow_downward_rounded;
-        trendColor = Colors.blue;
-        break;
-      case GlucoseTrend.stable:
-        trendIcon = Icons.remove_rounded;
-        trendColor = Colors.green;
-    }
-
-    return Container(
+    final isNew = log.id == _newlyAddedLogId;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: isNew ? colors.primary.withValues(alpha: 0.06) : colors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: colors.textSecondary.withValues(alpha: 0.15),
-          width: 1,
+          color: isNew
+              ? colors.primary.withValues(alpha: 0.7)
+              : colors.textSecondary.withValues(alpha: 0.15),
+          width: isNew ? 1.8 : 1,
         ),
       ),
       child: Row(
@@ -395,14 +545,25 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TranslatedText(
-                      "${log.value} mg/dL",
+                      "${log.value.toStringAsFixed(1)} mg/dL",
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: colors.textPrimary,
                       ),
                     ),
-                    Icon(trendIcon, color: trendColor, size: 20),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _deleteLog(log),
+                          child: Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                            color: colors.textSecondary.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -430,7 +591,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                       const SizedBox(width: 8),
                     ],
                     TranslatedText(
-                      log.source.name,
+                      log.source.name, // ← .name because source is now an enum
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textSecondary,
@@ -476,8 +637,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   }
 
   String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    return "${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} "
-        "${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}";
+    final local = dt.isUtc ? dt.toLocal() : dt;
+    return "${local.year}-"
+        "${local.month.toString().padLeft(2, '0')}-"
+        "${local.day.toString().padLeft(2, '0')} "
+        "${local.hour.toString().padLeft(2, '0')}:"
+        "${local.minute.toString().padLeft(2, '0')}";
   }
 }
