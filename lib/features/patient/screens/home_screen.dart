@@ -540,6 +540,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Glucose card ──────────────────────────────────────────────────────────
 
+
   Widget _glucoseCard(BuildContext context) {
     final colors = context.colors;
     final suppressValues =
@@ -616,7 +617,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Current Glucose Level:",
+                      "Current Glucose Level",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -624,30 +625,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          glucoseDisplay,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: dotColor,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'Last updated: $updatedDisplay',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: colors.textSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      glucoseDisplay,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: dotColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Last updated: $updatedDisplay',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -674,6 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 
   Widget _dot(Color c, String label, GlucoraColors colors) => Row(
     mainAxisSize: MainAxisSize.min,
