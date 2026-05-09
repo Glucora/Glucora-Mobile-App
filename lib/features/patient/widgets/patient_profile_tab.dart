@@ -71,7 +71,10 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
   // ── Navigation helpers ────────────────────────────────────
   Future<void> _openEditProfile() async {
     final s = _controller.state;
-    final result = await Navigator.push<Map<String, dynamic>>(
+    // Store the current state to prevent navigation issues
+    final userId = _userId;
+
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => EditProfileScreen(
@@ -89,19 +92,26 @@ class _PatientProfileTabState extends State<PatientProfileTab> {
                 required int age,
                 required double heightCm,
                 required double weightKg,
-              }) => _controller.saveProfile(
-                userId: _userId,
-                name: name,
-                email: email,
-                phone: phone,
-                age: age,
-                heightCm: heightCm,
-                weightKg: weightKg,
-              ),
+              }) async {
+                // Ensure we have the current userId
+                await _controller.saveProfile(
+                  userId: userId,
+                  name: name,
+                  email: email,
+                  phone: phone,
+                  age: age,
+                  heightCm: heightCm,
+                  weightKg: weightKg,
+                );
+              },
         ),
       ),
     );
-    if (result != null) _controller.loadProfile(_userId);
+
+    // Refresh profile only if we got a success signal (true)
+    if (result == true && mounted) {
+      await _controller.loadProfile(userId);
+    }
   }
 
   Future<void> _switchToGuardian() async {
