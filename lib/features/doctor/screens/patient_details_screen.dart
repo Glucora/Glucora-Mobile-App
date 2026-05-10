@@ -57,18 +57,19 @@
     String? get _profilePictureUrl => _details?.profilePictureUrl;
 
     List<GlucoseReading> get glucoseHistory => _glucoseReadings.map((r) {
-          final dt = DateTime.parse(r['recorded_at']).toLocal();
-          final hour = dt.hour;
-          final min = dt.minute;
-          final period = hour < 12 ? 'am' : 'pm';
-          final displayHour =
-              hour == 0 ? 12 : hour > 12 ? hour - 12 : hour;
-          final time = min == 0
-              ? '$displayHour$period'
-              : '$displayHour:${min.toString().padLeft(2, '0')}';
-          return GlucoseReading(
-              time: time, value: (r['value_mg_dl'] as num).toInt());
-        }).toList();
+      final dt = DateTime.parse(r['recorded_at']).toLocal();
+      final hour = dt.hour;
+      final min = dt.minute;
+      final period = hour < 12 ? 'AM' : 'PM';
+      final displayHour = hour == 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      final time = '$displayHour:${min.toString().padLeft(2, '0')} $period';
+      
+      return GlucoseReading(
+        time: time,
+        value: (r['value_mg_dl'] as num).toInt(),
+        mealTag: r['meal_time'],
+      );
+    }).toList();
 
     List<InsulinDose> get insulinLog => _insulinDoses.map((d) {
           final dt = DateTime.parse(d['delivered_at']).toLocal();
@@ -1388,17 +1389,6 @@
                           ),
                                     )
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: ['12am', '6am', '12pm', '6pm', '12am']
-                        .map((t) => TranslatedText(t,
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: colors.textSecondary)))
-                        .toList(),
-                  ),
                 ],
               ),
             ),
@@ -1893,13 +1883,27 @@
   // Local data models (unchanged)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  class GlucoseReading {
-    final String time;
-    final int value;
-    final String? mealTag;
-    GlucoseReading(
-        {required this.time, required this.value, this.mealTag});
+class GlucoseReading {
+  final String time;      // Formatted time like "8:44 PM"
+  final int value;
+  final String? mealTag;
+  
+  GlucoseReading({required this.time, required this.value, this.mealTag});
+  
+  // Factory from your raw data
+  factory GlucoseReading.fromJson(Map<String, dynamic> json) {
+    final dt = DateTime.parse(json['recorded_at']).toLocal();
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    
+    return GlucoseReading(
+      time: '$hour:$min $period',
+      value: (json['value_mg_dl'] as num).toInt(),
+      mealTag: json['meal_time'],
+    );
   }
+}
 
   class InsulinDose {
     final String time;
@@ -1928,16 +1932,14 @@ class GlucoseChartPainter extends CustomPainter {
   final List<GlucoseReading> readings;
   GlucoseChartPainter({required this.readings});
 
-  // Increased padding for top breathing room
-  static const double _topPad = 28;      // Was 18, now 28
-  static const double _bottomPad = 12;   // Was 8, now 12
-  static const double _leftPad = 32;
-  static const double _rightPad = 8;
+  static const double _topPad = 24;
+  static const double _bottomPad = 28;
+  static const double _leftPad = 36;
+  static const double _rightPad = 12;
 
-  // Color constants
-  static const Color _inRangeColor = Color(0xFF2BB6A3);   // Teal
-  static const Color _aboveRangeColor = Color(0xFFFF9F40); // Orange
-  static const Color _belowRangeColor = Color(0xFFE53935); // Red
+  static const Color _inRangeColor = Color(0xFF2BB6A3);
+  static const Color _aboveRangeColor = Color(0xFFFF9F40);
+  static const Color _belowRangeColor = Color(0xFFE53935);
   static const double _targetLow = 70;
   static const double _targetHigh = 180;
 
@@ -1947,37 +1949,38 @@ class GlucoseChartPainter extends CustomPainter {
 
     const double minGlucose = 40;
     final dataMax = readings.map((r) => r.value).reduce((a, b) => a > b ? a : b).toDouble();
-    final double maxGlucose = math.max(450, ((dataMax * 1.2) / 50).ceil() * 50);
+    final rawMax = dataMax + 20;
+    final double maxGlucose = math.max(180, ((rawMax / 25).ceil() * 25).toDouble());
 
     final drawWidth = size.width - _leftPad - _rightPad;
     final drawHeight = size.height - _topPad - _bottomPad;
-    final xStep = drawWidth / (readings.length - 1);
+    final xStep = readings.length > 1 ? drawWidth / (readings.length - 1) : 0;
 
     double toY(double val) {
       final t = (val - minGlucose) / (maxGlucose - minGlucose);
       return _topPad + drawHeight - (t * drawHeight);
     }
 
-    // Helper to get color based on glucose value
     Color getColor(double value) {
       if (value > _targetHigh) return _aboveRangeColor;
       if (value < _targetLow) return _belowRangeColor;
       return _inRangeColor;
     }
 
-    // Clip drawing area
-    canvas.save();
-    canvas.clipRect(Rect.fromLTRB(_leftPad, 0, size.width - _rightPad, size.height));
+    final bandTopY = toY(_targetHigh);
+    final bandBottomY = toY(_targetLow);
 
-    // Target range band (green background)
-    final bandTop = toY(_targetHigh);
-    final bandBottom = toY(_targetLow);
+    // Clip to drawing area
+    canvas.save();
+    canvas.clipRect(Rect.fromLTRB(_leftPad, _topPad, size.width - _rightPad, size.height - _bottomPad));
+
+    // Target range band
     canvas.drawRect(
       Rect.fromLTRB(
         _leftPad,
-        math.max(bandTop, 0),
+        math.max(bandTopY, _topPad),
         size.width - _rightPad,
-        math.min(bandBottom, size.height),
+        math.min(bandBottomY, size.height - _bottomPad),
       ),
       Paint()..color = _inRangeColor.withValues(alpha: 0.07),
     );
@@ -1987,8 +1990,8 @@ class GlucoseChartPainter extends CustomPainter {
       ..color = _inRangeColor.withValues(alpha: 0.4)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
-    _drawDashedLine(canvas, Offset(_leftPad, bandTop), Offset(size.width - _rightPad, bandTop), linePaint);
-    _drawDashedLine(canvas, Offset(_leftPad, bandBottom), Offset(size.width - _rightPad, bandBottom), linePaint);
+    _drawDashedLine(canvas, Offset(_leftPad, bandTopY), Offset(size.width - _rightPad, bandTopY), linePaint);
+    _drawDashedLine(canvas, Offset(_leftPad, bandBottomY), Offset(size.width - _rightPad, bandBottomY), linePaint);
 
     // Fill gradient
     final fillPath = Path()..moveTo(_leftPad, size.height - _bottomPad);
@@ -2001,39 +2004,35 @@ class GlucoseChartPainter extends CustomPainter {
       ..lineTo(_leftPad + (readings.length - 1) * xStep, size.height - _bottomPad)
       ..close();
 
+    final drawTop = _topPad;
+    final drawBottom = size.height - _bottomPad;
+    final stopBandTop = (bandTopY - drawTop) / (drawBottom - drawTop);
+    final stopBandBottom = (bandBottomY - drawTop) / (drawBottom - drawTop);
+
     canvas.drawPath(
       fillPath,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          stops: [
-            0.0,
-            bandTop / size.height,
-            bandBottom / size.height,
-            1.0,
-          ],
+          stops: [0.0, stopBandTop.clamp(0.0, 1.0), stopBandBottom.clamp(0.0, 1.0), 1.0],
           colors: [
             _aboveRangeColor.withValues(alpha: 0.15),
             _aboveRangeColor.withValues(alpha: 0.05),
             _inRangeColor.withValues(alpha: 0.10),
             _inRangeColor.withValues(alpha: 0.02),
           ],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+        ).createShader(Rect.fromLTWH(_leftPad, _topPad, drawWidth, drawHeight)),
     );
 
-    // ═══════════════════════════════════════════════════════
-    // MAIN LINE — Segment by segment with color changes
-    // ═══════════════════════════════════════════════════════
+    // Main line — segment by segment
     for (int i = 0; i < readings.length - 1; i++) {
       final x1 = _leftPad + i * xStep;
       final y1 = toY(readings[i].value.toDouble());
       final x2 = _leftPad + (i + 1) * xStep;
       final y2 = toY(readings[i + 1].value.toDouble());
 
-      final val1 = readings[i].value.toDouble();
-      final val2 = readings[i + 1].value.toDouble();
-      final avgVal = (val1 + val2) / 2;
+      final avgVal = (readings[i].value + readings[i + 1].value) / 2;
 
       Color segmentColor;
       if (avgVal > _targetHigh) {
@@ -2054,12 +2053,11 @@ class GlucoseChartPainter extends CustomPainter {
       );
     }
 
-    // Dots at each data point
+    // Dots
     for (int i = 0; i < readings.length; i++) {
       final x = _leftPad + i * xStep;
       final y = toY(readings[i].value.toDouble());
-      final val = readings[i].value.toDouble();
-      final color = getColor(val);
+      final color = getColor(readings[i].value.toDouble());
 
       canvas.drawCircle(Offset(x, y), 3.5, Paint()..color = color);
       canvas.drawCircle(
@@ -2093,10 +2091,13 @@ class GlucoseChartPainter extends CustomPainter {
 
     // Y-axis labels
     final labelStyle = TextStyle(color: Colors.grey.shade400, fontSize: 9);
-    final labelStep = ((maxGlucose - minGlucose) / 6).roundToDouble();
-    for (double val = minGlucose + labelStep; val < maxGlucose; val += labelStep) {
+    final labelCount = 5;
+    final labelStep = (maxGlucose - minGlucose) / labelCount;
+    
+    for (int i = 0; i <= labelCount; i++) {
+      final val = minGlucose + (labelStep * i);
       final y = toY(val);
-      if (y < -10 || y > size.height + 10) continue;
+      if (y < 0 || y > size.height) continue;
 
       final tp = TextPainter(
         text: TextSpan(text: '${val.toInt()}', style: labelStyle),
@@ -2105,6 +2106,28 @@ class GlucoseChartPainter extends CustomPainter {
 
       final labelY = (y - tp.height / 2).clamp(0.0, size.height - tp.height);
       tp.paint(canvas, Offset(2, labelY));
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // X-AXIS LABELS — Dynamic from actual reading.time values
+    // ═══════════════════════════════════════════════════════════
+    final timeLabelStyle = TextStyle(color: Colors.grey.shade400, fontSize: 9);
+    final timeLabelCount = math.min(5, readings.length);
+    
+    for (int i = 0; i < timeLabelCount; i++) {
+      final idx = ((readings.length - 1) * i / (timeLabelCount - 1)).round().clamp(0, readings.length - 1);
+      final reading = readings[idx];
+      
+      final tp = TextPainter(
+        text: TextSpan(text: reading.time, style: timeLabelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final x = _leftPad + idx * xStep;
+      final labelX = (x - tp.width / 2).clamp(4.0, size.width - tp.width - 4);
+      final labelY = size.height - _bottomPad + 6;
+
+      tp.paint(canvas, Offset(labelX, labelY));
     }
   }
 
@@ -2126,7 +2149,6 @@ class GlucoseChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // TIR Pie Chart — RESTORED (was corrupted with glucose chart code)
 // ─────────────────────────────────────────────────────────────────────────────
