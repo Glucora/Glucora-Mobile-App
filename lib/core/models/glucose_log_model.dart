@@ -1,4 +1,4 @@
-// lib\core\models\glucose_log.dart
+// lib\core\models\glucose_log_model.dart
 enum GlucoseTrend { risingRapid, rising, stable, falling, fallingRapid }
 
 enum GlucoseSource { sensor, manual, predicted }
@@ -7,8 +7,8 @@ class GlucoseLog {
   final String id;
   final int patientId;
   final double value;
-  final GlucoseSource source;   // replaces: String source + bool isPredicted
-  final GlucoseTrend trend;     // replaces: String trend
+  final GlucoseSource source; // replaces: String source + bool isPredicted
+  final GlucoseTrend trend; // replaces: String trend
   final DateTime recordedAt;
   final String? notes;
   final String? mealTime;
@@ -38,7 +38,12 @@ class GlucoseLog {
       trend: GlucoseTrend.values.byName(
         _normalizeTrend(json['trend'] as String? ?? 'stable'),
       ),
-      recordedAt: DateTime.parse(json['recorded_at']).toUtc(),
+      recordedAt: DateTime.parse(
+        json['recorded_at'].toString().endsWith('Z') ||
+                json['recorded_at'].toString().contains('+')
+            ? json['recorded_at']
+            : '${json['recorded_at']}Z',
+      ).toUtc(),
       notes: json['notes'] as String?,
       mealTime: json['meal_time'] as String?,
     );
@@ -48,8 +53,8 @@ class GlucoseLog {
   static String _normalizeTrend(String raw) {
     final parts = raw.toLowerCase().split('_');
     if (parts.length == 1) return parts[0];
-    return parts[0] + parts.sublist(1).map((p) => 
-      p[0].toUpperCase() + p.substring(1)).join();
+    return parts[0] +
+        parts.sublist(1).map((p) => p[0].toUpperCase() + p.substring(1)).join();
   }
 
   GlucoseLog copyWith({

@@ -1,3 +1,4 @@
+// lib\features\patient\screens\manual_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
@@ -66,6 +67,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
+    FocusScope.of(context).unfocus();
     final val = _glucoseCtrl.text.trim();
     final error = _validateGlucose(val);
     if (error != null) {
@@ -78,6 +80,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final parsed = double.parse(val);
     final notes =
         _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+
+    final valueInMgDl = _unit == 'mmol/L' ? parsed * 18.0182 : parsed;
 
     setState(() {
       _saving = true;
@@ -150,6 +154,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       builder: (context, provider, _) {
         return SafeArea(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +375,6 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 if (provider.isLoading)
                   const Center(child: CircularProgressIndicator())
                 else if (provider.logs.isEmpty)

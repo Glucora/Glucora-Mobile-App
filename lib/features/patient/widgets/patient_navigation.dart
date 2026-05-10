@@ -1,3 +1,4 @@
+// lib\features\patient\widgets\patient_navigation.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
@@ -28,7 +29,7 @@ class _PatientNavigationState extends State<PatientNavigation> {
   int _currentIndex = 0;
 
   // Screens are constant – they never rebuild when the index changes.
-  static const List<Widget> _screens = [
+  final List<Widget> _screens = [
     HomeScreen(),
     CalorieLogScreen(),
     ManualLogScreen(),
@@ -38,11 +39,11 @@ class _PatientNavigationState extends State<PatientNavigation> {
 
   // Declarative tab descriptors – single source of truth.
   static const List<NavTabItem> _tabs = [
-    NavTabItem(icon: Icons.home_rounded,             label: 'Home'),
-    NavTabItem(icon: Icons.restaurant_menu_rounded,  label: 'Calories'),
-    NavTabItem(icon: Icons.edit_rounded,             label: 'Log'),
-    NavTabItem(icon: Icons.medication_rounded,       label: 'Meds'),
-    NavTabItem(icon: Icons.person_outline_rounded,   label: 'Profile'),
+    NavTabItem(icon: Icons.home_rounded, label: 'Home'),
+    NavTabItem(icon: Icons.restaurant_menu_rounded, label: 'Calories'),
+    NavTabItem(icon: Icons.edit_rounded, label: 'Log'),
+    NavTabItem(icon: Icons.medication_rounded, label: 'Meds'),
+    NavTabItem(icon: Icons.person_outline_rounded, label: 'Profile'),
   ];
 
   void _onTabSelected(int index) => setState(() => _currentIndex = index);

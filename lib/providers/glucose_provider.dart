@@ -1,3 +1,4 @@
+// lib/providers/glucose_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/glucose_log_model.dart';
@@ -15,33 +16,37 @@ import '../core/models/medication_model.dart';
 class GlucoseProvider extends ChangeNotifier {
   final GlucoseRepository _glucoseRepo;
   final RecommendationRepository _recommendationRepo;
-final PredictionRepository _predictionRepo;
-final IobRepository _iobRepo;
-final CarePlanRepository _carePlanRepo;
+  final PredictionRepository _predictionRepo;
+  final IobRepository _iobRepo;
+  final CarePlanRepository _carePlanRepo;
   final FoodLogRepository _foodLogRepo;
   final DeviceRepository _deviceRepo;
   final MedicationRepository _medicationRepo;
-    GlucoseProvider()
+
+  GlucoseProvider()
       : _glucoseRepo = GlucoseRepository(Supabase.instance.client),
-        _recommendationRepo = RecommendationRepository(Supabase.instance.client),
+        _recommendationRepo =
+            RecommendationRepository(Supabase.instance.client),
         _predictionRepo = PredictionRepository(Supabase.instance.client),
         _iobRepo = IobRepository(Supabase.instance.client),
         _carePlanRepo = CarePlanRepository(Supabase.instance.client),
         _foodLogRepo = FoodLogRepository(Supabase.instance.client),
-      _deviceRepo = DeviceRepository(Supabase.instance.client),
-              _medicationRepo = MedicationRepository(Supabase.instance.client);
+        _deviceRepo = DeviceRepository(Supabase.instance.client),
+        _medicationRepo = MedicationRepository(Supabase.instance.client);
+
   // ─── STATE ────────────────────────────────────────────────────────────────
 
-int? patientProfileId;
+  int? patientProfileId;
+  String? authUserId;
   Map<String, dynamic>? latestReading;
-Map<String, dynamic>? latestPrediction;
-Map<String, dynamic>? latestIob;
+  Map<String, dynamic>? latestPrediction;
+  Map<String, dynamic>? latestIob;
   List<FoodEntry> foodLogs = [];
-    List<Medication> medications = [];
+  List<Medication> medications = [];
   Map<String, dynamic>? carePlanRaw;
   String carePlanDoctorName = 'Your Doctor';
   String carePlanLastUpdated = '';
-    List<GlucoseLog> logs = [];
+  List<GlucoseLog> logs = [];
   List<Map<String, dynamic>> recommendations = [];
   int unreadCount = 0;
 
@@ -50,13 +55,13 @@ Map<String, dynamic>? latestIob;
 
   // ─── INIT ─────────────────────────────────────────────────────────────────
 
-  /// Call this once after login to resolve the patient profile id
-  Future<void> init(String authUserId) async {
+  Future<void> init(String userId) async {
     _setLoading(true);
+    authUserId = userId;
     try {
-      patientProfileId = await _glucoseRepo.getPatientProfileId(authUserId);
+      patientProfileId = await _glucoseRepo.getPatientProfileId(userId);
       if (patientProfileId != null) {
-         await Future.wait([
+        await Future.wait([
           loadLatestReading(),
           loadLatestPrediction(),
           loadLatestIob(),
@@ -74,7 +79,8 @@ Map<String, dynamic>? latestIob;
     }
   }
 
-  // ─── GLUCOSE ──────────────────────────────────────────────────────────────
+  // ─── MEDICATIONS ──────────────────────────────────────────────────────────
+
   Future<void> loadMedications() async {
     if (patientProfileId == null) return;
     try {
@@ -129,8 +135,7 @@ Map<String, dynamic>? latestIob;
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMedicationReminders(
-      int medId) async {
+  Future<List<Map<String, dynamic>>> getMedicationReminders(int medId) async {
     try {
       return await _medicationRepo.getReminders(medId);
     } catch (e) {
@@ -149,6 +154,9 @@ Map<String, dynamic>? latestIob;
       _setError('Failed to delete medication: $e');
     }
   }
+
+  // ─── DEVICE ───────────────────────────────────────────────────────────────
+
   Future<String?> loadDeviceBattery(String userId) async {
     try {
       return await _deviceRepo.getBattery(userId);
@@ -157,7 +165,9 @@ Map<String, dynamic>? latestIob;
       return null;
     }
   }
-  
+
+  // ─── FOOD LOGS ────────────────────────────────────────────────────────────
+
   Future<void> loadFoodLogs() async {
     if (patientProfileId == null) return;
     try {
@@ -202,6 +212,9 @@ Map<String, dynamic>? latestIob;
       _setError('Failed to delete food log: $e');
     }
   }
+
+  // ─── CARE PLAN ────────────────────────────────────────────────────────────
+
   Future<void> loadCarePlan() async {
     if (patientProfileId == null) return;
     try {
@@ -227,10 +240,13 @@ Map<String, dynamic>? latestIob;
   String _fmtDate(DateTime d) {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
+
+  // ─── IOB ──────────────────────────────────────────────────────────────────
+
   Future<void> loadLatestIob() async {
     if (patientProfileId == null) return;
     try {
@@ -240,11 +256,13 @@ Map<String, dynamic>? latestIob;
       _setError('Failed to load IOB: $e');
     }
   }
-Future<void> loadLatestPrediction() async {
+
+  // ─── PREDICTIONS ──────────────────────────────────────────────────────────
+
+  Future<void> loadLatestPrediction() async {
     if (patientProfileId == null) return;
     try {
-      latestPrediction =
-          await _predictionRepo.getLatest(patientProfileId!);
+      latestPrediction = await _predictionRepo.getLatest(patientProfileId!);
       notifyListeners();
     } catch (e) {
       _setError('Failed to load prediction: $e');
@@ -261,11 +279,13 @@ Future<void> loadLatestPrediction() async {
       return false;
     }
   }
+
+  // ─── GLUCOSE LOGS ─────────────────────────────────────────────────────────
+
   Future<void> loadLatestReading() async {
     if (patientProfileId == null) return;
     try {
-      latestReading =
-          await _glucoseRepo.getLatestReading(patientProfileId!);
+      latestReading = await _glucoseRepo.getLatestReading(patientProfileId!);
       notifyListeners();
     } catch (e) {
       _setError('Failed to load latest reading: $e');
@@ -282,11 +302,7 @@ Future<void> loadLatestPrediction() async {
     }
   }
 
-  Future<void> insertLog(
-    double value,
-    String? notes,
-    String mealTime,
-  ) async {
+  Future<void> insertLog(double value, String? notes, String mealTime) async {
     if (patientProfileId == null) return;
     try {
       await _glucoseRepo.insertLog(patientProfileId!, value, notes, mealTime);
@@ -294,43 +310,80 @@ Future<void> loadLatestPrediction() async {
       await loadLatestReading();
     } catch (e) {
       _setError('Failed to insert log: $e');
+      rethrow; // ← kept from your friend's change
+    }
+  }
+
+  Future<void> deleteLog(String id) async {
+    // ← kept from your friend's change
+    try {
+      await _glucoseRepo.deleteLog(id);
+      logs.removeWhere((l) => l.id == id);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to delete log: $e');
     }
   }
 
   // ─── RECOMMENDATIONS ──────────────────────────────────────────────────────
 
-  Future<void> loadRecommendations({int limit = 20}) async {
-    if (patientProfileId == null) return;
+  Future<void> loadRecommendations({int limit = 3}) async {
+    if (authUserId == null) return;
     try {
       recommendations = await _recommendationRepo.getLatest(
-        patientProfileId: patientProfileId!,
+        patientProfileId: authUserId!,
         limit: limit,
       );
-      unreadCount = await _recommendationRepo.getUnreadCount(patientProfileId!);
+      unreadCount =
+          recommendations.where((r) => r['is_read'] == false).length;
       notifyListeners();
     } catch (e) {
       _setError('Failed to load recommendations: $e');
     }
   }
 
-  Future<void> saveRecommendation({
-    required String category,
-    required String message,
-    String? predictionId,
-  }) async {
-    if (patientProfileId == null) return;
-    try {
-      await _recommendationRepo.save(
-        patientProfileId: patientProfileId!,
-        category: category,
-        message: message,
-        predictionId: predictionId,
+  /// Saves new recommendations first, THEN deletes old ones
+  /// so the user never sees an empty state
+  Future<void> replaceRecommendations({
+  required List<Map<String, String>> recs,
+}) async {
+  if (authUserId == null) return;
+  try {
+    final newIds = <String>[];
+    final newRows = <Map<String, dynamic>>[];
+
+    // Step 1: save new ones and collect returned rows directly
+    for (final rec in recs) {
+      final saved = await _recommendationRepo.save(
+        patientProfileId: authUserId!,
+        category: rec['category']!,
+        message: rec['message']!,
       );
-      await loadRecommendations();
-    } catch (e) {
-      _setError('Failed to save recommendation: $e');
+      if (saved != null) {
+        newIds.add(saved['id'].toString());
+        newRows.add(saved); // ← use the returned row directly
+      }
     }
+
+    // Step 2: delete old ones silently in background
+    if (newIds.isNotEmpty) {
+      _recommendationRepo.deleteAllExcept(
+        patientProfileId: authUserId!,
+        keepIds: newIds,
+      ); // ← no await, user doesn't need to wait for this
+    }
+
+    // Step 3: set recommendations directly from what was just saved
+    // no DB re-fetch — no stale data, no ordering issues
+    if (newRows.isNotEmpty) {
+      recommendations = newRows;
+      unreadCount = newRows.where((r) => r['is_read'] == false).length;
+      notifyListeners();
+    }
+  } catch (e) {
+    _setError('Failed to replace recommendations: $e');
   }
+}
 
   Future<void> markAsRead(String recommendationId) async {
     try {

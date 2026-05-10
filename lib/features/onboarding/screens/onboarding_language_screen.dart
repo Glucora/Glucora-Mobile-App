@@ -1,5 +1,6 @@
 // lib/features/onboarding/screens/onboarding_language_screen.dart
 import 'package:flutter/material.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/localization_service.dart';
@@ -84,7 +85,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
+                 TranslatedText(
                     'Select Your Language',
                     style: TextStyle(
                       fontSize: 20,
@@ -93,7 +94,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                 TranslatedText(
                     'Choose your preferred language for the app',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -116,7 +117,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                     children: [
                       CircularProgressIndicator(color: colors.accent),
                       const SizedBox(height: 16),
-                      Text(
+                      TranslatedText(
                         'Applying language...',
                         style: TextStyle(
                           color: colors.textSecondary,
@@ -191,7 +192,7 @@ class _OnboardingLanguageScreenState extends State<OnboardingLanguageScreen>
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
+                      : const TranslatedText(
                           'Continue',
                           style: TextStyle(
                             fontSize: 16,
