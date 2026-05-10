@@ -1920,160 +1920,250 @@
   // Custom painters (unchanged)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  class GlucoseChartPainter extends CustomPainter {
-    final List<GlucoseReading> readings;
-    GlucoseChartPainter({required this.readings});
+  // ─────────────────────────────────────────────────────────────────────────────
+// Custom painters — FIXED
+// ─────────────────────────────────────────────────────────────────────────────
 
-    @override
-    void paint(Canvas canvas, Size size) {
-      const double minGlucose = 40;
-      const double maxGlucose = 300;
-      const double targetLow = 70;
-      const double targetHigh = 180;
+class GlucoseChartPainter extends CustomPainter {
+  final List<GlucoseReading> readings;
+  GlucoseChartPainter({required this.readings});
 
-      final xStep = size.width / (readings.length - 1);
+  // Increased padding for top breathing room
+  static const double _topPad = 28;      // Was 18, now 28
+  static const double _bottomPad = 12;   // Was 8, now 12
+  static const double _leftPad = 32;
+  static const double _rightPad = 8;
 
-      double toY(double val) => size.height -
-          ((val - minGlucose) / (maxGlucose - minGlucose)) *
-              size.height;
+  // Color constants
+  static const Color _inRangeColor = Color(0xFF2BB6A3);   // Teal
+  static const Color _aboveRangeColor = Color(0xFFFF9F40); // Orange
+  static const Color _belowRangeColor = Color(0xFFE53935); // Red
+  static const double _targetLow = 70;
+  static const double _targetHigh = 180;
 
-      canvas.drawRect(
-        Rect.fromLTRB(
-            0, toY(targetHigh), size.width, toY(targetLow)),
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (readings.length < 2) return;
+
+    const double minGlucose = 40;
+    final dataMax = readings.map((r) => r.value).reduce((a, b) => a > b ? a : b).toDouble();
+    final double maxGlucose = math.max(450, ((dataMax * 1.2) / 50).ceil() * 50);
+
+    final drawWidth = size.width - _leftPad - _rightPad;
+    final drawHeight = size.height - _topPad - _bottomPad;
+    final xStep = drawWidth / (readings.length - 1);
+
+    double toY(double val) {
+      final t = (val - minGlucose) / (maxGlucose - minGlucose);
+      return _topPad + drawHeight - (t * drawHeight);
+    }
+
+    // Helper to get color based on glucose value
+    Color getColor(double value) {
+      if (value > _targetHigh) return _aboveRangeColor;
+      if (value < _targetLow) return _belowRangeColor;
+      return _inRangeColor;
+    }
+
+    // Clip drawing area
+    canvas.save();
+    canvas.clipRect(Rect.fromLTRB(_leftPad, 0, size.width - _rightPad, size.height));
+
+    // Target range band (green background)
+    final bandTop = toY(_targetHigh);
+    final bandBottom = toY(_targetLow);
+    canvas.drawRect(
+      Rect.fromLTRB(
+        _leftPad,
+        math.max(bandTop, 0),
+        size.width - _rightPad,
+        math.min(bandBottom, size.height),
+      ),
+      Paint()..color = _inRangeColor.withValues(alpha: 0.07),
+    );
+
+    // Dashed target lines
+    final linePaint = Paint()
+      ..color = _inRangeColor.withValues(alpha: 0.4)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    _drawDashedLine(canvas, Offset(_leftPad, bandTop), Offset(size.width - _rightPad, bandTop), linePaint);
+    _drawDashedLine(canvas, Offset(_leftPad, bandBottom), Offset(size.width - _rightPad, bandBottom), linePaint);
+
+    // Fill gradient
+    final fillPath = Path()..moveTo(_leftPad, size.height - _bottomPad);
+    for (int i = 0; i < readings.length; i++) {
+      final x = _leftPad + i * xStep;
+      final y = toY(readings[i].value.toDouble());
+      fillPath.lineTo(x, y);
+    }
+    fillPath
+      ..lineTo(_leftPad + (readings.length - 1) * xStep, size.height - _bottomPad)
+      ..close();
+
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [
+            0.0,
+            bandTop / size.height,
+            bandBottom / size.height,
+            1.0,
+          ],
+          colors: [
+            _aboveRangeColor.withValues(alpha: 0.15),
+            _aboveRangeColor.withValues(alpha: 0.05),
+            _inRangeColor.withValues(alpha: 0.10),
+            _inRangeColor.withValues(alpha: 0.02),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+    );
+
+    // ═══════════════════════════════════════════════════════
+    // MAIN LINE — Segment by segment with color changes
+    // ═══════════════════════════════════════════════════════
+    for (int i = 0; i < readings.length - 1; i++) {
+      final x1 = _leftPad + i * xStep;
+      final y1 = toY(readings[i].value.toDouble());
+      final x2 = _leftPad + (i + 1) * xStep;
+      final y2 = toY(readings[i + 1].value.toDouble());
+
+      final val1 = readings[i].value.toDouble();
+      final val2 = readings[i + 1].value.toDouble();
+      final avgVal = (val1 + val2) / 2;
+
+      Color segmentColor;
+      if (avgVal > _targetHigh) {
+        segmentColor = _aboveRangeColor;
+      } else if (avgVal < _targetLow) {
+        segmentColor = _belowRangeColor;
+      } else {
+        segmentColor = _inRangeColor;
+      }
+
+      canvas.drawLine(
+        Offset(x1, y1),
+        Offset(x2, y2),
         Paint()
-          ..color =
-              const Color(0xFF2BB6A3).withValues(alpha: 0.07),
+          ..color = segmentColor
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round,
       );
+    }
 
-      final linePaint = Paint()
-        ..color =
-            const Color(0xFF2BB6A3).withValues(alpha: 0.4)
-        ..strokeWidth = 1
-        ..style = PaintingStyle.stroke;
-      _drawDashedLine(canvas, Offset(0, toY(targetHigh)),
-          Offset(size.width, toY(targetHigh)), linePaint);
-      _drawDashedLine(canvas, Offset(0, toY(targetLow)),
-          Offset(size.width, toY(targetLow)), linePaint);
+    // Dots at each data point
+    for (int i = 0; i < readings.length; i++) {
+      final x = _leftPad + i * xStep;
+      final y = toY(readings[i].value.toDouble());
+      final val = readings[i].value.toDouble();
+      final color = getColor(val);
 
-      final fillPath = Path()..moveTo(0, size.height);
-      for (int i = 0; i < readings.length; i++) {
-        final x = i * xStep;
+      canvas.drawCircle(Offset(x, y), 3.5, Paint()..color = color);
+      canvas.drawCircle(
+        Offset(x, y),
+        3.5,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
+
+    // Meal markers
+    for (int i = 0; i < readings.length; i++) {
+      if (readings[i].mealTag != null) {
+        final x = _leftPad + i * xStep;
         final y = toY(readings[i].value.toDouble());
-        i == 0 ? fillPath.lineTo(x, y) : fillPath.lineTo(x, y);
-      }
-      fillPath
-        ..lineTo((readings.length - 1) * xStep, size.height)
-        ..close();
-
-      canvas.drawPath(
-          fillPath,
+        canvas.drawCircle(Offset(x, y), 5, Paint()..color = const Color(0xFFFF9F40));
+        canvas.drawCircle(
+          Offset(x, y),
+          5,
           Paint()
-            ..shader = const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x332BB6A3), Color(0x002BB6A3)],
-            ).createShader(
-                Rect.fromLTWH(0, 0, size.width, size.height)));
-
-      final path = Path();
-      for (int i = 0; i < readings.length; i++) {
-        final x = i * xStep;
-        final y = toY(readings[i].value.toDouble());
-        i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
-      }
-      canvas.drawPath(
-          path,
-          Paint()
-            ..color = const Color(0xFF2BB6A3)
-            ..strokeWidth = 2.5
+            ..color = Colors.white
             ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round
-            ..strokeJoin = StrokeJoin.round);
-
-      for (int i = 0; i < readings.length; i++) {
-        if (readings[i].mealTag != null) {
-          final x = i * xStep;
-          final y = toY(readings[i].value.toDouble());
-          canvas.drawCircle(Offset(x, y), 5,
-              Paint()..color = const Color(0xFFFF9F40));
-          canvas.drawCircle(
-              Offset(x, y),
-              5,
-              Paint()
-                ..color = Colors.white
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 1.5);
-        }
-      }
-
-      final labelStyle =
-          TextStyle(color: Colors.grey.shade400, fontSize: 9);
-      for (final val in [70.0, 120.0, 180.0, 240.0]) {
-        final tp = TextPainter(
-          text: TextSpan(
-              text: '${val.toInt()}', style: labelStyle),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, Offset(2, toY(val) - 6));
-      }
-    }
-
-    void _drawDashedLine(
-        Canvas canvas, Offset start, Offset end, Paint paint) {
-      const dashWidth = 5.0;
-      const dashSpace = 4.0;
-      double distance = 0;
-      final len = end.dx - start.dx;
-      while (distance < len) {
-        canvas.drawLine(
-          Offset(start.dx + distance, start.dy),
-          Offset(start.dx + math.min(distance + dashWidth, len),
-              start.dy),
-          paint,
+            ..strokeWidth = 1.5,
         );
-        distance += dashWidth + dashSpace;
       }
     }
 
-    @override
-    bool shouldRepaint(covariant CustomPainter oldDelegate) =>
-        false;
-  }
+    canvas.restore();
 
-  class TIRSegment {
-    final double percent;
-    final Color color;
-    TIRSegment({required this.percent, required this.color});
-  }
+    // Y-axis labels
+    final labelStyle = TextStyle(color: Colors.grey.shade400, fontSize: 9);
+    final labelStep = ((maxGlucose - minGlucose) / 6).roundToDouble();
+    for (double val = minGlucose + labelStep; val < maxGlucose; val += labelStep) {
+      final y = toY(val);
+      if (y < -10 || y > size.height + 10) continue;
 
-  class TIRPieChartPainter extends CustomPainter {
-    final List<TIRSegment> segments;
-    TIRPieChartPainter({required this.segments});
+      final tp = TextPainter(
+        text: TextSpan(text: '${val.toInt()}', style: labelStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
 
-    @override
-    void paint(Canvas canvas, Size size) {
-      final center = Offset(size.width / 2, size.height / 2);
-      final radius = size.width / 2;
-      double startAngle = -math.pi / 2;
-
-      for (final seg in segments) {
-        final sweepAngle = 2 * math.pi * (seg.percent / 100);
-        canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius - 6),
-          startAngle,
-          sweepAngle - 0.04,
-          false,
-          Paint()
-            ..color = seg.color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 10
-            ..strokeCap = StrokeCap.butt,
-        );
-        startAngle += sweepAngle;
-      }
+      final labelY = (y - tp.height / 2).clamp(0.0, size.height - tp.height);
+      tp.paint(canvas, Offset(2, labelY));
     }
-
-    @override
-    bool shouldRepaint(covariant CustomPainter oldDelegate) =>
-        false;
   }
+
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
+    const dashWidth = 5.0;
+    const dashSpace = 4.0;
+    double distance = 0;
+    final len = end.dx - start.dx;
+    while (distance < len) {
+      canvas.drawLine(
+        Offset(start.dx + distance, start.dy),
+        Offset(start.dx + math.min(distance + dashWidth, len), start.dy),
+        paint,
+      );
+      distance += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIR Pie Chart — RESTORED (was corrupted with glucose chart code)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class TIRSegment {
+  final double percent;
+  final Color color;
+  TIRSegment({required this.percent, required this.color});
+}
+
+class TIRPieChartPainter extends CustomPainter {
+  final List<TIRSegment> segments;
+  TIRPieChartPainter({required this.segments});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    double startAngle = -math.pi / 2;
+
+    for (final seg in segments) {
+      final sweepAngle = 2 * math.pi * (seg.percent / 100);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 6),
+        startAngle,
+        sweepAngle - 0.04,
+        false,
+        Paint()
+          ..color = seg.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..strokeCap = StrokeCap.butt,
+      );
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
