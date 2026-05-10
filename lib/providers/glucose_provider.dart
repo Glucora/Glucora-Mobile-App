@@ -430,4 +430,14 @@ class GlucoseProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
   }
+
+  Future<void> deleteLog(String id) async {
+    try {
+      await _glucoseRepo.deleteLog(id);
+      logs.removeWhere((log) => log.id == id);
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to delete log: $e');
+    }
+  }
 }

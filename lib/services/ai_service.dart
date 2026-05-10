@@ -24,7 +24,7 @@ class AIService {
   // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
 static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;  static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-static const String _model = 'openai/gpt-3.5-turbo';
+static const String _model = 'openrouter/free';
   static Future<List<AIRecommendation>> getRecommendations({
     required double currentGlucose,
     required double predictedGlucose,
@@ -85,7 +85,7 @@ Rules:
                 {'role': 'user', 'content': prompt},
               ],
               'temperature': 0.6,
-              'max_tokens': 300,
+              'max_tokens': 250,
             }),
           )
           .timeout(const Duration(seconds: 30));

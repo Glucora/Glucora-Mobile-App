@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
+import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -310,7 +311,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ).createShader(bounds),
-                      child: Text(
+                      child: TranslatedText(
                         'Welcome to Glucora',
                         style: TextStyle(
                           fontSize: 32,
@@ -333,7 +334,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     opacity: _subtitleOpacity,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 48),
-                      child: Text(
+                      child: TranslatedText(
                         'Your AI-Powered Diabetes Companion',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -395,7 +396,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           _GetStartedButton(colors: colors),
                           const SizedBox(height: 20),
-                          Text(
+                       TranslatedText(
                             'Free to start · No credit card needed',
                             style: TextStyle(
                               fontSize: 12,
@@ -461,7 +462,7 @@ class _FeaturePill extends StatelessWidget {
             color: isAccent ? colors.accent : colors.textSecondary,
           ),
           const SizedBox(width: 6),
-          Text(
+         TranslatedText (
             label,
             style: TextStyle(
               fontSize: 13,
@@ -569,7 +570,7 @@ class _GetStartedButtonState extends State<_GetStartedButton>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              const TranslatedText(
                 'Get Started',
                 style: TextStyle(
                   fontSize: 16,
