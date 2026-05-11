@@ -47,6 +47,9 @@ class AIService {
   
   // FAST & LIGHTWEIGHT
   'z-ai/glm-4.5-air:free',             // 90-130 token/s [citation:4]
+      
+    'openrouter/free',                  
+  
 ];
 
   static Future<List<AIRecommendation>> getRecommendations({
