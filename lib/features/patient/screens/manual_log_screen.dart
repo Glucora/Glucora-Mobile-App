@@ -22,6 +22,9 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   bool _saving = false;
   String? _error;
 
+  // The id of the most recently saved log — used to highlight it
+  String? _newlyAddedId;
+
   static const _mealOptions = [
     'Before Meal',
     'After Meal',
@@ -29,6 +32,20 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     'Bedtime',
     'Other',
   ];
+
+  // ── T1D ranges ────────────────────────────────────────────────────────────
+  // Source: ADA Standards of Care for Type 1 Diabetes
+  //   mg/dL : target 70–180, safe input range 20–600
+  //   mmol/L: target 3.9–10.0, safe input range 1.1–33.3
+
+  static const double _minMgDl = 20;
+  static const double _maxMgDl = 600;
+  static const double _minMmol = 1.1;
+  static const double _maxMmol = 33.3;
+
+  // Clinically low / high thresholds for colour coding the tile
+  static const double _lowMgDl = 70;
+  static const double _highMgDl = 180;
 
   @override
   void initState() {
@@ -59,10 +76,20 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     if (value == null || value.trim().isEmpty) return 'Enter a value';
     final n = double.tryParse(value.trim());
     if (n == null) return 'Must be a number';
-    if (n <= 0) return 'Must be > 0';
-    if (n > 600) return 'Value too high (max 600)';
+
+    if (_unit == 'mg/dL') {
+      if (n < _minMgDl) return 'Too low — minimum is ${_minMgDl.toInt()} mg/dL';
+      if (n > _maxMgDl) return 'Too high — maximum is ${_maxMgDl.toInt()} mg/dL';
+    } else {
+      if (n < _minMmol) return 'Too low — minimum is $_minMmol mmol/L';
+      if (n > _maxMmol) return 'Too high — maximum is $_maxMmol mmol/L';
+    }
     return null;
   }
+
+  // Convert to mg/dL for storage regardless of entered unit
+  double _toMgDl(double value) =>
+      _unit == 'mmol/L' ? value * 18.0182 : value;
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -74,37 +101,55 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       setState(() => _error = error);
       return;
     }
-
-    if (_saving) return; // guard double-tap
+    if (_saving) return;
 
     final parsed = double.parse(val);
-    final notes =
-        _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+    final valueInMgDl = _toMgDl(parsed);
+    final notes = _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
 
-/*     final valueInMgDl = _unit == 'mmol/L' ? parsed * 18.0182 : parsed;
- */
     setState(() {
       _saving = true;
       _error = null;
     });
 
     try {
-      await context
-          .read<GlucoseProvider>()
-          .insertLog(parsed, notes, _mealTime);
+      final provider = context.read<GlucoseProvider>();
+      await provider.insertLog(valueInMgDl, notes, _mealTime);
+
+      // Grab the id of the log that was just inserted (first after reload)
+      final newId = provider.logs.isNotEmpty ? provider.logs.first.id : null;
+
       _glucoseCtrl.clear();
       _notesCtrl.clear();
+
       if (mounted) {
+        setState(() => _newlyAddedId = newId);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Reading saved'),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text(
+                  'Reading saved — ${parsed.toStringAsFixed(_unit == 'mmol/L' ? 1 : 0)} $_unit',
+                ),
+              ],
+            ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.green.shade600,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            duration: const Duration(seconds: 4),
+                borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 3),
           ),
         );
+
+        // Clear the highlight after 4 seconds
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _newlyAddedId = null);
+        });
       }
     } catch (e) {
       setState(() => _error = 'Failed to save: $e');
@@ -119,20 +164,23 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final provider = ctx.read<GlucoseProvider>();
     await provider.deleteLog(log.id);
 
+    if (mounted && _newlyAddedId == log.id) {
+      setState(() => _newlyAddedId = null);
+    }
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(ctx).clearSnackBars();
     ScaffoldMessenger.of(ctx).showSnackBar(
       SnackBar(
-        content: Text('${log.value} mg/dL reading deleted'),
+        content: Text('${log.value.toStringAsFixed(0)} mg/dL reading deleted'),
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () async {
-            // ✅ Restore by re-inserting
             await provider.insertLog(
               log.value,
               log.notes,
@@ -152,10 +200,13 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
     return Consumer<GlucoseProvider>(
       builder: (context, provider, _) {
+        // Always show newest first
+        final sortedLogs = [...provider.logs]
+          ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+
         return SafeArea(
           child: SingleChildScrollView(
-/*             controller: _scrollController,
- */            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -171,12 +222,12 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                 const SizedBox(height: 4),
                 TranslatedText(
                   'Log your glucose reading manually',
-                  style: TextStyle(
-                      fontSize: 13, color: colors.textSecondary),
+                  style:
+                      TextStyle(fontSize: 13, color: colors.textSecondary),
                 ),
                 const SizedBox(height: 20),
 
-                // ── Input card ──────────────────────────────────────
+                // ── Input card ───────────────────────────────────────
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -204,7 +255,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                           color: colors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 4),
+                      // Range hint updates with unit
+                      TranslatedText(
+                        _unit == 'mg/dL'
+                            ? 'T1D target: 70–180 mg/dL  •  safe range: 20–600'
+                            : 'T1D target: 3.9–10.0 mmol/L  •  safe range: 1.1–33.3',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
 
                       Row(
                         children: [
@@ -214,7 +276,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                               _glucoseCtrl,
                               'Glucose value',
                               Icons.water_drop_rounded,
-                              type: TextInputType.number,
+                              type: const TextInputType.numberWithOptions(
+                                  decimal: true),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -244,22 +307,39 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                                           child: TranslatedText(u),
                                         ))
                                     .toList(),
-                                onChanged: (v) =>
-                                    setState(() => _unit = v!),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _unit = v!;
+                                    _error = null;
+                                    // Re-validate live if something is typed
+                                    if (_glucoseCtrl.text.isNotEmpty) {
+                                      _error = _validateGlucose(
+                                          _glucoseCtrl.text);
+                                    }
+                                  });
+                                },
                               ),
                             ),
                           ),
                         ],
                       ),
 
-                      // ✅ Inline validation error
                       if (_error != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 6, left: 4),
-                          child: Text(
-                            _error!,
-                            style: const TextStyle(
-                                color: Colors.red, fontSize: 12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline_rounded,
+                                  size: 13, color: colors.error),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: TextStyle(
+                                      color: colors.error, fontSize: 12),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -280,17 +360,23 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                             .map((mt) => GestureDetector(
                                   onTap: () =>
                                       setState(() => _mealTime = mt),
-                                  child: Container(
+                                  child: AnimatedContainer(
+                                    duration:
+                                        const Duration(milliseconds: 150),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 8,
-                                    ),
+                                        horizontal: 14, vertical: 8),
                                     decoration: BoxDecoration(
                                       color: _mealTime == mt
                                           ? colors.primary
                                           : colors.background,
                                       borderRadius:
                                           BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _mealTime == mt
+                                            ? colors.primary
+                                            : colors.textSecondary
+                                                .withValues(alpha: 0.15),
+                                      ),
                                     ),
                                     child: TranslatedText(
                                       mt,
@@ -353,7 +439,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Recent logs ─────────────────────────────────────
+                // ── Recent logs ──────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -365,19 +451,18 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                         color: colors.textPrimary,
                       ),
                     ),
-                    TranslatedText(
+                /*     TranslatedText(
                       '${provider.logs.length} entries',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                      ),
-                    ),
+                          fontSize: 12, color: colors.textSecondary),
+                    ), */
                   ],
                 ),
                 const SizedBox(height: 12),
+
                 if (provider.isLoading)
                   const Center(child: CircularProgressIndicator())
-                else if (provider.logs.isEmpty)
+                else if (sortedLogs.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 30),
                     child: Center(
@@ -390,9 +475,10 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                     ),
                   )
                 else
-                  // ✅ Dismissible tiles with undo
-                  ...provider.logs
-                      .map((log) => _logTile(context, log)),
+                  ...sortedLogs.map(
+                    (log) => _logTile(context, log,
+                        isNew: log.id == _newlyAddedId),
+                  ),
 
                 const SizedBox(height: 30),
               ],
@@ -416,7 +502,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       keyboardType: type,
       style: TextStyle(fontSize: 14, color: colors.textPrimary),
       onChanged: (_) {
-        if (_error != null) setState(() => _error = null);
+        if (_error != null) setState(() => _error = _validateGlucose(ctrl.text));
       },
       decoration: InputDecoration(
         labelText: label,
@@ -433,36 +519,62 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+              color: colors.textSecondary.withValues(alpha: 0.15)),
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.error, width: 1.5),
         ),
       ),
     );
   }
 
-  // ✅ Dismissible log tile with swipe-to-delete + undo
-  Widget _logTile(BuildContext context, GlucoseLog log) {
-    final colors = context.colors;
+  // ── Log tile ──────────────────────────────────────────────────────────────
 
+  Widget _logTile(BuildContext context, GlucoseLog log,
+      {bool isNew = false}) {
+    final colors = context.colors;
+    final mgDl = log.value;
+
+    // Status colour
+    final Color statusColor;
+    final String statusLabel;
+    if (mgDl < _lowMgDl) {
+      statusColor = const Color(0xFF2563EB); // blue — low
+      statusLabel = 'Low';
+    } else if (mgDl > _highMgDl) {
+      statusColor = const Color(0xFFDC2626); // red — high
+      statusLabel = 'High';
+    } else {
+      statusColor = const Color(0xFF16A34A); // green — in range
+      statusLabel = 'In range';
+    }
+/* 
     IconData trendIcon;
     Color trendColor;
     switch (log.trend) {
       case GlucoseTrend.risingRapid:
       case GlucoseTrend.rising:
         trendIcon = Icons.arrow_upward_rounded;
-        trendColor = Colors.red;
+        trendColor = const Color(0xFFDC2626);
         break;
       case GlucoseTrend.fallingRapid:
       case GlucoseTrend.falling:
         trendIcon = Icons.arrow_downward_rounded;
-        trendColor = Colors.blue;
+        trendColor = const Color(0xFF2563EB);
         break;
       case GlucoseTrend.stable:
         trendIcon = Icons.remove_rounded;
-        trendColor = Colors.green;
+        trendColor = const Color(0xFF16A34A);
     }
-
+ */
     return Dismissible(
       key: ValueKey(log.id),
       direction: DismissDirection.endToStart,
@@ -479,51 +591,112 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       ),
       confirmDismiss: (_) async => true,
       onDismissed: (_) => _deleteLog(context, log),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: colors.surface,
+          color: isNew
+              ? colors.primary.withValues(alpha: 0.06)
+              : colors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: colors.textSecondary.withValues(alpha: 0.15),
+            color: isNew
+                ? colors.primary.withValues(alpha: 0.4)
+                : colors.textSecondary.withValues(alpha: 0.12),
+            width: isNew ? 1.5 : 1,
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.water_drop_rounded,
-                color: colors.primary, size: 22),
-            const SizedBox(width: 12),
+            // Left accent bar
+            Container(
+              width: 4,
+              height: 54,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: statusColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Value
                       TranslatedText(
-                        '${log.value} mg/dL',
+                        '${mgDl.toStringAsFixed(0)} mg/dL',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: colors.textPrimary,
                         ),
                       ),
-                      Icon(trendIcon, color: trendColor, size: 20),
+                      const SizedBox(width: 6),
+                      // mmol/L equivalent
+                      TranslatedText(
+                        '(${(mgDl / 18.0182).toStringAsFixed(1)} mmol/L)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+    /*                   // Trend icon
+                      Icon(trendIcon, color: trendColor, size: 18),
+                      const SizedBox(width: 6), */
+                      // Status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                      // "New" badge
+                      if (isNew) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'New',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Row(
                     children: [
                       if (log.mealTime != null) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: colors.primary.withValues(alpha: 0.12),
+                            color:
+                                colors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: TranslatedText(
@@ -540,9 +713,7 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
                       TranslatedText(
                         log.source.name,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
+                            fontSize: 11, color: colors.textSecondary),
                       ),
                     ],
                   ),
