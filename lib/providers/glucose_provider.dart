@@ -259,15 +259,15 @@ class GlucoseProvider extends ChangeNotifier {
 
   // ─── PREDICTIONS ──────────────────────────────────────────────────────────
 
-  Future<void> loadLatestPrediction() async {
-    if (patientProfileId == null) return;
-    try {
-      latestPrediction = await _predictionRepo.getLatest(patientProfileId!);
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load prediction: $e');
-    }
+Future<void> loadLatestPrediction() async {
+  if (authUserId == null) return; 
+  try {
+    latestPrediction = await _predictionRepo.getLatest(authUserId!);
+    notifyListeners();
+  } catch (e) {
+    _setError('Failed to load prediction: $e');
   }
+}
 
   Future<bool> insertPrediction(double predictedValue) async {
     try {
@@ -324,7 +324,7 @@ class GlucoseProvider extends ChangeNotifier {
       _setError('Failed to delete log: $e');
     }
   }
-
+  
   // ─── RECOMMENDATIONS ──────────────────────────────────────────────────────
 
   Future<void> loadRecommendations({int limit = 3}) async {
@@ -431,13 +431,4 @@ class GlucoseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteLog(String id) async {
-    try {
-      await _glucoseRepo.deleteLog(id);
-      logs.removeWhere((log) => log.id == id);
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to delete log: $e');
-    }
-  }
 }

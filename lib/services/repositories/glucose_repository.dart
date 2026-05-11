@@ -78,7 +78,7 @@ class GlucoseRepository extends BaseRepository {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<void> deleteLog(String id) async {
+ /*  Future<void> deleteLog(String id) async {
     await db.from('glucose_readings').delete().eq('id', id);
-  }
+  } */
 }

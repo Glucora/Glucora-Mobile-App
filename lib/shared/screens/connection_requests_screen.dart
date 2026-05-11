@@ -388,7 +388,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Roaa
+       /*    // Roaa
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Icon(
@@ -398,7 +398,7 @@ class _ConnectionRequestsScreenState extends State<ConnectionRequestsScreen>
             ),
           ),
           const SizedBox(height: 12),
-          // Roaa end-----
+          // Roaa end----- */
           TranslatedText(
             'Connection Requests',
             style: TextStyle(

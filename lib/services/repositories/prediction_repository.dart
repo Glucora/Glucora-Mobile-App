@@ -1,13 +1,17 @@
+// lib\services\repositories\prediction_repository.dart
 import 'base_repository.dart';
 
 class PredictionRepository extends BaseRepository {
   const PredictionRepository(super.db);
 
-  Future<Map<String, dynamic>?> getLatest(int patientProfileId) async {
+  Future<Map<String, dynamic>?> getLatest(String authUserId) async {
     return await db
         .from('ai_predictions')
         .select()
-        .eq('patient_id', patientProfileId)
+        .eq(
+          'patient_uuid',
+          authUserId,
+        ) 
         .order('created_at', ascending: false)
         .limit(1)
         .maybeSingle();

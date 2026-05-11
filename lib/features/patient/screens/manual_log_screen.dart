@@ -81,8 +81,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     final notes =
         _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
 
-    final valueInMgDl = _unit == 'mmol/L' ? parsed * 18.0182 : parsed;
-
+/*     final valueInMgDl = _unit == 'mmol/L' ? parsed * 18.0182 : parsed;
+ */
     setState(() {
       _saving = true;
       _error = null;
@@ -154,8 +154,8 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
       builder: (context, provider, _) {
         return SafeArea(
           child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+/*             controller: _scrollController,
+ */            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
