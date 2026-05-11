@@ -931,18 +931,17 @@ class _SearchSheetState extends State<_SearchSheet> {
     });
 
     try {
-      final query = supabase
-          .from('users')
-          .select('id, full_name, phone_no, role, profile_picture_url')
-          .eq('phone_no', phone);
-
-      if (widget.role == 'patient') {
-        query.inFilter('role', ['doctor', 'guardian']);
-      } else {
-        query.eq('role', 'patient');
-      }
-
-      final userRows = await query;
+      final userRows = await (widget.role == 'patient'
+          ? supabase
+              .from('users')
+              .select('id, full_name, phone_no, role, profile_picture_url')
+              .eq('phone_no', phone)
+              .inFilter('role', ['doctor', 'guardian'])
+          : supabase
+              .from('users')
+              .select('id, full_name, phone_no, role, profile_picture_url')
+              .eq('phone_no', phone)
+              .eq('role', 'patient'));
       if ((userRows as List).isEmpty) {
         setState(() {
           _errorMessage = 'No registered user found with this number.';
