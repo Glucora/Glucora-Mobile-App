@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 // ─── RECOMMENDATION MODEL ─────────────────────────────────────────────────────
 
-/// A single structured recommendation parsed from the AI response.
 class AIRecommendation {
-  final String category;   // 'dietary' | 'activity' | 'monitoring' | 'general'
-  final String title;      // short label — first sentence or heading
-  final String message;    // full advice text
+  final String category;
+  final String title;
+  final String message;
 
   const AIRecommendation({
     required this.category,
@@ -20,11 +20,35 @@ class AIRecommendation {
 // ─── AI SERVICE ───────────────────────────────────────────────────────────────
 
 class AIService {
-  // IMPORTANT: move this key to a .env file and add .env to .gitignore
-  // Use flutter_dotenv: dotenv.env['OPENROUTER_API_KEY']
-static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;  static const String _baseUrl =
-      'https://openrouter.ai/api/v1/chat/completions';
-static const String _model = 'openrouter/free';
+  static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;
+  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+
+  // Fallback list — tries each in order until one works
+ static const List<String> _models = [
+  // BEST ALL-ROUNDER - Updated Llama
+  'meta-llama/llama-3.3-70b-instruct:free',
+  
+  // EXCELLENT FOR REASONING/CODING
+  'deepseek/deepseek-r1:free',
+  
+  // LATEST NVIDIA MODELS (Very fast)
+  'nvidia/nemotron-3-super:free',      // 120B MoE, 1M context [citation:1]
+  'nvidia/nemotron-nano-9b-v2:free',   // Fastest, 100-150 token/s [citation:4]
+  
+  // GOOGLE'S LATEST
+  'google/gemma-4-31b-it:free',        // Updated version [citation:1]
+  
+  // OPENAI'S OPEN-WEIGHT MODELS
+  'openai/gpt-oss-120b:free',          // 117B MoE [citation:1]
+  'openai/gpt-oss-20b:free',           // Lighter version
+  
+  // NVIDIA MULTIMODAL (if you need image/video)
+  'nvidia/nemotron-nano-12b-2-vl:free',
+  
+  // FAST & LIGHTWEIGHT
+  'z-ai/glm-4.5-air:free',             // 90-130 token/s [citation:4]
+];
+
   static Future<List<AIRecommendation>> getRecommendations({
     required double currentGlucose,
     required double predictedGlucose,
@@ -64,68 +88,89 @@ Rules:
 - Keep each recommendation under 40 words
 ''';
 
-    try {
-      final response = await http
-          .post(
-            Uri.parse(_baseUrl),
-            headers: {
-              'Authorization': 'Bearer $_apiKey',
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://glucora.app',
-              'X-Title': 'Glucora AI Companion',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'messages': [
-                {
-                  'role': 'system',
-                  'content':
-                      'You are a diabetes management assistant. Follow formatting instructions exactly. Never give medical diagnosis or medication dosage advice.',
-                },
-                {'role': 'user', 'content': prompt},
-              ],
-              'temperature': 0.6,
-              'max_tokens': 250,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+    for (final model in _models) {
+      try {
+        if (kDebugMode) print('[AIService] Trying model: $model');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final raw = data['choices']?[0]?['message']?['content'] ?? '';
+        final response = await http
+            .post(
+              Uri.parse(_baseUrl),
+              headers: {
+                'Authorization': 'Bearer $_apiKey',
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://glucora.app',
+                'X-Title': 'Glucora AI Companion',
+              },
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {
+                    'role': 'system',
+                    'content':
+                        'You are a diabetes management assistant. Follow formatting instructions exactly. Never give medical diagnosis or medication dosage advice.',
+                  },
+                  {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.6,
+                'max_tokens': 250,
+              }),
+            )
+            .timeout(const Duration(seconds: 60));
 
-        if (kDebugMode) print('[AIService] Raw response:\n$raw');
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final raw =
+              data['choices']?[0]?['message']?['content'] as String? ?? '';
 
-        final parsed = _parseResponse(raw.trim());
+          if (kDebugMode) print('[AIService] Raw response from $model:\n$raw');
 
-        if (parsed.isNotEmpty) return parsed;
+          if (raw.trim().isEmpty) {
+            if (kDebugMode) {
+              print('[AIService] Empty response from $model, trying next...');
+            }
+            continue;
+          }
 
-        // If parsing fails return a best-effort single item with the full text
-        return [
-          AIRecommendation(
-            category: 'general',
-            title: 'Personalized advice',
-            message: raw.trim(),
-          ),
-        ];
-      } else {
-        if (kDebugMode) {
-          print('[AIService] HTTP ${response.statusCode}: ${response.body}');
+          final parsed = _parseResponse(raw.trim());
+          if (parsed.isNotEmpty) return parsed;
+
+          // Parsing failed but we have text — return as general advice
+          return [
+            AIRecommendation(
+              category: 'general',
+              title: 'Personalized advice',
+              message: raw.trim(),
+            ),
+          ];
+        } else if (response.statusCode == 429 ||
+            response.statusCode == 404 ||
+            response.statusCode == 503) {
+          if (kDebugMode) {
+            print(
+                '[AIService] $model returned ${response.statusCode}, trying next...');
+          }
+          continue;
+        } else {
+          if (kDebugMode) {
+            print(
+                '[AIService] $model returned ${response.statusCode}: ${response.body}');
+          }
+          continue;
         }
-        throw Exception('API returned status ${response.statusCode}');
+      } catch (e) {
+        if (kDebugMode) print('[AIService] $model failed: $e, trying next...');
+        continue;
       }
-    } catch (e) {
-      if (kDebugMode) print('[AIService] getRecommendations error: $e');
-      rethrow; // let the screen handle the error — no silent fallback
     }
+
+    throw Exception('All models failed. Please try again later.');
   }
 
-  /// Parses the AI text into structured [AIRecommendation] objects.
-  /// Expects lines like: "DIETARY: some advice text"
+  // ─── PARSER ───────────────────────────────────────────────────────────────
+
   static List<AIRecommendation> _parseResponse(String raw) {
     final List<AIRecommendation> results = [];
 
-    // Category label → normalized key
     final Map<String, String> categoryMap = {
       'DIETARY': 'dietary',
       'DIET': 'dietary',
@@ -140,7 +185,6 @@ Rules:
       'GENERAL': 'general',
     };
 
-    // Category → display title
     const Map<String, String> titleMap = {
       'dietary': 'Dietary advice',
       'activity': 'Physical activity',
@@ -152,7 +196,6 @@ Rules:
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
 
-      // Match lines like "DIETARY: some text" or "1. DIETARY: some text"
       final match = RegExp(
         r'^(?:\d+[\.\)]\s*)?([A-Z]+)\s*:\s*(.+)$',
         caseSensitive: false,
@@ -162,7 +205,6 @@ Rules:
         final labelRaw = match.group(1)!.toUpperCase();
         final messageText = match.group(2)!.trim();
 
-        // Find which category this label maps to
         String? category;
         for (final key in categoryMap.keys) {
           if (labelRaw.contains(key)) {
@@ -171,7 +213,6 @@ Rules:
           }
         }
 
-        // Skip duplicates of the same category
         if (category != null &&
             results.every((r) => r.category != category)) {
           results.add(AIRecommendation(
@@ -186,29 +227,32 @@ Rules:
     return results;
   }
 
-  /// Quick connectivity check — returns true if the API responds.
+  // ─── TEST CONNECTION ──────────────────────────────────────────────────────
+
   static Future<bool> testConnection() async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse(_baseUrl),
-            headers: {
-              'Authorization': 'Bearer $_apiKey',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'messages': [
-                {'role': 'user', 'content': "Reply with 'ok'"},
-              ],
-              'max_tokens': 5,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-      return response.statusCode == 200;
-    } catch (e) {
-      if (kDebugMode) print('[AIService] testConnection error: $e');
-      return false;
+    for (final model in _models) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(_baseUrl),
+              headers: {
+                'Authorization': 'Bearer $_apiKey',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {'role': 'user', 'content': "Reply with 'ok'"},
+                ],
+                'max_tokens': 5,
+              }),
+            )
+            .timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) return true;
+      } catch (_) {
+        continue;
+      }
     }
+    return false;
   }
 }
