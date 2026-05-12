@@ -20,7 +20,6 @@ class RecommendationRepository extends BaseRepository {
     required String patientUuid,
     required String category,
     required String message,
-    String? predictionId,
   }) async {
     final row = {
       'patient_id': patientUuid,
@@ -31,6 +30,17 @@ class RecommendationRepository extends BaseRepository {
       if (predictionId != null) 'prediction_id': predictionId,
     };
     return await db.from('ai_recommendations').insert(row).select().single();
+  }
+
+  Future<void> deleteAllExcept({
+    required String patientProfileId,
+    required List<String> keepIds,
+  }) async {
+    await db
+        .from('ai_recommendations')
+        .delete()
+        .eq('patient_id', patientProfileId)
+        .not('id', 'in', keepIds);
   }
 
   Future<void> markAsRead(String recommendationId) async {

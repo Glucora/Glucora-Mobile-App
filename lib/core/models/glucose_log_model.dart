@@ -1,3 +1,4 @@
+// lib\core\models\glucose_log_model.dart
 enum GlucoseTrend { risingRapid, rising, stable, falling, fallingRapid }
 
 enum GlucoseSource { bleSensor, manual, predicted }
@@ -35,7 +36,12 @@ class GlucoseLog {
       trend: GlucoseTrend.values.byName(
         _normalizeTrend(json['trend'] as String? ?? 'stable'),
       ),
-      recordedAt: DateTime.parse(json['recorded_at']).toUtc(),
+      recordedAt: DateTime.parse(
+        json['recorded_at'].toString().endsWith('Z') ||
+                json['recorded_at'].toString().contains('+')
+            ? json['recorded_at']
+            : '${json['recorded_at']}Z',
+      ).toUtc(),
       notes: json['notes'] as String?,
       mealTime: json['meal_time'] as String?,
     );

@@ -1,3 +1,4 @@
+// lib\features\patient\widgets\nav_tile.dart
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';

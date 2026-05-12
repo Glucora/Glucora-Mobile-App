@@ -1,3 +1,4 @@
+// lib\features\patient\widgets\nav_tab_item.dart
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────

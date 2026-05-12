@@ -1,3 +1,4 @@
+// lib\features\patient\widgets\patient_profile_controller.dart
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/services/repositories/patient_repository.dart';
@@ -110,16 +111,21 @@ class PatientProfileController extends ChangeNotifier {
     required double heightCm,
     required double weightKg,
   }) async {
-    await _repo.updateProfile(
-      userId: userId,
-      fullName: name,
-      email: email,
-      phone: phone,
-      age: age,
-      heightCm: heightCm,
-      weightKg: weightKg,
-    );
-    await loadProfile(userId);
+    try {
+      await _repo.updateProfile(
+        userId: userId,
+        fullName: name,
+        email: email,
+        phone: phone,
+        age: age,
+        heightCm: heightCm,
+        weightKg: weightKg,
+      );
+      // Load fresh data after successful update
+      await loadProfile(userId);
+    } catch (e) {
+      rethrow; // Re-throw to let the UI handle the error
+    }
   }
 
   Future<void> switchToGuardian(String userId) =>
