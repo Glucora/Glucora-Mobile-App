@@ -22,22 +22,18 @@ class GlucoseProvider extends ChangeNotifier {
   final FoodLogRepository _foodLogRepo;
   final DeviceRepository _deviceRepo;
   final MedicationRepository _medicationRepo;
-
   GlucoseProvider()
-      : _glucoseRepo = GlucoseRepository(Supabase.instance.client),
-        _recommendationRepo =
-            RecommendationRepository(Supabase.instance.client),
-        _predictionRepo = PredictionRepository(Supabase.instance.client),
-        _iobRepo = IobRepository(Supabase.instance.client),
-        _carePlanRepo = CarePlanRepository(Supabase.instance.client),
-        _foodLogRepo = FoodLogRepository(Supabase.instance.client),
-        _deviceRepo = DeviceRepository(Supabase.instance.client),
-        _medicationRepo = MedicationRepository(Supabase.instance.client);
-
+    : _glucoseRepo = GlucoseRepository(Supabase.instance.client),
+      _recommendationRepo = RecommendationRepository(Supabase.instance.client),
+      _predictionRepo = PredictionRepository(Supabase.instance.client),
+      _iobRepo = IobRepository(Supabase.instance.client),
+      _carePlanRepo = CarePlanRepository(Supabase.instance.client),
+      _foodLogRepo = FoodLogRepository(Supabase.instance.client),
+      _deviceRepo = DeviceRepository(Supabase.instance.client),
+      _medicationRepo = MedicationRepository(Supabase.instance.client);
   // ─── STATE ────────────────────────────────────────────────────────────────
 
   int? patientProfileId;
-  String? authUserId;
   Map<String, dynamic>? latestReading;
   Map<String, dynamic>? latestPrediction;
   Map<String, dynamic>? latestIob;
@@ -49,6 +45,7 @@ class GlucoseProvider extends ChangeNotifier {
   List<GlucoseLog> logs = [];
   List<Map<String, dynamic>> recommendations = [];
   int unreadCount = 0;
+  String? authUserId;
 
   bool isLoading = false;
   String? errorMessage;
@@ -59,7 +56,8 @@ class GlucoseProvider extends ChangeNotifier {
     _setLoading(true);
     authUserId = userId;
     try {
-      patientProfileId = await _glucoseRepo.getPatientProfileId(userId);
+      this.authUserId = authUserId;
+      patientProfileId = await _glucoseRepo.getPatientProfileId(authUserId);
       if (patientProfileId != null) {
         await Future.wait([
           loadLatestReading(),
@@ -388,13 +386,11 @@ Future<void> loadLatestPrediction() async {
   Future<void> markAsRead(String recommendationId) async {
     try {
       await _recommendationRepo.markAsRead(recommendationId);
-      final index =
-          recommendations.indexWhere((r) => r['id'] == recommendationId);
+      final index = recommendations.indexWhere(
+        (r) => r['id'] == recommendationId,
+      );
       if (index != -1) {
-        recommendations[index] = {
-          ...recommendations[index],
-          'is_read': true,
-        };
+        recommendations[index] = {...recommendations[index], 'is_read': true};
         if (unreadCount > 0) unreadCount--;
         notifyListeners();
       }
@@ -430,5 +426,4 @@ Future<void> loadLatestPrediction() async {
     errorMessage = null;
     notifyListeners();
   }
-
 }

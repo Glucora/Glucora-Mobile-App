@@ -6,10 +6,13 @@ class MedicationRepository extends BaseRepository {
   const MedicationRepository(super.db);
 
   Future<List<Medication>> getAll(int patientProfileId) async {
+    final user = db.auth.currentUser;
+    if (user == null) return [];
+
     final response = await db
         .from('medications')
         .select('*, medication_reminder(*)')
-        .eq('patient_id', patientProfileId)
+        .eq('patient_uuid', user.id)
         .order('created_at', ascending: false);
     return (response as List).map((e) => Medication.fromJson(e)).toList();
   }
@@ -20,15 +23,20 @@ class MedicationRepository extends BaseRepository {
     String? notes,
     int? frequency,
   }) async {
+    final user = db.auth.currentUser;
+    if (user == null) throw Exception('No authenticated user');
+
+    final payload = {
+      'patient_uuid': user.id,
+      'name': name,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+      if (frequency != null) 'frequency': frequency,
+      'is_active': true,
+    };
+
     final response = await db
         .from('medications')
-        .insert({
-          'patient_id': patientProfileId,
-          'name': name,
-          if (notes != null && notes.isNotEmpty) 'notes': notes,
-          'frequency': ?frequency,
-          'is_active': true,
-        })
+        .insert(payload)
         .select()
         .single();
     return response['id'] as int;
@@ -42,10 +50,7 @@ class MedicationRepository extends BaseRepository {
   }
 
   Future<void> delete(int medId) async {
-    await db
-        .from('medications')
-        .delete()
-        .eq('id', medId);
+    await db.from('medications').delete().eq('id', medId);
   }
 
   // ── Reminders ──────────────────────────────────────────────────────────────
@@ -75,9 +80,6 @@ class MedicationRepository extends BaseRepository {
   }
 
   Future<void> deleteReminders(int medId) async {
-    await db
-        .from('medication_reminder')
-        .delete()
-        .eq('medication_id', medId);
+    await db.from('medication_reminder').delete().eq('medication_id', medId);
   }
 }

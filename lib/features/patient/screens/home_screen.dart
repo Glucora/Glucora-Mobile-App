@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:glucora_ai_companion/features/patient/screens/patient_care_plan_screen.dart';
@@ -54,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _hardwareBatteryPercent;
   double? _hardwarePredictionValue;
   double? _hardwareLatestGlucoseValue;
+  final List<_GlucosePoint> _bleHistory = <_GlucosePoint>[];
   bool _hardwareConnected = false;
   bool _hardwareLoading = true;
   String _hardwareStatus = 'Searching for hardware...';
@@ -95,6 +98,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final reading = provider.latestReading;
     final iob = provider.latestIob;
     final carePlan = provider.carePlanRaw;
+
+    // Log sync info for debugging
+    if (kDebugMode) {
+      print('[HomeScreen] _syncFromProvider called');
+      print('[HomeScreen] Latest reading: $reading');
+      print('[HomeScreen] Loaded logs count: ${provider.logs.length}');
+      if (provider.logs.isNotEmpty) {
+        final oldestLog = provider.logs.last;
+        final newestLog = provider.logs.first;
+        print(
+          '[HomeScreen] Log range: ${oldestLog.recordedAt} to ${newestLog.recordedAt}',
+        );
+      }
+    }
 
     if (reading != null) {
       final value = double.tryParse(reading['value_mg_dl'].toString());
@@ -162,12 +179,20 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     }
+
+    // Trigger rebuild for chart when logs are updated
+    if (provider.logs.isNotEmpty || _bleHistory.isNotEmpty) {
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   Future<void> _onRefresh() async {
     final provider = context.read<GlucoseProvider>();
     await Future.wait([
       provider.loadLatestReading(),
+      provider.loadLogs(),
       provider.loadLatestPrediction(),
       provider.loadLatestIob(),
       provider.loadCarePlan(),
@@ -181,6 +206,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _bleDataSub = _bleHardwareService.dataStream.listen((data) {
       if (!mounted) return;
+
+      if (kDebugMode) {
+        print(
+          '[HomeScreen] BLE DATA: glucose=${data.latestGlucoseValue}, '
+          'pred=${data.predictionValue}, iob=${data.iobValue}, '
+          'battery=${data.batteryPercent}%, connected=${data.isConnected}',
+        );
+      }
+
+      if (data.latestGlucoseValue != null) {
+        _appendBleHistory(data.latestGlucoseValue!);
+        if (kDebugMode) {
+          print(
+            '[HomeScreen] ✓ Added to BLE history: ${data.latestGlucoseValue} mg/dL',
+          );
+        }
+      }
 
       final didJustLoseConnection = _hardwareConnected && !data.isConnected;
       final shouldShowDisconnectSnackbar =
@@ -248,6 +290,116 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     await _bleHardwareService.start();
+  }
+
+  void _appendBleHistory(double value) {
+    final now = DateTime.now();
+    if (_bleHistory.isNotEmpty) {
+      final last = _bleHistory.last;
+      final isSameValue = (last.value - value).abs() < 0.01;
+      if (isSameValue && now.difference(last.time).inSeconds < 20) {
+        _bleHistory[_bleHistory.length - 1] = _GlucosePoint(now, value);
+        return;
+      }
+    }
+
+    _bleHistory.add(_GlucosePoint(now, value));
+
+    final cutoff = now.subtract(const Duration(hours: 1));
+    _bleHistory.removeWhere((point) => point.time.isBefore(cutoff));
+  }
+
+  _GlucoseChartSeries _buildChartSeries(
+    GlucoseProvider provider, {
+    required int horizonMinutes,
+    required double? aiPredictedGlucose,
+    required DateTime? aiPredictionTime,
+    required DateTime? aiPredictedFor,
+  }) {
+    final now = DateTime.now();
+    final historyStart = now.subtract(const Duration(hours: 1));
+
+    final history = <_GlucosePoint>[];
+
+    // Add logs from Supabase
+    for (final log in provider.logs) {
+      if (log.isPredicted) continue;
+      final loggedAt = log.recordedAt;
+      // Use UTC comparison to avoid timezone issues
+      final loggedAtUtc = loggedAt.isUtc ? loggedAt : loggedAt.toUtc();
+      final nowUtc = now.toUtc();
+      final historyStartUtc = historyStart.toUtc();
+
+      if (loggedAtUtc.isBefore(historyStartUtc) ||
+          loggedAtUtc.isAfter(nowUtc)) {
+        if (kDebugMode && loggedAtUtc.isBefore(historyStartUtc)) {
+          print(
+            '[ChartSeries] Skipping old log: ${log.value} mg/dL at ${log.recordedAt} '
+            '(outside 1-hour window)',
+          );
+        }
+        continue;
+      }
+      history.add(_GlucosePoint(loggedAt.toLocal(), log.value));
+    }
+
+    // Add BLE history (already in local time)
+    for (final point in _bleHistory) {
+      if (point.time.toUtc().isBefore(historyStart.toUtc())) continue;
+      history.add(point);
+    }
+
+    history.sort((a, b) => a.time.compareTo(b.time));
+
+    if (kDebugMode) {
+      print(
+        '[ChartSeries] Built chart: ${history.length} total history points',
+      );
+      print(
+        '[ChartSeries]   - From Supabase logs: ${provider.logs.where((l) => !l.isPredicted).length} logs',
+      );
+      print(
+        '[ChartSeries]   - From BLE history: ${_bleHistory.length} BLE points',
+      );
+      print(
+        '[ChartSeries]   - Chart history window: 1 hour (${historyStart.toLocal()} to $now)',
+      );
+      if (history.isNotEmpty) {
+        print(
+          '[ChartSeries] History range: ${history.first.value.toStringAsFixed(1)}-'
+          '${history.last.value.toStringAsFixed(1)} mg/dL',
+        );
+      }
+    }
+
+    final predictionValue = _hardwarePredictionValue ?? aiPredictedGlucose;
+    final horizon = Duration(minutes: horizonMinutes > 0 ? horizonMinutes : 30);
+    DateTime predictionTime;
+    if (_hardwarePredictionValue != null) {
+      predictionTime = now.add(horizon);
+    } else if (aiPredictedFor != null) {
+      predictionTime = aiPredictedFor.toLocal();
+    } else if (aiPredictionTime != null) {
+      predictionTime = aiPredictionTime.toLocal().add(horizon);
+    } else {
+      predictionTime = now.add(horizon);
+    }
+
+    if (predictionTime.isBefore(now)) {
+      predictionTime = now.add(horizon);
+    }
+
+    final predictions = <_GlucosePoint>[];
+    if (predictionValue != null) {
+      final anchorValue =
+          _glucoseValue ?? (history.isNotEmpty ? history.last.value : null);
+      if (anchorValue != null) {
+        predictions.add(_GlucosePoint(now, anchorValue));
+      }
+      predictions.add(_GlucosePoint(predictionTime, predictionValue));
+    }
+
+    return _GlucoseChartSeries(history: history, predictions: predictions);
   }
 
   void _showHardwareDisconnectedSnackBar() {
@@ -331,6 +483,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final aiPredictionTime = prediction?['created_at'] != null
             ? DateTime.tryParse(prediction!['created_at'])
             : null;
+        final aiPredictedFor = prediction?['predicted_for'] != null
+            ? DateTime.tryParse(prediction!['predicted_for'])
+            : null;
         final aiHorizonMinutes = prediction?['horizon_minutes'] as int? ?? 30;
         final aiPredictionLoading = provider.isLoading && prediction == null;
 
@@ -391,10 +546,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     child: _predictionCard(
                                       context,
+                                      provider: provider,
                                       aiPredictedGlucose: aiPredictedGlucose,
                                       aiConfidenceScore: aiConfidenceScore,
                                       aiRiskLevel: aiRiskLevel,
                                       aiPredictionTime: aiPredictionTime,
+                                      aiPredictedFor: aiPredictedFor,
                                       aiHorizonMinutes: aiHorizonMinutes,
                                       aiPredictionLoading: aiPredictionLoading,
                                     ),
@@ -449,10 +606,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: _predictionCard(
                                 context,
+                                provider: provider,
                                 aiPredictedGlucose: aiPredictedGlucose,
                                 aiConfidenceScore: aiConfidenceScore,
                                 aiRiskLevel: aiRiskLevel,
                                 aiPredictionTime: aiPredictionTime,
+                                aiPredictedFor: aiPredictedFor,
                                 aiHorizonMinutes: aiHorizonMinutes,
                                 aiPredictionLoading: aiPredictionLoading,
                               ),
@@ -1070,16 +1229,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _predictionCard(
     BuildContext context, {
+    required GlucoseProvider provider,
     required double? aiPredictedGlucose,
     required double? aiConfidenceScore,
     required String? aiRiskLevel,
     required DateTime? aiPredictionTime,
+    required DateTime? aiPredictedFor,
     required int aiHorizonMinutes,
     required bool aiPredictionLoading,
   }) {
     final colors = context.colors;
     final displayValue =
         aiPredictedGlucose ?? _hardwarePredictionValue ?? 135.0;
+    final chartSeries = _buildChartSeries(
+      provider,
+      horizonMinutes: aiHorizonMinutes,
+      aiPredictedGlucose: aiPredictedGlucose,
+      aiPredictionTime: aiPredictionTime,
+      aiPredictedFor: aiPredictedFor,
+    );
     final currentGlucose = _glucoseValue;
     double? percentageChange;
     bool isRising = true;
@@ -1298,7 +1466,14 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 130,
             child: CustomPaint(
               size: const Size(double.infinity, 130),
-              painter: ChartPainter(primaryColor: colors.primary),
+              painter: ChartPainter(
+                primaryColor: colors.primary,
+                history: chartSeries.history,
+                predictions: chartSeries.predictions,
+                now: DateTime.now(),
+                historyWindow: const Duration(hours: 1),
+                futureWindow: Duration(minutes: aiHorizonMinutes),
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -1544,14 +1719,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class ChartPainter extends CustomPainter {
   final Color primaryColor;
-  const ChartPainter({required this.primaryColor});
+  final List<_GlucosePoint> history;
+  final List<_GlucosePoint> predictions;
+  final DateTime now;
+  final Duration historyWindow;
+  final Duration futureWindow;
+
+  const ChartPainter({
+    required this.primaryColor,
+    required this.history,
+    required this.predictions,
+    required this.now,
+    required this.historyWindow,
+    required this.futureWindow,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     const lh = 18.0;
     final h = size.height - lh;
     final w = size.width;
-    final s = w / 5;
+    final midX = w * 0.5;
+    final historyStart = now.subtract(historyWindow);
+    final futureEnd = now.add(futureWindow);
 
     final grid = Paint()
       ..color = Colors.grey.withValues(alpha: 0.15)
@@ -1560,64 +1750,138 @@ class ChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, h * i / 3), Offset(w, h * i / 3), grid);
     }
 
-    const xl = ['10', '20', '30', '40', '50', '60'];
-    for (int i = 0; i < xl.length; i++) {
+    final ticks = <({DateTime time, String label})>[
+      (time: now.subtract(const Duration(minutes: 120)), label: '120m'),
+      (time: now.subtract(const Duration(minutes: 90)), label: '90m'),
+      (time: now.subtract(const Duration(minutes: 60)), label: '60m'),
+      (time: now.subtract(const Duration(minutes: 30)), label: '30m'),
+      (time: now, label: 'Now'),
+      (time: now.add(const Duration(minutes: 15)), label: '15m'),
+      (time: now.add(const Duration(minutes: 30)), label: '30m'),
+    ];
+    for (final tick in ticks) {
+      if (tick.time.isBefore(historyStart) || tick.time.isAfter(futureEnd)) {
+        continue;
+      }
+      final x = _mapTimeToX(tick.time, historyStart, futureEnd, midX, w);
       final tp = TextPainter(
         text: TextSpan(
-          text: xl[i],
-          style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
+          text: tick.label,
+          style: const TextStyle(fontSize: 9, color: Color(0xFFAAAAAA)),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(i * s - tp.width / 2, h + 4));
+      final labelX = x - tp.width / 2;
+      final clampedX = labelX.clamp(0.0, w - tp.width);
+      tp.paint(canvas, Offset(clampedX, h + 4));
     }
 
-    final gry = [
-      Offset(0, h * 0.58),
-      Offset(s * 0.65, h * 0.42),
-      Offset(s * 1.25, h * 0.53),
-      Offset(s * 2.0, h * 0.37),
+    canvas.drawLine(
+      Offset(midX, 0),
+      Offset(midX, h),
+      Paint()
+        ..color = Colors.grey.withValues(alpha: 0.2)
+        ..strokeWidth = 1,
+    );
+
+    final allValues = <double>[
+      ...history.map((e) => e.value),
+      ...predictions.map((e) => e.value),
     ];
-    final grn = [
-      Offset(s * 2.0, h * 0.37),
-      Offset(s * 2.7, h * 0.47),
-      Offset(s * 3.5, h * 0.30),
-      Offset(s * 4.2, h * 0.18),
-      Offset(s * 5.0, h * 0.04),
-    ];
+    double minY = 70;
+    double maxY = 180;
+    if (allValues.isNotEmpty) {
+      minY = allValues.reduce((a, b) => a < b ? a : b);
+      maxY = allValues.reduce((a, b) => a > b ? a : b);
+    }
+    if (minY == maxY) {
+      minY -= 10;
+      maxY += 10;
+    }
+    final padding = (maxY - minY) * 0.15;
+    minY -= padding;
+    maxY += padding;
 
-    final fill = _sp(grn)
-      ..lineTo(grn.last.dx, h)
-      ..lineTo(grn.first.dx, h)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..color = primaryColor.withValues(alpha: 0.10)
-        ..style = PaintingStyle.fill,
+    final hypoY = _mapValueToY(70.0, minY, maxY, h);
+    final hyperY = _mapValueToY(180.0, minY, maxY, h);
+
+    _drawDashedLine(
+      canvas,
+      Offset(0, hypoY),
+      Offset(w, hypoY),
+      Colors.yellow.withValues(alpha: 0.4),
+      4,
+      2,
     );
 
-    canvas.drawPath(
-      _sp(gry),
-      Paint()
-        ..color = const Color(0xFFCCCCCC)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
+    _drawDashedLine(
+      canvas,
+      Offset(0, hyperY),
+      Offset(w, hyperY),
+      Colors.red.withValues(alpha: 0.4),
+      4,
+      2,
     );
 
-    canvas.drawPath(
-      _sp(grn),
-      Paint()
-        ..color = primaryColor
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
+    List<Offset> buildOffsets(List<_GlucosePoint> points) {
+      return points.map((point) {
+        final x = _mapTimeToX(point.time, historyStart, futureEnd, midX, w);
+        final y = _mapValueToY(point.value, minY, maxY, h);
+        return Offset(x, y);
+      }).toList();
+    }
 
-    for (final pt in [gry.last, grn.last]) {
-      canvas.drawCircle(pt, 5, Paint()..color = primaryColor);
-      canvas.drawCircle(pt, 3, Paint()..color = Colors.white);
+    final historyOffsets = buildOffsets(history);
+    if (historyOffsets.length >= 2) {
+      canvas.drawPath(
+        _sp(historyOffsets),
+        Paint()
+          ..color = const Color(0xFFCCCCCC)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+    } else if (historyOffsets.length == 1) {
+      canvas.drawCircle(
+        historyOffsets.first,
+        3,
+        Paint()..color = const Color(0xFFCCCCCC),
+      );
+    }
+
+    final predictionOffsets = buildOffsets(predictions);
+    if (predictionOffsets.length >= 2) {
+      final fill = _sp(predictionOffsets)
+        ..lineTo(predictionOffsets.last.dx, h)
+        ..lineTo(predictionOffsets.first.dx, h)
+        ..close();
+      canvas.drawPath(
+        fill,
+        Paint()
+          ..color = primaryColor.withValues(alpha: 0.10)
+          ..style = PaintingStyle.fill,
+      );
+
+      canvas.drawPath(
+        _sp(predictionOffsets),
+        Paint()
+          ..color = primaryColor
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round,
+      );
+    } else if (predictionOffsets.length == 1) {
+      canvas.drawCircle(
+        predictionOffsets.first,
+        4,
+        Paint()..color = primaryColor,
+      );
+    }
+
+    if (predictionOffsets.isNotEmpty) {
+      final lastPoint = predictionOffsets.last;
+      canvas.drawCircle(lastPoint, 5, Paint()..color = primaryColor);
+      canvas.drawCircle(lastPoint, 3, Paint()..color = Colors.white);
     }
   }
 
@@ -1630,6 +1894,111 @@ class ChartPainter extends CustomPainter {
     return p;
   }
 
+  double _mapValueToY(double value, double minY, double maxY, double h) {
+    final range = maxY - minY;
+    final ratio = range == 0 ? 0.5 : (value - minY) / range;
+    return h - (ratio.clamp(0.0, 1.0) * h);
+  }
+
+  double _mapTimeToX(
+    DateTime time,
+    DateTime historyStart,
+    DateTime futureEnd,
+    double midX,
+    double w,
+  ) {
+    if (!time.isAfter(now)) {
+      final clamped = time.isBefore(historyStart) ? historyStart : time;
+      final totalMs = historyWindow.inMilliseconds.toDouble();
+      final elapsedMs = clamped.difference(historyStart).inMilliseconds;
+      final ratio = totalMs == 0 ? 0.0 : elapsedMs / totalMs;
+      return midX * ratio.clamp(0.0, 1.0);
+    }
+
+    final clamped = time.isAfter(futureEnd) ? futureEnd : time;
+    final totalMs = futureWindow.inMilliseconds.toDouble();
+    final elapsedMs = clamped.difference(now).inMilliseconds;
+    final ratio = totalMs == 0 ? 0.0 : elapsedMs / totalMs;
+    return midX + (midX * ratio.clamp(0.0, 1.0));
+  }
+
+  String _formatTime(DateTime time) {
+    final diff = time.difference(now);
+    final minutes = diff.inMinutes.abs();
+    if (diff.isNegative) {
+      return '$minutes min ago';
+    } else if (minutes == 0) {
+      return 'Now';
+    } else {
+      return '$minutes min';
+    }
+  }
+
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Color color,
+    double dashWidth,
+    double dashSpace,
+  ) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5;
+
+    final dx = end.dx - start.dx;
+    final dy = end.dy - start.dy;
+    final distanceSquared = dx * dx + dy * dy;
+
+    if (distanceSquared == 0) {
+      canvas.drawCircle(start, 1.5, paint);
+      return;
+    }
+
+    final distance = sqrt(distanceSquared.toDouble());
+    final steps = (distance / (dashWidth + dashSpace)).ceil();
+
+    for (int i = 0; i < steps; i++) {
+      final t1 = (i * (dashWidth + dashSpace)) / distance;
+      final t2 = ((i * (dashWidth + dashSpace)) + dashWidth) / distance;
+      final p1 = Offset(start.dx + dx * t1, start.dy + dy * t1);
+      final p2 = Offset(
+        start.dx + dx * t2.clamp(0.0, 1.0),
+        start.dy + dy * t2.clamp(0.0, 1.0),
+      );
+      canvas.drawLine(p1, p2, paint);
+    }
+  }
+
   @override
-  bool shouldRepaint(covariant CustomPainter o) => false;
+  bool shouldRepaint(covariant ChartPainter oldDelegate) {
+    return oldDelegate.primaryColor != primaryColor ||
+        oldDelegate.now != now ||
+        oldDelegate.historyWindow != historyWindow ||
+        oldDelegate.futureWindow != futureWindow ||
+        !listEquals(oldDelegate.history, history) ||
+        !listEquals(oldDelegate.predictions, predictions);
+  }
+}
+
+class _GlucosePoint {
+  final DateTime time;
+  final double value;
+
+  const _GlucosePoint(this.time, this.value);
+
+  @override
+  bool operator ==(Object other) {
+    return other is _GlucosePoint && other.time == time && other.value == value;
+  }
+
+  @override
+  int get hashCode => Object.hash(time, value);
+}
+
+class _GlucoseChartSeries {
+  final List<_GlucosePoint> history;
+  final List<_GlucosePoint> predictions;
+
+  const _GlucoseChartSeries({required this.history, required this.predictions});
 }

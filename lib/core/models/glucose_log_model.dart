@@ -1,7 +1,7 @@
 // lib\core\models\glucose_log_model.dart
 enum GlucoseTrend { risingRapid, rising, stable, falling, fallingRapid }
 
-enum GlucoseSource { sensor, manual, predicted }
+enum GlucoseSource { bleSensor, manual, predicted }
 
 class GlucoseLog {
   final String id;
@@ -32,9 +32,7 @@ class GlucoseLog {
       id: json['id'].toString(),
       patientId: json['patient_id'] as int,
       value: double.parse(json['value_mg_dl'].toString()),
-      source: GlucoseSource.values.byName(
-        (json['source'] as String? ?? 'sensor').toLowerCase(),
-      ),
+      source: _parseSource(json['source'] as String? ?? 'ble_sensor'),
       trend: GlucoseTrend.values.byName(
         _normalizeTrend(json['trend'] as String? ?? 'stable'),
       ),
@@ -55,6 +53,20 @@ class GlucoseLog {
     if (parts.length == 1) return parts[0];
     return parts[0] +
         parts.sublist(1).map((p) => p[0].toUpperCase() + p.substring(1)).join();
+  }
+
+  static GlucoseSource _parseSource(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'ble_sensor':
+      case 'sensor':
+        return GlucoseSource.bleSensor;
+      case 'manual':
+        return GlucoseSource.manual;
+      case 'predicted':
+        return GlucoseSource.predicted;
+      default:
+        return GlucoseSource.bleSensor;
+    }
   }
 
   GlucoseLog copyWith({
