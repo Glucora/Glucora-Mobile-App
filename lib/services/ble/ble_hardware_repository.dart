@@ -390,8 +390,8 @@ class BleHardwareRepository {
 
     if (_enableBleDebugLogs) {
       _logBle(
-        'Decoded -> battery=$battery, prediction=$predictionValue, '
-        'iob=$iobValue, latestGlucose=$latestGlucoseValue',
+        '✓ DECODED: battery=$battery%, pred=${predictionValue?.toStringAsFixed(2)}, '
+        'iob=${iobValue?.toStringAsFixed(2)}, glucose=${latestGlucoseValue?.toStringAsFixed(2)} mg/dL',
       );
     }
 
@@ -406,6 +406,10 @@ class BleHardwareRepository {
         status: 'Connected',
       ),
     );
+
+    if (_enableBleDebugLogs && latestGlucoseValue != null) {
+      _logBle('📡 EMITTED GLUCOSE: $latestGlucoseValue mg/dL');
+    }
   }
 
   Future<List<int>?> _safeRead(BluetoothCharacteristic? c) async {
@@ -463,6 +467,11 @@ class BleHardwareRepository {
             _lastNotifyPayloadByCharacteristic[characteristicId] = data;
             _lastNotifyTimestampByCharacteristic[characteristicId] =
                 DateTime.now();
+            if (_enableBleDebugLogs) {
+              _logBle(
+                '[NOTIFY] ${c.uuid.str}: received ${data.length} bytes = ${_bytesToHex(data)}',
+              );
+            }
           }
         });
 
@@ -485,6 +494,11 @@ class BleHardwareRepository {
 
       _lastNotifyPayloadByCharacteristic[characteristicId] = data;
       _lastNotifyTimestampByCharacteristic[characteristicId] = DateTime.now();
+      if (_enableBleDebugLogs) {
+        _logBle(
+          '[NOTIFY_FIRST] ${c.uuid.str}: first event ${data.length} bytes = ${_bytesToHex(data)}',
+        );
+      }
       return data;
     } catch (e) {
       if (_enableBleDebugLogs) {

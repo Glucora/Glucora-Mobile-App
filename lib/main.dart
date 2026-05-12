@@ -12,6 +12,7 @@ import 'package:glucora_ai_companion/services/location_service.dart';
 import 'package:glucora_ai_companion/core/utils/app_strings.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:glucora_ai_companion/services/ai_prediction_upload_service.dart';
+import 'package:glucora_ai_companion/services/glucose_sync_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart';
@@ -49,6 +50,9 @@ void main() async {
   );
 
   await NotificationService.initialize();
+
+  // Initialize glucose sync service to track BLE readings to Supabase
+  GlucoseSyncService.instance.startListening();
 
   final appLinks = AppLinks();
 

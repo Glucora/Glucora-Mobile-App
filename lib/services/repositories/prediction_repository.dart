@@ -4,10 +4,13 @@ class PredictionRepository extends BaseRepository {
   const PredictionRepository(super.db);
 
   Future<Map<String, dynamic>?> getLatest(int patientProfileId) async {
+    final user = db.auth.currentUser;
+    if (user == null) return null;
+
     return await db
         .from('ai_predictions')
         .select()
-        .eq('patient_id', patientProfileId)
+        .eq('patient_uuid', user.id)
         .order('created_at', ascending: false)
         .limit(1)
         .maybeSingle();
@@ -24,17 +27,22 @@ class PredictionRepository extends BaseRepository {
     final createdAt = DateTime.now().toUtc();
     final predictedFor = createdAt.add(const Duration(minutes: 5));
 
-    await db.from('ai_predictions').insert({
-      'patient_id': user.id,
-      'predicted_value': predictedValue,
-      'horizon_minutes': 5,
-      'confidence_score': 100.0,
-      'risk_level': riskLevel,
-      'model_version': '1',
-      'created_at': createdAt.toIso8601String(),
-      'predicted_for': predictedFor.toIso8601String(),
-    });
-
-    return true;
+    try {
+      await db.from('ai_predictions').insert({
+        'patient_uuid': user.id,
+        'predicted_value_mg_dl': predictedValue,
+        'horizon_minutes': 5,
+        'confidence_score': 100.0,
+        'risk_level': riskLevel,
+        'model_version': '1',
+        'created_at': createdAt.toIso8601String(),
+        'predicted_for': predictedFor.toIso8601String(),
+      });
+      return true;
+    } catch (e) {
+      // Log and return false on failure
+      print('[PredictionRepository] insert error: $e');
+      return false;
+    }
   }
 }
