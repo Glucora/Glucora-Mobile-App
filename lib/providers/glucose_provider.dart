@@ -53,29 +53,28 @@ class GlucoseProvider extends ChangeNotifier {
   // ─── INIT ─────────────────────────────────────────────────────────────────
 
   Future<void> init(String userId) async {
-    _setLoading(true);
-    authUserId = userId;
-    try {
-      this.authUserId = authUserId;
-      patientProfileId = await _glucoseRepo.getPatientProfileId(authUserId);
-      if (patientProfileId != null) {
-        await Future.wait([
-          loadLatestReading(),
-          loadLatestPrediction(),
-          loadLatestIob(),
-          loadCarePlan(),
-          loadLogs(),
-          loadFoodLogs(),
-          loadMedications(),
-          loadRecommendations(),
-        ]);
-      }
-    } catch (e) {
-      _setError('Failed to initialize: $e');
-    } finally {
-      _setLoading(false);
+  _setLoading(true);
+  authUserId = userId;
+  try {
+    patientProfileId = await _glucoseRepo.getPatientProfileId(userId);
+    if (patientProfileId != null) {
+      await Future.wait([
+        loadLatestReading(),
+        loadLatestPrediction(),
+        loadLatestIob(),
+        loadCarePlan(),
+        loadLogs(),
+        loadFoodLogs(),
+        loadMedications(),
+        loadRecommendations(),
+      ]);
     }
+  } catch (e) {
+    _setError('Failed to initialize: $e');
+  } finally {
+    _setLoading(false);
   }
+}
 
   // ─── MEDICATIONS ──────────────────────────────────────────────────────────
 
@@ -260,7 +259,7 @@ class GlucoseProvider extends ChangeNotifier {
 Future<void> loadLatestPrediction() async {
   if (authUserId == null) return; 
   try {
-    latestPrediction = await _predictionRepo.getLatest(authUserId!);
+    latestPrediction = await _predictionRepo.getLatest();
     notifyListeners();
   } catch (e) {
     _setError('Failed to load prediction: $e');
@@ -323,7 +322,7 @@ Future<void> loadLatestPrediction() async {
     }
   }
   
-  // ─── RECOMMENDATIONS ──────────────────────────────────────────────────────
+ // ─── RECOMMENDATIONS ──────────────────────────────────────────────────────
 
   Future<void> loadRecommendations({int limit = 3}) async {
     if (authUserId == null) return;
@@ -350,7 +349,6 @@ Future<void> loadLatestPrediction() async {
     final newIds = <String>[];
     final newRows = <Map<String, dynamic>>[];
 
-    // Step 1: save new ones and collect returned rows directly
     for (final rec in recs) {
       final saved = await _recommendationRepo.save(
         patientProfileId: authUserId!,
@@ -359,20 +357,17 @@ Future<void> loadLatestPrediction() async {
       );
       if (saved != null) {
         newIds.add(saved['id'].toString());
-        newRows.add(saved); // ← use the returned row directly
+        newRows.add(saved);
       }
     }
 
-    // Step 2: delete old ones silently in background
     if (newIds.isNotEmpty) {
       _recommendationRepo.deleteAllExcept(
         patientProfileId: authUserId!,
         keepIds: newIds,
-      ); // ← no await, user doesn't need to wait for this
+      );
     }
 
-    // Step 3: set recommendations directly from what was just saved
-    // no DB re-fetch — no stale data, no ordering issues
     if (newRows.isNotEmpty) {
       recommendations = newRows;
       unreadCount = newRows.where((r) => r['is_read'] == false).length;

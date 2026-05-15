@@ -4,30 +4,29 @@ class RecommendationRepository extends BaseRepository {
   const RecommendationRepository(super.db);
 
   Future<List<Map<String, dynamic>>> getLatest({
-    required String patientUuid,
+    required String patientProfileId, 
     int limit = 20,
   }) async {
     final response = await db
         .from('ai_recommendations')
         .select()
-        .eq('patient_id', patientUuid)
+        .eq('patient_id', patientProfileId) 
         .order('created_at', ascending: false)
         .limit(limit);
     return List<Map<String, dynamic>>.from(response);
   }
 
   Future<Map<String, dynamic>?> save({
-    required String patientUuid,
+    required String patientProfileId, 
     required String category,
     required String message,
   }) async {
     final row = {
-      'patient_id': patientUuid,
+      'patient_id': patientProfileId, 
       'category': category,
       'message': message,
       'is_read': false,
       'created_at': DateTime.now().toUtc().toIso8601String(),
-      if (predictionId != null) 'prediction_id': predictionId,
     };
     return await db.from('ai_recommendations').insert(row).select().single();
   }

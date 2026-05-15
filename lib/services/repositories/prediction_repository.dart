@@ -4,7 +4,7 @@ import 'base_repository.dart';
 class PredictionRepository extends BaseRepository {
   const PredictionRepository(super.db);
 
-  Future<Map<String, dynamic>?> getLatest(int patientProfileId) async {
+  Future<Map<String, dynamic>?> getLatest() async {
     final user = db.auth.currentUser;
     if (user == null) return null;
 
