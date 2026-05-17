@@ -1,5 +1,7 @@
 // lib\services\repositories\prediction_repository.dart
 import 'base_repository.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class PredictionRepository extends BaseRepository {
   const PredictionRepository(super.db);
@@ -42,7 +44,7 @@ class PredictionRepository extends BaseRepository {
       return true;
     } catch (e) {
       // Log and return false on failure
-      print('[PredictionRepository] insert error: $e');
+      debugPrint('[PredictionRepository] insert error: $e');
       return false;
     }
   }

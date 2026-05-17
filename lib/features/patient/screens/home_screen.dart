@@ -333,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (loggedAtUtc.isBefore(historyStartUtc) ||
           loggedAtUtc.isAfter(nowUtc)) {
         if (kDebugMode && loggedAtUtc.isBefore(historyStartUtc)) {
-          print(
+          debugPrint(
             '[ChartSeries] Skipping old log: ${log.value} mg/dL at ${log.recordedAt} '
             '(outside 1-hour window)',
           );

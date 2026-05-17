@@ -30,7 +30,7 @@ class MedicationRepository extends BaseRepository {
       'patient_uuid': user.id,
       'name': name,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
-      if (frequency != null) 'frequency': frequency,
+      'frequency': ?frequency,
       'is_active': true,
     };
 
