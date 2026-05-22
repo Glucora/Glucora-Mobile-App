@@ -158,25 +158,27 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     }
   }
 
-  List<_GlucosePoint> _glucosePoints(DateTime start, DateTime end) {
-    final result = <_GlucosePoint>[];
-    for (final e in patientLogEntries) {
-      if (e.timestamp.isBefore(start) || e.timestamp.isAfter(end)) continue;
-      if (e.glucoseValue == null) continue;
-      if (e.type == HistoryEntryType.cgmReading ||
-          e.type == HistoryEntryType.manualGlucoseLog) {
-        result.add(
-          _GlucosePoint(
-            ts: e.timestamp,
-            value: e.glucoseValue!,
-            isManual: e.type == HistoryEntryType.manualGlucoseLog,
-          ),
-        );
-      }
+List<_GlucosePoint> _glucosePoints(DateTime start, DateTime end) {
+  final result = <_GlucosePoint>[];
+  for (final e in patientLogEntries) {
+    if (e.timestamp.isBefore(start) || e.timestamp.isAfter(end)) continue;
+    if (e.glucoseValue == null) continue;
+    if (e.glucoseValue! <= 0) continue; // ✅ ADD THIS — skip zero/negative values
+    if (e.glucoseValue! > 600) continue; // ✅ ADD THIS — skip impossible values
+    if (e.type == HistoryEntryType.cgmReading ||
+        e.type == HistoryEntryType.manualGlucoseLog) {
+      result.add(
+        _GlucosePoint(
+          ts: e.timestamp,
+          value: e.glucoseValue!,
+          isManual: e.type == HistoryEntryType.manualGlucoseLog,
+        ),
+      );
     }
-    result.sort((a, b) => a.ts.compareTo(b.ts));
-    return result;
   }
+  result.sort((a, b) => a.ts.compareTo(b.ts));
+  return result;
+}
 
   _BarData _insulinBuckets(DateTime start, DateTime end) {
     final entries = patientLogEntries.where(
@@ -616,15 +618,15 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
 
   Widget _buildChart(BuildContext context, DateTime start, DateTime end) {
     switch (_graphType) {
-      case _GraphType.glucose:
-        final pts = _glucosePoints(start, end);
-        if (pts.isEmpty) {
-          return _emptyChart(context, 'No glucose data in this period');
-        }
-        return CustomPaint(
+    case _GraphType.glucose:
+      final pts = _glucosePoints(start, end);
+      if (pts.isEmpty) return _emptyChart(context, 'No glucose data in this period');
+      return ClipRect(
+        child: CustomPaint(
           painter: _GlucoseLinePainter(points: pts, start: start, end: end),
           child: const SizedBox.expand(),
-        );
+        ),
+      );
 
       case _GraphType.insulin:
         final data = _insulinBuckets(start, end);
@@ -1259,12 +1261,18 @@ class _GlucoseLinePainter extends CustomPainter {
   final DateTime start;
   final DateTime end;
 
+  // Padding around the drawable area — prevents dots from touching edges
   static const double _padL = 38.0;
   static const double _padR = 10.0;
-  static const double _padT = 10.0;
-  static const double _padB = 26.0;
-  static const double _minY = 40.0;
-  static const double _maxY = 310.0;
+  static const double _padT = 24.0;   // slightly more top padding
+  static const double _padB = 28.0;   // slightly more bottom padding
+
+  // Extra internal margin so dots (radius ~5 + stroke 2) never clip
+  static const double _dotMargin = 8.0;
+
+  // Hard clinical floor/ceiling for safety
+  static const double _hardMinY = 30.0;
+  static const double _hardMaxY = 400.0;
 
   const _GlucoseLinePainter({
     required this.points,
@@ -1272,82 +1280,185 @@ class _GlucoseLinePainter extends CustomPainter {
     required this.end,
   });
 
+  /// Compute adaptive Y-axis bounds from data, with padding and nice rounding.
+  (double, double) _computeYBounds() {
+    if (points.isEmpty) return (70.0, 180.0);
+
+    final values = points.map((p) => p.value.toDouble()).toList();
+    double dataMin = values.reduce((a, b) => a < b ? a : b);
+    double dataMax = values.reduce((a, b) => a > b ? a : b);
+
+    // Clamp to hard limits
+    dataMin = dataMin.clamp(_hardMinY, _hardMaxY);
+    dataMax = dataMax.clamp(_hardMinY, _hardMaxY);
+
+    // Add padding so points don't touch edges (15% of range, min 20 mg/dL)
+    final range = dataMax - dataMin;
+    final padding = (range * 0.15).clamp(20.0, 60.0);
+
+    double minY = (dataMin - padding).clamp(_hardMinY, _hardMaxY);
+    double maxY = (dataMax + padding).clamp(_hardMinY, _hardMaxY);
+
+    // Ensure we always show the clinical target band (70–180) if possible
+    if (minY > 70.0) minY = 70.0;
+    if (maxY < 180.0) maxY = 180.0;
+
+    // Round to nice numbers for clean grid lines
+    return _niceRound(minY, maxY);
+  }
+
+  
+
+  (double, double) _niceRound(double lo, double hi) {
+    final span = hi - lo;
+    double step;
+    if (span <= 60) {
+      step = 10;
+    } else if (span <= 120) {
+      step = 20;
+    } else if (span <= 200) {
+      step = 25;
+    } else if (span <= 300) {
+      step = 50;
+    } else {
+      step = 100;
+    }
+
+    final niceMin = (lo / step).floor() * step;
+    final niceMax = (hi / step).ceil() * step;
+    return (
+      niceMin.clamp(_hardMinY, _hardMaxY),
+      niceMax.clamp(_hardMinY, _hardMaxY),
+    );
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
+    // The actual chart drawing area (inside all padding)
     final chartW = size.width - _padL - _padR;
     final chartH = size.height - _padT - _padB;
     final totalMs = end.difference(start).inMilliseconds.toDouble();
 
-    double xOf(DateTime ts) =>
-        _padL + ts.difference(start).inMilliseconds / totalMs * chartW;
+    final (minY, maxY) = _computeYBounds();
 
-    double yOf(double val) =>
-        _padT + chartH * (1 - (val - _minY) / (_maxY - _minY));
+    // The "safe" drawable area — inset by dot margin so dots never overflow
+    final safeTop = _padT + _dotMargin;
+    final safeBot = _padT + chartH - _dotMargin;
+    final safeH = safeBot - safeTop;
 
-    final bandPaint = Paint()
-      ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.08);
-    final bandTop = yOf(180);
-    final bandBot = yOf(70);
-    canvas.drawRect(
-      Rect.fromLTRB(_padL, bandTop, _padL + chartW, bandBot),
-      bandPaint,
-    );
-
-    final rangeBorderPaint = Paint()
-      ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.35)
-      ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(_padL, bandTop),
-      Offset(_padL + chartW, bandTop),
-      rangeBorderPaint,
-    );
-    canvas.drawLine(
-      Offset(_padL, bandBot),
-      Offset(_padL + chartW, bandBot),
-      rangeBorderPaint,
-    );
-
-    final gridPaint = Paint()
-      ..color = Colors.grey.shade200
-      ..strokeWidth = 1;
-    final yLabelStyle = TextStyle(fontSize: 9, color: Colors.grey.shade500);
-    for (final val in [70, 110, 150, 180, 250]) {
-      final y = yOf(val.toDouble());
-      if (y < _padT - 4 || y > _padT + chartH + 4) continue;
-      canvas.drawLine(Offset(_padL, y), Offset(_padL + chartW, y), gridPaint);
-      _drawText(
-        canvas,
-        '$val',
-        Offset(0, y - 5),
-        yLabelStyle,
-        maxWidth: _padL - 3,
-      );
+    double xOf(DateTime ts) {
+      final ms = ts.difference(start).inMilliseconds
+          .toDouble()
+          .clamp(0.0, totalMs);
+      return _padL + (ms / totalMs) * chartW;
     }
 
+    // Map value to Y pixel, clamped strictly inside the SAFE drawable area
+    double yOf(double val) {
+      final t = ((val - minY) / (maxY - minY)).clamp(0.0, 1.0);
+      return safeBot - safeH * t;  // inverted: 0 at bottom, 1 at top
+    }
+
+    // ── Target band 70–180 ───────────────────────────────────
+    final bandTop = yOf(180);
+    final bandBot = yOf(70);
+
+    if (bandTop >= safeTop && bandBot <= safeBot) {
+      final bandPaint = Paint()
+        ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.08);
+      canvas.drawRect(
+        Rect.fromLTRB(
+          _padL,
+          bandTop.clamp(safeTop, safeBot),
+          _padL + chartW,
+          bandBot.clamp(safeTop, safeBot),
+        ),
+        bandPaint,
+      );
+
+      final rangeBorderPaint = Paint()
+        ..color = const Color(0xFF2BB6A3).withValues(alpha: 0.35)
+        ..strokeWidth = 1;
+
+      if (180 >= minY && 180 <= maxY) {
+        final y = bandTop.clamp(safeTop, safeBot);
+        canvas.drawLine(
+          Offset(_padL, y),
+          Offset(_padL + chartW, y),
+          rangeBorderPaint,
+        );
+      }
+      if (70 >= minY && 70 <= maxY) {
+        final y = bandBot.clamp(safeTop, safeBot);
+        canvas.drawLine(
+          Offset(_padL, y),
+          Offset(_padL + chartW, y),
+          rangeBorderPaint,
+        );
+      }
+    }
+
+    // ── Y grid lines & labels ──────────────────────────────────
+    final gridPaint = Paint()
+      ..color = Colors.grey.shade800
+      ..strokeWidth = 0.5;
+
+    final yLabelStyle = TextStyle(
+      fontSize: 9,
+      color: Colors.grey.shade500,
+    );
+
+    final step = _gridStep(maxY - minY);
+    var gridVal = (minY / step).ceil() * step;
+    while (gridVal <= maxY) {
+      final y = yOf(gridVal);
+      if (y >= safeTop && y <= safeBot) {
+        canvas.drawLine(
+          Offset(_padL, y),
+          Offset(_padL + chartW, y),
+          gridPaint,
+        );
+        _drawText(
+          canvas,
+          '${gridVal.toInt()}',
+          Offset(0, y - 5),
+          yLabelStyle,
+          maxWidth: _padL - 3,
+        );
+      }
+      gridVal += step;
+    }
+
+    // ── X axis labels ──────────────────────────────────────────
     _drawXLabels(canvas, chartW, chartH, xOf);
 
-    final offsets = points
-        .map((p) => Offset(xOf(p.ts), yOf(p.value.toDouble())))
+    // ── Filter valid points ────────────────────────────────────
+    final validPoints = points
+        .where((p) => p.value > 0 && p.value <= 600)
         .toList();
-    if (offsets.length == 1) {
-      canvas.drawCircle(
-        offsets[0],
-        5,
-        Paint()..color = const Color(0xFF2BB6A3),
-      );
-    } else {
-      final linePath = Path()..moveTo(offsets[0].dx, offsets[0].dy);
-      for (int i = 1; i < offsets.length; i++) {
-        final prev = offsets[i - 1];
-        final curr = offsets[i];
-        final ctrlX = (prev.dx + curr.dx) / 2;
-        linePath.cubicTo(ctrlX, prev.dy, ctrlX, curr.dy, curr.dx, curr.dy);
-      }
 
-      final fillPath = Path.from(linePath)
-        ..lineTo(offsets.last.dx, _padT + chartH)
-        ..lineTo(offsets.first.dx, _padT + chartH)
+    if (validPoints.isEmpty) return;
+
+    // Compute offsets, clamped to safe area
+    final offsets = validPoints.map((p) {
+      final y = yOf(p.value.toDouble());
+      return Offset(
+        xOf(p.ts).clamp(_padL, _padL + chartW),
+        y.clamp(safeTop, safeBot),
+      );
+    }).toList();
+
+    // ── Fill gradient under line ─────────────────────────────
+    if (offsets.length > 1) {
+      final fillPath = Path()
+        ..moveTo(offsets.first.dx, safeBot);
+      for (final o in offsets) {
+        fillPath.lineTo(o.dx, o.dy);
+      }
+      fillPath
+        ..lineTo(offsets.last.dx, safeBot)
         ..close();
+
       canvas.drawPath(
         fillPath,
         Paint()
@@ -1355,12 +1466,20 @@ class _GlucoseLinePainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFF2BB6A3).withValues(alpha: 0.30),
-              const Color(0xFF2BB6A3).withValues(alpha: 0.00),
+              const Color(0xFF2BB6A3).withValues(alpha: 0.25),
+              const Color(0xFF2BB6A3).withValues(alpha: 0.0),
             ],
-          ).createShader(Rect.fromLTWH(_padL, _padT, chartW, chartH)),
+          ).createShader(
+            Rect.fromLTWH(_padL, safeTop, chartW, safeH),
+          ),
       );
 
+      // ── Line ────────────────────────────────────────────────
+      final linePath = Path()
+        ..moveTo(offsets.first.dx, offsets.first.dy);
+      for (int i = 1; i < offsets.length; i++) {
+        linePath.lineTo(offsets[i].dx, offsets[i].dy);
+      }
       canvas.drawPath(
         linePath,
         Paint()
@@ -1372,23 +1491,36 @@ class _GlucoseLinePainter extends CustomPainter {
       );
     }
 
-    for (int i = 0; i < points.length; i++) {
-      final p = points[i];
+    // ── Dots ───────────────────────────────────────────────────
+    for (int i = 0; i < validPoints.length; i++) {
+      final p = validPoints[i];
       final pos = offsets[i];
       final color = p.isManual
           ? const Color(0xFF5B8CF5)
           : const Color(0xFF2BB6A3);
-      canvas.drawCircle(pos, 4.5, Paint()..color = Colors.white);
+
+      // white ring
+      canvas.drawCircle(pos, 5.0, Paint()..color = Colors.white);
+      // colored border
       canvas.drawCircle(
         pos,
-        4.5,
+        5.0,
         Paint()
           ..color = color
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
-      canvas.drawCircle(pos, 1.5, Paint()..color = color);
+      // colored fill center
+      canvas.drawCircle(pos, 2.0, Paint()..color = color);
     }
+  }
+
+  double _gridStep(double range) {
+    if (range <= 60) return 10;
+    if (range <= 120) return 20;
+    if (range <= 200) return 25;
+    if (range <= 300) return 50;
+    return 100;
   }
 
   void _drawXLabels(
@@ -1406,9 +1538,10 @@ class _GlucoseLinePainter extends CustomPainter {
 
     if (spanHours <= 26) {
       ticks = [];
-      var hour = (start.hour ~/ 6 + 1) * 6;
-      var t = DateTime(start.year, start.month, start.day, hour % 24);
-      if (hour >= 24) t = t.add(const Duration(days: 1));
+      var t = DateTime(
+        start.year, start.month, start.day,
+        ((start.hour ~/ 6) + 1) * 6 % 24,
+      );
       if (t.isBefore(start)) t = t.add(const Duration(hours: 6));
       while (!t.isAfter(end)) {
         ticks.add(t);
@@ -1421,12 +1554,14 @@ class _GlucoseLinePainter extends CustomPainter {
         return h < 12 ? '${h}AM' : '${h - 12}PM';
       };
     } else if (spanHours <= 170) {
-      ticks = List.generate(7, (i) => end.subtract(Duration(days: 6 - i)));
-      fmt = (dt) => ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][dt.weekday - 1];
+      ticks = List.generate(
+        7, (i) => end.subtract(Duration(days: 6 - i)),
+      );
+      fmt = (dt) =>
+          ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][dt.weekday - 1];
     } else {
       ticks = List.generate(
-        5,
-        (i) => start.add(Duration(days: (i * 7).toInt())),
+        5, (i) => start.add(Duration(days: (i * 7).toInt())),
       );
       fmt = (dt) => '${dt.month}/${dt.day}';
     }
