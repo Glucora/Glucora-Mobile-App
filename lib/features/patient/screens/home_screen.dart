@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _hardwareBatteryPercent;
   double? _hardwarePredictionValue;
   double? _hardwareLatestGlucoseValue;
+  double? _hardwarePumpDoseValue;
   final List<_GlucosePoint> _bleHistory = <_GlucosePoint>[];
   bool _hardwareConnected = false;
   bool _hardwareLoading = true;
@@ -235,6 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _hardwareBatteryPercent = data.batteryPercent;
         _hardwarePredictionValue = data.predictionValue;
         _hardwareLatestGlucoseValue = data.latestGlucoseValue;
+        _hardwarePumpDoseValue = data.pumpDoseValue;
+
         _hardwareStatus = data.status;
 
         if (data.latestGlucoseValue != null) {
@@ -260,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _hardwareBatteryPercent = null;
           _hardwarePredictionValue = null;
           _hardwareLatestGlucoseValue = null;
+          _hardwarePumpDoseValue = null;
           _glucoseValue = null;
           _glucoseTrend = 'stable';
           _glucoseUpdatedAt = null;
@@ -272,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _hardwareBatteryPercent = null;
           _hardwarePredictionValue = null;
           _hardwareLatestGlucoseValue = null;
+          _hardwarePumpDoseValue = null;
           _glucoseValue = _backendGlucoseValue;
           _glucoseTrend = _backendGlucoseTrend;
           _glucoseUpdatedAt = _backendGlucoseUpdatedAt;
@@ -902,72 +907,56 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: colors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: _iobLoading
-                      ? Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: colors.primary,
-                          ),
-                        )
-                      : Icon(
-                          Icons.water_drop_rounded,
-                          size: 19,
-                          color: colors.primary,
-                        ),
+                  child: Icon(
+                    Icons.opacity,
+                    size: 19,
+                    color: colors.primary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => const IobDetailSheet(),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "IOB",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Insulin on Board",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 2),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              iobDisplay,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textPrimary,
-                              ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            iobDisplay,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
                             ),
-                            Text(
-                              " U",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "Insulin on board",
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: colors.textSecondary,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          Text(
+                            " U",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        "Active insulin onboard",
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: colors.textSecondary,
                         ),
-                      ],
-                    ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1091,6 +1080,91 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colors.textSecondary.withValues(alpha: 0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.vaccines_rounded,
+                    size: 19,
+                    color: colors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Pump Dose",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            suppressValues || _hardwarePumpDoseValue == null
+                                ? '–'
+                                : _hardwarePumpDoseValue!.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            " U",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        "Pump dose",
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: colors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1113,6 +1187,9 @@ class _HomeScreenState extends State<HomeScreen> {
         !suppressValues && _hardwareLatestGlucoseValue != null
         ? _hardwareLatestGlucoseValue!.toStringAsFixed(2)
         : '–';
+    final pumpDoseValue = !suppressValues && _hardwarePumpDoseValue != null
+    ? _hardwarePumpDoseValue!.toStringAsFixed(2)
+    : '–';
 
     return Container(
       width: double.infinity,
@@ -1178,6 +1255,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   title: 'Latest Glucose',
                   value: latestGlucoseValue,
+                ),
+              ),
+              const SizedBox(width: 10), 
+              Expanded(
+                child: _hardwareMetricTile(
+                  context,
+                  title: 'Pump Dose',
+                  value: '$pumpDoseValue U',
                 ),
               ),
             ],

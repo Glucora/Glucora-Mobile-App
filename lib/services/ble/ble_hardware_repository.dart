@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import 'ble_hardware_data.dart';
 
 class BleHardwareUuids {
@@ -19,6 +18,10 @@ class BleHardwareUuids {
   );
   static final Guid latestGlucoseCharacteristic = Guid(
     'AB12A4A8-AB12-AB12-AB12-AB12AB12AB12',
+  );
+
+  static final Guid pumpDoseCharacteristic = Guid(
+    'AB12A4A8-AB12-AB12-AB12-AB12AB12AB13',
   );
 
   static final Guid batteryService = Guid(
@@ -53,6 +56,8 @@ class BleHardwareRepository {
   BluetoothCharacteristic? _predictionChar;
   BluetoothCharacteristic? _iobChar;
   BluetoothCharacteristic? _latestGlucoseChar;
+  BluetoothCharacteristic? _pumpDoseChar;
+
   final Set<String> _notifyEnabledCharacteristicIds = <String>{};
   final Map<String, List<int>> _lastNotifyPayloadByCharacteristic =
       <String, List<int>>{};
@@ -143,6 +148,7 @@ class BleHardwareRepository {
     _predictionChar = null;
     _iobChar = null;
     _latestGlucoseChar = null;
+    _pumpDoseChar = null;
     _notifyEnabledCharacteristicIds.clear();
     _lastNotifyPayloadByCharacteristic.clear();
     _lastNotifyTimestampByCharacteristic.clear();
@@ -270,6 +276,7 @@ class BleHardwareRepository {
         _predictionChar = null;
         _iobChar = null;
         _latestGlucoseChar = null;
+        _pumpDoseChar = null;
         await _cancelNotifySubscriptions();
         _notifyEnabledCharacteristicIds.clear();
         _lastNotifyPayloadByCharacteristic.clear();
@@ -331,6 +338,8 @@ class BleHardwareRepository {
           BleHardwareUuids.latestGlucoseCharacteristic,
         )) {
           _latestGlucoseChar = c;
+        } else if (_uuidEquals(c.uuid, BleHardwareUuids.pumpDoseCharacteristic)) {
+          _pumpDoseChar = c; 
         }
       }
     }
@@ -355,6 +364,7 @@ class BleHardwareRepository {
     final predictionRaw = await _safeRead(_predictionChar);
     final iobRaw = await _safeRead(_iobChar);
     final latestGlucoseRaw = await _safeRead(_latestGlucoseChar);
+    final pumpDoseRaw = await _safeRead(_pumpDoseChar);
 
     if (_enableBleDebugLogs) {
       _logBle('Raw battery=${_bytesToHex(batteryRaw)}');
@@ -367,12 +377,14 @@ class BleHardwareRepository {
     final predictionValue = _decodeNumeric(predictionRaw);
     final iobValue = _decodeNumeric(iobRaw);
     final latestGlucoseValue = _decodeNumeric(latestGlucoseRaw);
+    final pumpDoseValue = _decodeNumeric(pumpDoseRaw);
 
     final hasAnyFreshValue =
         battery != null ||
         predictionValue != null ||
         iobValue != null ||
-        latestGlucoseValue != null;
+        latestGlucoseValue != null ||
+        pumpDoseValue != null;
 
     if (!hasAnyFreshValue) {
       _consecutiveEmptyPolls++;
@@ -403,6 +415,7 @@ class BleHardwareRepository {
         predictionValue: predictionValue,
         iobValue: iobValue,
         latestGlucoseValue: latestGlucoseValue,
+        pumpDoseValue: pumpDoseValue,
         status: 'Connected',
       ),
     );

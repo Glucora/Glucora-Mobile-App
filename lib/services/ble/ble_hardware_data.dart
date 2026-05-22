@@ -6,6 +6,7 @@ class BleHardwareData {
   final double? predictionValue;
   final double? iobValue;
   final double? latestGlucoseValue;
+  final double? pumpDoseValue;
   final String status;
 
   const BleHardwareData({
@@ -16,6 +17,7 @@ class BleHardwareData {
     required this.predictionValue,
     required this.iobValue,
     required this.latestGlucoseValue,
+    required this.pumpDoseValue,
     required this.status,
   });
 
@@ -28,6 +30,7 @@ class BleHardwareData {
       predictionValue: null,
       iobValue: null,
       latestGlucoseValue: null,
+      pumpDoseValue: null,
       status: 'Searching for hardware...',
     );
   }
@@ -40,6 +43,7 @@ class BleHardwareData {
     double? predictionValue,
     double? iobValue,
     double? latestGlucoseValue,
+    double? pumpDoseValue,
     String? status,
   }) {
     return BleHardwareData(
@@ -50,6 +54,7 @@ class BleHardwareData {
       predictionValue: predictionValue ?? this.predictionValue,
       iobValue: iobValue ?? this.iobValue,
       latestGlucoseValue: latestGlucoseValue ?? this.latestGlucoseValue,
+      pumpDoseValue: pumpDoseValue ?? this.pumpDoseValue,
       status: status ?? this.status,
     );
   }
