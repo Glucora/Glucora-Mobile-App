@@ -1,63 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/guardian_patient_model.dart';
 import 'guardian_patient_detail_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
-import 'package:glucora_ai_companion/services/repositories/guardian_repository.dart';
+import 'package:glucora_ai_companion/providers/guardian_riverpod_providers.dart';
 
-class GuardianHomeScreen extends StatefulWidget {
+class GuardianHomeScreen extends ConsumerStatefulWidget {
   const GuardianHomeScreen({super.key});
 
   @override
-  State<GuardianHomeScreen> createState() => _GuardianHomeScreenState();
+  ConsumerState<GuardianHomeScreen> createState() =>
+      _GuardianHomeScreenState();
 }
 
-class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
-  late final GuardianRepository _repo =
-      GuardianRepository(Supabase.instance.client);
-
+class _GuardianHomeScreenState extends ConsumerState<GuardianHomeScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String? _filterStatus;
-  List<GuardianPatient> _allPatients = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPatients();
-    _searchCtrl.addListener(_onSearchChanged);
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(guardianPatientsProvider.notifier).loadPatients();
+    });
+    _searchCtrl.addListener(
+        () => setState(() => _query = _searchCtrl.text.trim()));
   }
 
   @override
   void dispose() {
-    _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() => setState(() => _query = _searchCtrl.text.trim());
-
-  Future<void> _loadPatients() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = Supabase.instance.client.auth.currentUser!.id;
-      final patients = await _repo.getPatients(userId);
-      if (!mounted) return;
-      setState(() {
-        _allPatients = patients;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _showErrorSnackBar('Failed to load patients: $e');
-    }
-  }
+  // ── Actions ────────────────────────────────────────────────────────────────
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
@@ -69,37 +51,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       ),
     );
   }
-
-  List<GuardianPatient> _getFilteredPatients() {
-    final filtered = _allPatients.where((patient) {
-      final query = _query.toLowerCase();
-      if (query.isNotEmpty) {
-        final matches = patient.name.toLowerCase().contains(query) ||
-            patient.relationship.toLowerCase().contains(query) ||
-            patient.overallStatus.toLowerCase().contains(query) ||
-            patient.glucoseLabel.toLowerCase().contains(query);
-        if (!matches) return false;
-      }
-      if (_filterStatus != null && patient.overallStatus != _filterStatus) {
-        return false;
-      }
-      return true;
-    }).toList();
-
-    // Sort by priority: emergency → attention → good
-    const priority = {'emergency': 0, 'attention': 1, 'good': 2};
-    filtered.sort((a, b) =>
-        (priority[a.overallStatus] ?? 2).compareTo(priority[b.overallStatus] ?? 2));
-
-    return filtered;
-  }
-
-  int get _emergencyCount =>
-      _allPatients.where((p) => p.overallStatus == 'emergency').length;
-  int get _attentionCount =>
-      _allPatients.where((p) => p.overallStatus == 'attention').length;
-
-  // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     if (phoneNumber.isEmpty) {
@@ -141,16 +92,16 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   Color _getStatusColor(String status, GlucoraColors colors) {
     switch (status) {
       case 'emergency': return colors.error;
-      case 'attention':  return colors.warning;
-      default:           return colors.accent;
+      case 'attention': return colors.warning;
+      default:          return colors.accent;
     }
   }
 
   String _getStatusLabel(String status) {
     switch (status) {
       case 'emergency': return 'Check on them';
-      case 'attention':  return 'Worth a look';
-      default:           return 'Doing well';
+      case 'attention': return 'Worth a look';
+      default:          return 'Doing well';
     }
   }
 
@@ -179,19 +130,46 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    if (_isLoading) {
+    final state = ref.watch(guardianPatientsProvider);
+
+    if (state.isLoading) {
       return Scaffold(
         backgroundColor: colors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    final patients = _getFilteredPatients();
+
+    if (state.error != null) {
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TranslatedText(state.error!,
+                  style: TextStyle(color: colors.error)),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(guardianPatientsProvider.notifier).clearError();
+                  ref.read(guardianPatientsProvider.notifier).loadPatients();
+                },
+                child: const TranslatedText('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final patients = state.filtered(_query, _filterStatus);
+
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, state),
             _buildSearchAndFilter(context),
             Expanded(
               child: patients.isEmpty
@@ -204,7 +182,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, GuardianPatientsState state) {
     final colors = context.colors;
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -212,8 +190,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         : hour < 18
             ? 'Good Afternoon'
             : 'Good Evening';
-    final goodCount =
-        _allPatients.where((p) => p.overallStatus == 'good').length;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
@@ -231,22 +207,31 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${_allPatients.length} ${_allPatients.length == 1 ? 'person' : 'people'} under your care',
+            '${state.patients.length} ${state.patients.length == 1 ? 'person' : 'people'} under your care',
             style: TextStyle(fontSize: 14, color: colors.textSecondary),
           ),
-          if (_allPatients.isNotEmpty) ...[
+          if (state.patients.isNotEmpty) ...[
             const SizedBox(height: 14),
             Row(
               children: [
-                if (_emergencyCount > 0) ...[
-                  _buildSummaryChip('$_emergencyCount need help', colors.error, colors),
+                if (state.emergencyCount > 0) ...[
+                  _buildSummaryChip(
+                      '${state.emergencyCount} need help',
+                      colors.error,
+                      colors),
                   const SizedBox(width: 8),
                 ],
-                if (_attentionCount > 0) ...[
-                  _buildSummaryChip('$_attentionCount worth a look', colors.warning, colors),
+                if (state.attentionCount > 0) ...[
+                  _buildSummaryChip(
+                      '${state.attentionCount} worth a look',
+                      colors.warning,
+                      colors),
                   const SizedBox(width: 8),
                 ],
-                _buildSummaryChip('$goodCount doing well', colors.accent, colors),
+                _buildSummaryChip(
+                    '${state.goodCount} doing well',
+                    colors.accent,
+                    colors),
               ],
             ),
           ],
@@ -255,7 +240,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildSummaryChip(String label, Color color, GlucoraColors colors) {
+  Widget _buildSummaryChip(
+      String label, Color color, GlucoraColors colors) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -268,7 +254,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
@@ -297,16 +284,17 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colors.textSecondary.withValues(alpha: 0.12),
-                ),
+                    color:
+                        colors.textSecondary.withValues(alpha: 0.12)),
               ),
               child: TextField(
                 controller: _searchCtrl,
-                style: TextStyle(fontSize: 14, color: colors.textPrimary),
+                style:
+                    TextStyle(fontSize: 14, color: colors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search patients',
-                  hintStyle:
-                      TextStyle(color: colors.textSecondary, fontSize: 14),
+                  hintStyle: TextStyle(
+                      color: colors.textSecondary, fontSize: 14),
                   prefixIcon: Icon(Icons.search_rounded,
                       color: colors.textSecondary, size: 18),
                   suffixIcon: _query.isNotEmpty
@@ -317,7 +305,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
@@ -329,7 +318,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _filterStatus != null ? colors.accent : colors.surface,
+                color: _filterStatus != null
+                    ? colors.accent
+                    : colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: _filterStatus != null
@@ -339,7 +330,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               ),
               child: Icon(
                 Icons.tune_rounded,
-                color: _filterStatus != null ? Colors.white : colors.textSecondary,
+                color: _filterStatus != null
+                    ? Colors.white
+                    : colors.textSecondary,
                 size: 18,
               ),
             ),
@@ -349,7 +342,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildPatientList(BuildContext context, List<GuardianPatient> patients) {
+  Widget _buildPatientList(
+      BuildContext context, List<GuardianPatient> patients) {
     return ListView.separated(
       key: ValueKey('patient_list_$_query$_filterStatus'),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -372,14 +366,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search_off,
-              size: 64, color: colors.textSecondary.withValues(alpha: 0.5)),
+              size: 64,
+              color: colors.textSecondary.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           TranslatedText(
             _query.isNotEmpty
                 ? 'No patients match "$_query"'
                 : 'No patients found',
-            key: ValueKey('empty_state_$_query'),
-            style: TextStyle(fontSize: 16, color: colors.textSecondary),
+            style:
+                TextStyle(fontSize: 16, color: colors.textSecondary),
           ),
           const SizedBox(height: 8),
           if (_filterStatus != null || _query.isNotEmpty)
@@ -390,11 +385,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               }),
               child: TranslatedText(
                 'Clear filters',
-                key: const ValueKey('clear_filters_button'),
                 style: TextStyle(
-                  color: colors.accent,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: colors.accent,
+                    fontWeight: FontWeight.w600),
               ),
             ),
         ],
@@ -402,7 +395,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildPatientCard(BuildContext context, GuardianPatient patient) {
+  Widget _buildPatientCard(
+      BuildContext context, GuardianPatient patient) {
     final colors = context.colors;
     final statusColor = _getStatusColor(patient.overallStatus, colors);
     final glucoseColor = _getGlucoseColor(patient, colors);
@@ -432,7 +426,6 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Top row: avatar + name + status ──
               Row(
                 children: [
                   ProfilePicture(
@@ -461,20 +454,22 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         Text(
                           patient.relationship,
                           style: TextStyle(
-                              fontSize: 12, color: colors.textSecondary),
+                              fontSize: 12,
+                              color: colors.textSecondary),
                         ),
                         const SizedBox(height: 1),
                         Text(
                           'Age ${patient.age}',
                           style: TextStyle(
-                              fontSize: 12, color: colors.textSecondary),
+                              fontSize: 12,
+                              color: colors.textSecondary),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -486,7 +481,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
-                              color: statusColor, shape: BoxShape.circle),
+                              color: statusColor,
+                              shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 5),
                         Text(
@@ -505,13 +501,12 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               const SizedBox(height: 14),
               Divider(
                   height: 1,
-                  color: colors.textSecondary.withValues(alpha: 0.1)),
+                  color:
+                      colors.textSecondary.withValues(alpha: 0.1)),
               const SizedBox(height: 14),
-              // ── Bottom row: glucose + devices + actions ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Glucose
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -534,7 +529,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                             child: Text(
                               'mg/dL',
                               style: TextStyle(
-                                  fontSize: 11, color: colors.textSecondary),
+                                  fontSize: 11,
+                                  color: colors.textSecondary),
                             ),
                           ),
                         ],
@@ -544,14 +540,18 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: glucoseColor.withValues(alpha: 0.1),
+                          color:
+                              glucoseColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(_getTrendIcon(patient.glucoseTrend),
-                                size: 11, color: glucoseColor),
+                            Icon(
+                                _getTrendIcon(
+                                    patient.glucoseTrend),
+                                size: 11,
+                                color: glucoseColor),
                             const SizedBox(width: 3),
                             Text(
                               patient.glucoseLabel,
@@ -567,40 +567,50 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     ],
                   ),
                   const Spacer(),
-                  // Devices
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _buildDeviceStatus(Icons.sensors, 'Sensor',
-                          patient.sensorConnected, colors, patient.id),
+                      _buildDeviceStatus(
+                          Icons.sensors,
+                          'Sensor',
+                          patient.sensorConnected,
+                          colors,
+                          patient.id),
                       const SizedBox(height: 5),
-                      _buildDeviceStatus(Icons.water_drop_outlined, 'Pump',
-                          patient.pumpActive, colors, patient.id),
+                      _buildDeviceStatus(
+                          Icons.water_drop_outlined,
+                          'Pump',
+                          patient.pumpActive,
+                          colors,
+                          patient.id),
                     ],
                   ),
                   const SizedBox(width: 16),
-                  // Action buttons
                   GestureDetector(
                     onTap: () => _sendSMS(patient.phoneNumber),
                     child: Container(
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: colors.textSecondary.withValues(alpha: 0.08),
+                        color: colors.textSecondary
+                            .withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.message_outlined,
-                          size: 16, color: colors.textSecondary),
+                          size: 16,
+                          color: colors.textSecondary),
                     ),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _makePhoneCall(patient.phoneNumber),
+                    onTap: () =>
+                        _makePhoneCall(patient.phoneNumber),
                     child: Container(
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: colors.accent.withValues(alpha: 0.1),
+                        color:
+                            colors.accent.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.call_rounded,
@@ -649,13 +659,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterBottomSheet(
         currentFilter: _filterStatus,
-        onFilterSelected: (filter) => setState(() => _filterStatus = filter),
+        onFilterSelected: (filter) =>
+            setState(() => _filterStatus = filter),
       ),
     );
   }
 }
 
-// ─── FILTER BOTTOM SHEET ─────────────────────────────────────────────────────
+// ─── FILTER BOTTOM SHEET — unchanged ─────────────────────────────────────────
 
 class _FilterBottomSheet extends StatelessWidget {
   final String? currentFilter;
@@ -673,7 +684,8 @@ class _FilterBottomSheet extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -708,19 +720,28 @@ class _FilterBottomSheet extends StatelessWidget {
                     child: TranslatedText(
                       'Clear',
                       style: TextStyle(
-                          color: colors.accent, fontWeight: FontWeight.w600),
+                          color: colors.accent,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 16),
-            _filterOption(context, null,        'All Patients',    'Show all patients',             colors.textSecondary, colors.background, colors),
+            _filterOption(context, null, 'All Patients',
+                'Show all patients', colors.textSecondary,
+                colors.background, colors),
             const SizedBox(height: 8),
-            _filterOption(context, 'good',      'Doing Well',      'Blood sugar in normal range',   colors.accent,        colors.accent.withValues(alpha: 0.1), colors),
+            _filterOption(context, 'good', 'Doing Well',
+                'Blood sugar in normal range', colors.accent,
+                colors.accent.withValues(alpha: 0.1), colors),
             const SizedBox(height: 8),
-            _filterOption(context, 'attention', 'Worth a Look',    'Blood sugar slightly off',      colors.warning,       colors.warning.withValues(alpha: 0.1), colors),
+            _filterOption(context, 'attention', 'Worth a Look',
+                'Blood sugar slightly off', colors.warning,
+                colors.warning.withValues(alpha: 0.1), colors),
             const SizedBox(height: 8),
-            _filterOption(context, 'emergency', 'Check on Them',   'Immediate attention needed',    colors.error,         colors.error.withValues(alpha: 0.1), colors),
+            _filterOption(context, 'emergency', 'Check on Them',
+                'Immediate attention needed', colors.error,
+                colors.error.withValues(alpha: 0.1), colors),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -731,8 +752,7 @@ class _FilterBottomSheet extends StatelessWidget {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const TranslatedText('Close'),
               ),
@@ -775,7 +795,8 @@ class _FilterBottomSheet extends StatelessWidget {
             Container(
               width: 12,
               height: 12,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -787,18 +808,23 @@ class _FilterBottomSheet extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? color : colors.textPrimary,
+                      color: isSelected
+                          ? color
+                          : colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   TranslatedText(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
+            if (isSelected)
+              Icon(Icons.check_circle, color: color, size: 20),
           ],
         ),
       ),
