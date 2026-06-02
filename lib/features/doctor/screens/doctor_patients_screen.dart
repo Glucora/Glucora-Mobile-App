@@ -1,114 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'patient_details_screen.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 import 'package:glucora_ai_companion/services/repositories/doctor_repository.dart';
+import 'package:glucora_ai_companion/providers/doctor_riverpod_providers.dart';
 
 // ─── SCREEN ──────────────────────────────────────────────────────────────────
 
-class DoctorPatientsScreen extends StatefulWidget {
+class DoctorPatientsScreen extends ConsumerWidget {
   const DoctorPatientsScreen({super.key});
 
   @override
-  State<DoctorPatientsScreen> createState() => _DoctorPatientsScreenState();
-}
-
-class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
-  late final DoctorRepository _repo =
-      DoctorRepository(Supabase.instance.client);
-
-  List<DoctorPatient> _allPatients = [];
-  String _doctorName = '';
-  bool _isLoading = true;
-  String? _error;
-
-  final TextEditingController _searchController = TextEditingController();
-  String _query = '';
-  String? _filterStatus;
-  String? _filterTrend;
-  String? _filterRange;
-
-  bool get _hasActiveFilters =>
-      _filterStatus != null || _filterTrend != null || _filterRange != null;
-
-  String _glucoseRange(DoctorPatient p) {
-    if (p.glucoseValue < 70) return 'Low';
-    if (p.glucoseValue <= 180) return 'In Range';
-    return 'High';
-  }
-
-  List<DoctorPatient> get _filtered {
-    return _allPatients.where((p) {
-      if (_query.isNotEmpty &&
-          !p.name.toLowerCase().contains(_query.toLowerCase())) {
-        return false;
-      }
-      if (_filterStatus != null && p.status != _filterStatus) return false;
-      if (_filterTrend != null && p.trend != _filterTrend) return false;
-      if (_filterRange != null && _glucoseRange(p) != _filterRange) {
-        return false;
-      }
-      return true;
-    }).toList();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDoctorName();
-    _loadPatients();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _loadDoctorName() {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    final fullName = user.userMetadata?['full_name'] as String?;
-    setState(() => _doctorName = fullName ?? 'Doctor');
-  }
-
-  Future<void> _loadPatients() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final userId = Supabase.instance.client.auth.currentUser!.id;
-      final patients = await _repo.getPatients(userId);
-      if (!mounted) return;
-      setState(() {
-        _allPatients = patients;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(doctorPatientsProvider);
     final colors = context.colors;
 
-    if (_isLoading) {
+    if (state.isLoading) {
       return Scaffold(
         backgroundColor: colors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_error != null) {
+    if (state.error != null) {
       return Scaffold(
         backgroundColor: colors.background,
         body: Center(
@@ -123,7 +39,8 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadPatients,
+                onPressed: () =>
+                    ref.read(doctorPatientsProvider.notifier).loadPatients(),
                 child: const TranslatedText('Retry'),
               ),
             ],
@@ -132,11 +49,11 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
       );
     }
 
-    final total    = _allPatients.length;
-    final critical = _allPatients.where((p) => p.status == 'Critical').length;
-    final highRisk = _allPatients.where((p) => p.status == 'High Risk').length;
-    final normal   = _allPatients.where((p) => p.status == 'Normal').length;
-    final low      = _allPatients.where((p) => p.status == 'Low').length;
+    final total    = state.allPatients.length;
+    final critical = state.allPatients.where((p) => p.status == 'Critical').length;
+    final highRisk = state.allPatients.where((p) => p.status == 'High Risk').length;
+    final normal   = state.allPatients.where((p) => p.status == 'Normal').length;
+    final low      = state.allPatients.where((p) => p.status == 'Low').length;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -147,7 +64,6 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
             return CustomScrollView(
               physics: const ClampingScrollPhysics(),
               slivers: [
-                // ── Header ──────────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
@@ -158,16 +74,27 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(child: _buildGreeting(colors, landscape: true)),
+                              Expanded(
+                                child: _buildGreeting(
+                                  colors,
+                                  state.doctorName,
+                                  landscape: true,
+                                ),
+                              ),
                               const SizedBox(width: 16),
-                              SizedBox(width: 340, child: _buildSearchBar(context)),
+                              SizedBox(
+                                width: 340,
+                                child: _buildSearchBar(context, ref),
+                              ),
                             ],
                           )
-                        : _buildGreeting(colors, landscape: false),
+                        : _buildGreeting(
+                            colors,
+                            state.doctorName,
+                            landscape: false,
+                          ),
                   ),
                 ),
-
-                // ── Summary chips ────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -182,17 +109,13 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     ),
                   ),
                 ),
-
-                // ── Search bar (portrait only) ───────────────────────────────
                 if (!isLandscape)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                      child: _buildSearchBar(context),
+                      child: _buildSearchBar(context, ref),
                     ),
                   ),
-
-                // ── Section label ────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -208,16 +131,17 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           ),
                         ),
                         TranslatedText(
-                          '${_filtered.length} shown',
-                          style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                          '${state.filtered.length} shown',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-
-                // ── Empty state ──────────────────────────────────────────────
-                if (_filtered.isEmpty)
+                if (state.filtered.isEmpty)
                   SliverFillRemaining(
                     child: Center(
                       child: TranslatedText(
@@ -226,9 +150,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                       ),
                     ),
                   ),
-
-                // ── Patient list / grid ──────────────────────────────────────
-                if (_filtered.isNotEmpty)
+                if (state.filtered.isNotEmpty)
                   isLandscape
                       ? SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -241,9 +163,12 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                               childAspectRatio: 3.4,
                             ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _buildPatientCard(context, index),
-                              childCount: _filtered.length,
+                              (context, index) => _buildPatientCard(
+                                context,
+                                ref,
+                                state.filtered[index],
+                              ),
+                              childCount: state.filtered.length,
                             ),
                           ),
                         )
@@ -251,9 +176,12 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) =>
-                                  _buildPatientCard(context, index),
-                              childCount: _filtered.length,
+                              (context, index) => _buildPatientCard(
+                                context,
+                                ref,
+                                state.filtered[index],
+                              ),
+                              childCount: state.filtered.length,
                             ),
                           ),
                         ),
@@ -265,14 +193,15 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  Widget _buildGreeting(dynamic colors, {required bool landscape}) {
+  Widget _buildGreeting(dynamic colors, String doctorName,
+      {required bool landscape}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TranslatedText(
-          landscape ? 'Hi, Doctor $_doctorName 👋' : 'Hi, Dr. $_doctorName 👋',
+          landscape
+              ? 'Hi, Doctor $doctorName 👋'
+              : 'Hi, Dr. $doctorName 👋',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -291,8 +220,11 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  Widget _buildPatientCard(BuildContext context, int index) {
-    final patient = _filtered[index];
+  Widget _buildPatientCard(
+    BuildContext context,
+    WidgetRef ref,
+    DoctorPatient patient,
+  ) {
     return _PatientCard(
       patient: patient,
       onTap: () async {
@@ -305,7 +237,9 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
             ),
           ),
         );
-        if (removed == true) _loadPatients();
+        if (removed == true) {
+          ref.read(doctorPatientsProvider.notifier).loadPatients();
+        }
       },
     );
   }
@@ -353,31 +287,33 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     );
   }
 
-  void _showFilterSheet(BuildContext context) {
+  void _showFilterSheet(BuildContext context, WidgetRef ref) {
+    final state = ref.read(doctorPatientsProvider);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _FilterBottomSheet(
-        currentStatus: _filterStatus,
-        currentTrend: _filterTrend,
-        currentRange: _filterRange,
-        onApply: (status, trend, range) => setState(() {
-          _filterStatus = status;
-          _filterTrend = trend;
-          _filterRange = range;
-        }),
-        onClear: () => setState(() {
-          _filterStatus = null;
-          _filterTrend = null;
-          _filterRange = null;
-        }),
+        currentStatus: state.filterStatus,
+        currentTrend: state.filterTrend,
+        currentRange: state.filterRange,
+        onApply: (status, trend, range) {
+          ref.read(doctorPatientsProvider.notifier).applyFilters(
+                filterStatus: status,
+                filterTrend: trend,
+                filterRange: range,
+              );
+        },
+        onClear: () {
+          ref.read(doctorPatientsProvider.notifier).applyFilters(clearAll: true);
+        },
       ),
     );
   }
 
-  Widget _buildSearchBar(BuildContext context) {
+  Widget _buildSearchBar(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final state = ref.watch(doctorPatientsProvider);
     return Row(
       children: [
         Expanded(
@@ -395,8 +331,8 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
               ],
             ),
             child: TextField(
-              controller: _searchController,
-              onChanged: (val) => setState(() => _query = val),
+              onChanged: (val) =>
+                  ref.read(doctorPatientsProvider.notifier).setQuery(val),
               decoration: InputDecoration(
                 icon: Icon(Icons.search, color: colors.textSecondary),
                 hintText: 'Search patients...',
@@ -409,19 +345,21 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
         ),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () => _showFilterSheet(context),
+          onTap: () => _showFilterSheet(context, ref),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: _hasActiveFilters ? colors.primaryDark : colors.accent,
+                  color: state.hasActiveFilters
+                      ? colors.primaryDark
+                      : colors.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.tune, color: Colors.white, size: 20),
               ),
-              if (_hasActiveFilters)
+              if (state.hasActiveFilters)
                 Positioned(
                   top: -4,
                   right: -4,
@@ -434,7 +372,7 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     ),
                     child: Center(
                       child: TranslatedText(
-                        '${[_filterStatus, _filterTrend, _filterRange].where((f) => f != null).length}',
+                        '${[state.filterStatus, state.filterTrend, state.filterRange].where((f) => f != null).length}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 8,
@@ -542,18 +480,22 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             ],
           ),
           const SizedBox(height: 20),
-
           _filterSection(
             context,
             title: 'Status',
             icon: Icons.circle_outlined,
             options: const ['Low', 'Normal', 'High Risk', 'Critical'],
-            optionColors: const [Colors.blue, Colors.green, Colors.orange, Colors.red],
+            optionColors: const [
+              Colors.blue,
+              Colors.green,
+              Colors.orange,
+              Colors.red,
+            ],
             selected: _status,
-            onSelect: (val) => setState(() => _status = _status == val ? null : val),
+            onSelect: (val) =>
+                setState(() => _status = _status == val ? null : val),
           ),
           const SizedBox(height: 20),
-
           _filterSection(
             context,
             title: 'Last Reading',
@@ -565,16 +507,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               Color(0xFFFF9F40),
             ],
             selected: _range,
-            onSelect: (val) => setState(() => _range = _range == val ? null : val),
+            onSelect: (val) =>
+                setState(() => _range = _range == val ? null : val),
           ),
           const SizedBox(height: 20),
-
           _filterSection(
             context,
             title: 'Glucose Trend',
             icon: Icons.trending_up_outlined,
             options: const ['Rising', 'Falling', 'Stable'],
-            optionColors: const [Colors.red, Color(0xFFFF9F40), Colors.green],
+            optionColors: const [
+              Colors.red,
+              Color(0xFFFF9F40),
+              Colors.green,
+            ],
             selected: _trend == 'up'
                 ? 'Rising'
                 : _trend == 'down'
@@ -583,13 +529,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         ? 'Stable'
                         : null,
             onSelect: (val) {
-              const map = {'Rising': 'up', 'Falling': 'down', 'Stable': 'stable'};
+              const map = {
+                'Rising': 'up',
+                'Falling': 'down',
+                'Stable': 'stable',
+              };
               final internal = map[val];
               setState(() => _trend = _trend == internal ? null : internal);
             },
           ),
           const SizedBox(height: 28),
-
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -651,12 +600,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         const SizedBox(height: 10),
         Row(
           children: List.generate(options.length, (i) {
-            final opt   = options[i];
-            final color = optionColors[i];
+            final opt        = options[i];
+            final color      = optionColors[i];
             final isSelected = selected == opt;
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: i < options.length - 1 ? 8 : 0),
+                padding:
+                    EdgeInsets.only(right: i < options.length - 1 ? 8 : 0),
                 child: GestureDetector(
                   onTap: () => onSelect(opt),
                   child: AnimatedContainer(
@@ -677,8 +627,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     child: Column(
                       children: [
                         Icon(
-                          isSelected ? Icons.check_circle : Icons.circle_outlined,
-                          color: isSelected ? color : colors.textSecondary,
+                          isSelected
+                              ? Icons.check_circle
+                              : Icons.circle_outlined,
+                          color:
+                              isSelected ? color : colors.textSecondary,
                           size: 16,
                         ),
                         const SizedBox(height: 4),
@@ -687,7 +640,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: isSelected ? color : colors.textSecondary,
                           ),
                         ),
@@ -787,7 +742,10 @@ class _PatientCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       TranslatedText(
                         '• ${patient.lastReadingTime}',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -795,7 +753,8 @@ class _PatientCard extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: _statusColor().withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
