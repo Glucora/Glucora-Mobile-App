@@ -362,22 +362,24 @@ Future<void> loadLatestPrediction() async {
     }
 
     if (newIds.isNotEmpty) {
-      _recommendationRepo.deleteAllExcept(
+      await _recommendationRepo.deleteAllExcept(  // ✅ awaited
         patientProfileId: authUserId!,
         keepIds: newIds,
       );
     }
 
-    if (newRows.isNotEmpty) {
-      recommendations = newRows;
-      unreadCount = newRows.where((r) => r['is_read'] == false).length;
-      notifyListeners();
-    }
+    // ✅ Re-fetch from DB instead of trusting the insert response
+    recommendations = await _recommendationRepo.getLatest(
+      patientProfileId: authUserId!,
+      limit: 3,
+    );
+    unreadCount = recommendations.where((r) => r['is_read'] == false).length;
+    notifyListeners();
+
   } catch (e) {
     _setError('Failed to replace recommendations: $e');
   }
 }
-
   Future<void> markAsRead(String recommendationId) async {
     try {
       await _recommendationRepo.markAsRead(recommendationId);

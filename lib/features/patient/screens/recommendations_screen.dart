@@ -112,48 +112,48 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
     await _refreshFromAPI();
   }
 
-  Future<void> _refreshFromAPI() async {
+Future<void> _refreshFromAPI() async {
     if (!mounted) return;
     setState(() { _refreshing = true; _error = null; });
-
     try {
       final provider = context.read<GlucoseProvider>();
-
       final reading = provider.latestReading;
       double? currentGlucose;
       if (reading != null) {
         currentGlucose = (reading['value_mg_dl'] as num).toDouble();
       }
-
       if (currentGlucose == null) {
-        setState(() => _error =
-            'No glucose readings found yet. Connect your sensor to get personalized advice.');
+        setState(() => _error = 'No glucose readings found yet. Connect your sensor to get personalized advice.');
         return;
       }
-
       final predictedGlucose = currentGlucose + 15;
-
       final aiRecs = await AIService.getRecommendations(
         currentGlucose: currentGlucose,
         predictedGlucose: predictedGlucose,
       );
-
       if (aiRecs.isEmpty) {
-        setState(() =>
-            _error = 'The AI did not return any recommendations. Try again.');
+        setState(() => _error = 'The AI did not return any recommendations. Try again.');
         return;
       }
 
-      // Save new first, delete old after — user never sees empty state
+      debugPrint('[Recs] Got ${aiRecs.length} recs from AI, saving...');
+
       await provider.replaceRecommendations(
-        recs: aiRecs
-            .map((r) => {'category': r.category, 'message': r.message})
-            .toList(),
+        recs: aiRecs.map((r) => {'category': r.category, 'message': r.message}).toList(),
       );
+
+      debugPrint('[Recs] After replace, provider has ${provider.recommendations.length} recs');
+
+      await provider.loadRecommendations();
+if (mounted) setState(() {});
+      debugPrint('[Recs] After load, provider has ${provider.recommendations.length} recs');
+      for (final r in provider.recommendations) {
+        debugPrint('[Recs] → ${r['category']}: ${r['message']?.toString().substring(0, 30)}');
+      }
+
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error =
-          'Could not get recommendations: ${e.toString().replaceFirst('Exception: ', '')}');
+      setState(() => _error = 'Could not get recommendations: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }
@@ -168,11 +168,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    return Consumer<GlucoseProvider>(
-      builder: (context, provider, _) {
-        final cards = provider.recommendations
-            .map((r) => _RecCard.fromRow(r))
-            .toList();
+     final provider = context.watch<GlucoseProvider>(); // ✅ watch, not Consumer
+  final cards = provider.recommendations
+      .map((r) => _RecCard.fromRow(r))
+      .toList();
 
         return Scaffold(
           backgroundColor: colors.background,
@@ -216,8 +215,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   child: _buildBody(colors, cards),
                 ),
         );
-      },
-    );
+      
   }
 
   Widget _buildLoading(dynamic colors) => Center(
@@ -290,13 +288,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
         Icon(Icons.lightbulb_outline_rounded,
             size: 52, color: colors.textSecondary.withAlpha(80)),
         const SizedBox(height: 16),
-        TranslatedText('No recommendations yet',
+        Text('No recommendations yet',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: colors.textPrimary)),
         const SizedBox(height: 8),
-        TranslatedText(
+        Text(
           'Tap the refresh button to get AI-generated recommendations.',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -340,13 +338,13 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              TranslatedText(card.title,
+              Text(card.title,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: colors.textPrimary)),
               const SizedBox(height: 6),
-              TranslatedText(card.message,
+              Text(card.message,
                   style: TextStyle(
                       fontSize: 13,
                       color: colors.textSecondary,
