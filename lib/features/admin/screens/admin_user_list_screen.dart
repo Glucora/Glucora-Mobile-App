@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:glucora_ai_companion/core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
-import 'package:glucora_ai_companion/providers/admin_provider.dart';
+import 'package:glucora_ai_companion/providers/admin_riverpod_providers.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
 
-class AdminUserListScreen extends StatefulWidget {
+class AdminUserListScreen extends ConsumerStatefulWidget {
   const AdminUserListScreen({super.key});
 
   @override
-  State<AdminUserListScreen> createState() => _AdminUserListScreenState();
+  ConsumerState<AdminUserListScreen> createState() =>
+      _AdminUserListScreenState();
 }
 
-class _AdminUserListScreenState extends State<AdminUserListScreen> {
+class _AdminUserListScreenState extends ConsumerState<AdminUserListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   String _roleFilter = 'All';
@@ -21,23 +22,18 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   @override
   void initState() {
     super.initState();
-      Future.microtask(() {
-    if (!mounted) return;
-
-    context.read<AdminProvider>().loadUsers();
-  });
-    _searchController.addListener(_onSearchChanged);
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(adminUsersProvider.notifier).loadUsers();
+    });
+    _searchController.addListener(
+        () => setState(() => _query = _searchController.text.trim()));
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged() {
-    setState(() => _query = _searchController.text.trim());
   }
 
   List<AdminUser> _filtered(List<AdminUser> users) {
@@ -60,31 +56,26 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
             'Are you sure you want to delete "${user.name}"? This cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const TranslatedText('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const TranslatedText('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const TranslatedText('Delete',
-                style: TextStyle(color: Colors.red)),
-          ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const TranslatedText('Delete',
+                  style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-
     if (confirmed != true || !mounted) return;
 
-    await context.read<AdminProvider>().deleteUser(user.id, user.role);
+    await ref.read(adminUsersProvider.notifier).deleteUser(user.id, user.role);
 
     if (mounted) {
-      final error = context.read<AdminProvider>().errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: TranslatedText(error ?? '${user.name} deleted'),
-          backgroundColor: error != null ? Colors.red : Colors.green,
-        ),
-      );
-      if (error != null) context.read<AdminProvider>().clearError();
+      final error = ref.read(adminUsersProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: TranslatedText(error ?? '${user.name} deleted'),
+        backgroundColor: error != null ? Colors.red : Colors.green,
+      ));
+      if (error != null) ref.read(adminUsersProvider.notifier).clearError();
     }
   }
 
@@ -101,18 +92,10 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TranslatedText(
-                'Email: ${user.email}',
-                style: TextStyle(
-                    fontSize: 12, color: ctx.colors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              TranslatedText('Role',
+              TranslatedText('Email: ${user.email}',
                   style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: ctx.colors.primaryDark)),
-              const SizedBox(height: 8),
+                      fontSize: 12, color: ctx.colors.textSecondary)),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: selectedRole,
                 decoration: InputDecoration(
@@ -123,8 +106,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 ),
                 items: ['patient', 'doctor', 'guardian', 'admin']
                     .map((r) => DropdownMenuItem(
-                        value: r,
-                        child: TranslatedText(_roleLabel(r))))
+                        value: r, child: TranslatedText(_roleLabel(r))))
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setDialogState(() => selectedRole = v);
@@ -141,28 +123,22 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const TranslatedText('Cancel'),
-            ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const TranslatedText('Cancel')),
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                await context
-                    .read<AdminProvider>()
+                await ref
+                    .read(adminUsersProvider.notifier)
                     .updateUserRoleAndStatus(user.id, selectedRole, isActive);
                 if (mounted) {
-                  final error =
-                      context.read<AdminProvider>().errorMessage;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          TranslatedText(error ?? 'User updated'),
-                      backgroundColor:
-                          error != null ? Colors.red : Colors.green,
-                    ),
-                  );
+                  final error = ref.read(adminUsersProvider).error;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: TranslatedText(error ?? 'User updated'),
+                    backgroundColor: error != null ? Colors.red : Colors.green,
+                  ));
                   if (error != null) {
-                    context.read<AdminProvider>().clearError();
+                    ref.read(adminUsersProvider.notifier).clearError();
                   }
                 }
               },
@@ -178,159 +154,144 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   String _roleLabel(String role) {
     switch (role) {
       case 'patient': return 'Patient';
-      case 'doctor':  return 'Doctor';
-      case 'admin':   return 'Admin';
+      case 'doctor': return 'Doctor';
+      case 'admin': return 'Admin';
       case 'guardian': return 'Guardian';
-      default:        return role;
+      default: return role;
     }
   }
 
   Color _roleColor(String role) {
     switch (role) {
-      case 'patient':  return const Color(0xFF5B8CF5);
-      case 'doctor':   return const Color(0xFF9B59B6);
-      case 'admin':    return const Color(0xFFFF9F40);
+      case 'patient': return const Color(0xFF5B8CF5);
+      case 'doctor': return const Color(0xFF9B59B6);
+      case 'admin': return const Color(0xFFFF9F40);
       case 'guardian': return const Color(0xFF2BB6A3);
-      default:         return Colors.grey;
+      default: return Colors.grey;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final state = ref.watch(adminUsersProvider);
+    final filtered = _filtered(state.users);
 
-    return Consumer<AdminProvider>(
-      builder: (context, provider, _) {
-        final filtered = _filtered(provider.users);
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const TranslatedText('Users',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600)),
-            backgroundColor: colors.primaryDark,
-            iconTheme: const IconThemeData(color: Colors.white),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () => provider.loadUsers(),
-              ),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const TranslatedText('Users',
+            style:
+                TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: colors.primaryDark,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () =>
+                ref.read(adminUsersProvider.notifier).loadUsers(),
           ),
-          backgroundColor: colors.background,
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name or email…',
-                    hintStyle:
-                        TextStyle(color: colors.textSecondary),
-                    prefixIcon: Icon(Icons.search,
-                        color: colors.textSecondary),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear,
-                                color: colors.textSecondary),
-                            onPressed: () =>
-                                _searchController.clear(),
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: colors.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+        ],
+      ),
+      backgroundColor: colors.background,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by name or email…',
+                hintStyle: TextStyle(color: colors.textSecondary),
+                prefixIcon:
+                    Icon(Icons.search, color: colors.textSecondary),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon:
+                            Icon(Icons.clear, color: colors.textSecondary),
+                        onPressed: () => _searchController.clear())
+                    : null,
+                filled: true,
+                fillColor: colors.surface,
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 42,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: ['All', 'Patient', 'Doctor', 'Admin', 'Guardian']
+                  .map((label) {
+                final selected = _roleFilter == label;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: TranslatedText(label,
+                        style: TextStyle(color: colors.textPrimary)),
+                    selected: selected,
+                    selectedColor: colors.accent.withValues(alpha: 0.2),
+                    checkmarkColor: colors.accent,
+                    onSelected: (_) =>
+                        setState(() => _roleFilter = label),
                   ),
-                ),
-              ),
-              SizedBox(
-                height: 42,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    'All',
-                    'Patient',
-                    'Doctor',
-                    'Admin',
-                    'Guardian'
-                  ].map((label) {
-                    final selected = _roleFilter == label;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: TranslatedText(label,
-                            style: TextStyle(
-                                color: colors.textPrimary)),
-                        selected: selected,
-                        selectedColor:
-                            colors.accent.withValues(alpha: 0.2),
-                        checkmarkColor: colors.accent,
-                        onSelected: (_) =>
-                            setState(() => _roleFilter = label),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: provider.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : provider.errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TranslatedText('Failed to load users',
-                                    style: TextStyle(
-                                        color: colors.error)),
-                                const SizedBox(height: 8),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    provider.clearError();
-                                    provider.loadUsers();
-                                  },
-                                  child:
-                                      const TranslatedText('Retry'),
-                                ),
-                              ],
-                            ),
-                          )
-                        : filtered.isEmpty
-                            ? Center(
-                                child: TranslatedText('No users found',
-                                    style: TextStyle(
-                                        color: colors.textSecondary)))
-                            : ListView.separated(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 4),
-                                itemCount: filtered.length,
-                                separatorBuilder: (_, _) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, index) =>
-                                    _userCard(
-                                        context, filtered[index]),
-                              ),
-              ),
-            ],
+                );
+              }).toList(),
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Expanded(
+            child: state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : state.error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TranslatedText('Failed to load users',
+                                style: TextStyle(color: colors.error)),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                ref
+                                    .read(adminUsersProvider.notifier)
+                                    .clearError();
+                                ref
+                                    .read(adminUsersProvider.notifier)
+                                    .loadUsers();
+                              },
+                              child: const TranslatedText('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : filtered.isEmpty
+                        ? Center(
+                            child: TranslatedText('No users found',
+                                style: TextStyle(
+                                    color: colors.textSecondary)))
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) =>
+                                _userCard(context, filtered[index]),
+                          ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _userCard(BuildContext context, AdminUser user) {
     final colors = context.colors;
     final roleColor = _roleColor(user.role);
-
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(14),
@@ -338,8 +299,8 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
         borderRadius: BorderRadius.circular(14),
         onTap: () => _editUser(user),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 14, vertical: 12),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
               ProfilePicture(
@@ -363,8 +324,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                     const SizedBox(height: 2),
                     TranslatedText(user.email,
                         style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary)),
+                            fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
@@ -372,28 +332,25 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: roleColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                    color: roleColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8)),
                 child: TranslatedText(user.roleLabel,
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: roleColor)),
               ),
-              const SizedBox(width: 4),
               if (!user.isActive)
                 Container(
                   margin: const EdgeInsets.only(left: 4),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: colors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+                      color: colors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6)),
                   child: TranslatedText('Inactive',
-                      style:
-                          TextStyle(fontSize: 10, color: colors.error)),
+                      style: TextStyle(
+                          fontSize: 10, color: colors.error)),
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) {
@@ -401,10 +358,9 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                 },
                 itemBuilder: (_) => [
                   const PopupMenuItem(
-                    value: 'delete',
-                    child: TranslatedText('Delete',
-                        style: TextStyle(color: Colors.red)),
-                  ),
+                      value: 'delete',
+                      child: TranslatedText('Delete',
+                          style: TextStyle(color: Colors.red))),
                 ],
               ),
             ],

@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../core/models/admin_model.dart';
-import '../../../providers/admin_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:glucora_ai_companion/core/models/admin_model.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
+import 'package:glucora_ai_companion/providers/admin_riverpod_providers.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
-class AdminDeviceListScreen extends StatefulWidget {
+class AdminDeviceListScreen extends ConsumerStatefulWidget {
   const AdminDeviceListScreen({super.key});
 
   @override
-  State<AdminDeviceListScreen> createState() => _AdminDeviceListScreenState();
+  ConsumerState<AdminDeviceListScreen> createState() =>
+      _AdminDeviceListScreenState();
 }
 
-class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
+class _AdminDeviceListScreenState
+    extends ConsumerState<AdminDeviceListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
   @override
   void initState() {
     super.initState();
-      Future.microtask(() {
-    if (!mounted) return;
-
-    context.read<AdminProvider>().loadDevices();
-  });
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(adminDevicesProvider.notifier).loadDevices();
+    });
   }
 
   @override
@@ -47,33 +48,32 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
       builder: (ctx) => AlertDialog(
         title: const TranslatedText('Delete Device'),
         content: TranslatedText(
-          'Are you sure you want to delete "${device.deviceName}"?',
-        ),
+            'Are you sure you want to delete "${device.deviceName}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const TranslatedText('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const TranslatedText('Cancel')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await context.read<AdminProvider>().deleteDevice(device.id);
+              await ref
+                  .read(adminDevicesProvider.notifier)
+                  .deleteDevice(device.id);
               if (mounted) {
-                final error = context.read<AdminProvider>().errorMessage;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: TranslatedText(
-                        error ?? 'Device deleted successfully'),
-                    backgroundColor: error != null ? Colors.red : Colors.green,
-                  ),
-                );
-                if (error != null) context.read<AdminProvider>().clearError();
+                final error = ref.read(adminDevicesProvider).error;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: TranslatedText(
+                      error ?? 'Device deleted successfully'),
+                  backgroundColor:
+                      error != null ? Colors.red : Colors.green,
+                ));
+                if (error != null) {
+                  ref.read(adminDevicesProvider.notifier).clearError();
+                }
               }
             },
-            child: const TranslatedText(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const TranslatedText('Delete',
+                style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -83,98 +83,85 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final state = ref.watch(adminDevicesProvider);
+    final filtered = _filtered(state.devices);
 
-    return Consumer<AdminProvider>(
-      builder: (context, provider, _) {
-        final filtered = _filtered(provider.devices);
+    if (state.isLoading) {
+      return Scaffold(
+        appBar: _appBar(colors, null),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        if (provider.isLoading) {
-          return Scaffold(
-            appBar: _appBar(colors, null),
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        return Scaffold(
-          appBar: _appBar(colors, provider),
-          backgroundColor: colors.background,
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, serial, or user…',
-                    hintStyle: TextStyle(color: colors.textSecondary),
-                    prefixIcon:
-                        Icon(Icons.search, color: colors.textSecondary),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear,
-                                color: colors.textSecondary),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: colors.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 0,
-                      horizontal: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (v) => setState(() => _query = v),
-                ),
+    return Scaffold(
+      appBar: _appBar(colors,
+          () => ref.read(adminDevicesProvider.notifier).loadDevices()),
+      backgroundColor: colors.background,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by name, serial, or user…',
+                hintStyle: TextStyle(color: colors.textSecondary),
+                prefixIcon:
+                    Icon(Icons.search, color: colors.textSecondary),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear,
+                            color: colors.textSecondary),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        })
+                    : null,
+                filled: true,
+                fillColor: colors.surface,
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
               ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: TranslatedText(
-                          'No devices found',
-                          style: TextStyle(color: colors.textSecondary),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, index) =>
-                            _deviceCard(context, filtered[index]),
-                      ),
-              ),
-            ],
+              onChanged: (v) => setState(() => _query = v),
+            ),
           ),
-        );
-      },
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: TranslatedText('No devices found',
+                        style:
+                            TextStyle(color: colors.textSecondary)))
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: 8),
+                    itemBuilder: (context, index) =>
+                        _deviceCard(context, filtered[index]),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  AppBar _appBar(dynamic colors, AdminProvider? provider) {
+  AppBar _appBar(dynamic colors, VoidCallback? onRefresh) {
     return AppBar(
-      title: const TranslatedText(
-        'Devices',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-      ),
+      title: const TranslatedText('Devices',
+          style:
+              TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       backgroundColor: colors.primaryDark,
       iconTheme: const IconThemeData(color: Colors.white),
       actions: [
-        if (provider != null)
+        if (onRefresh != null)
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => provider.loadDevices(),
-            tooltip: 'Refresh',
-          ),
+              icon: const Icon(Icons.refresh),
+              onPressed: onRefresh,
+              tooltip: 'Refresh'),
       ],
     );
   }
@@ -188,46 +175,40 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
       color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
               child: Icon(
-                isCGM ? Icons.sensors : Icons.medical_services,
-                color: color,
-                size: 24,
-              ),
+                  isCGM ? Icons.sensors : Icons.medical_services,
+                  color: color,
+                  size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TranslatedText(
-                    device.deviceName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: colors.textPrimary,
-                    ),
-                  ),
+                  TranslatedText(device.deviceName,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: colors.textPrimary)),
                   const SizedBox(height: 2),
                   TranslatedText(
-                    '${device.model}  •  ${device.serialNumber}',
-                    style:
-                        TextStyle(fontSize: 11, color: colors.textSecondary),
-                  ),
+                      '${device.model}  •  ${device.serialNumber}',
+                      style: TextStyle(
+                          fontSize: 11, color: colors.textSecondary)),
                   const SizedBox(height: 2),
                   TranslatedText(
-                    'Assigned to: ${device.assignedToUserName}',
-                    style:
-                        TextStyle(fontSize: 11, color: colors.textSecondary),
-                  ),
+                      'Assigned to: ${device.assignedToUserName}',
+                      style: TextStyle(
+                          fontSize: 11, color: colors.textSecondary)),
                 ],
               ),
             ),
@@ -238,17 +219,13 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: TranslatedText(
-                    device.deviceType,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6)),
+                  child: TranslatedText(device.deviceType,
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: color)),
                 ),
                 const SizedBox(height: 4),
                 if (!device.isActive)
@@ -256,13 +233,11 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: colors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: TranslatedText(
-                      'Inactive',
-                      style: TextStyle(fontSize: 10, color: colors.error),
-                    ),
+                        color: colors.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6)),
+                    child: TranslatedText('Inactive',
+                        style:
+                            TextStyle(fontSize: 10, color: colors.error)),
                   ),
               ],
             ),
@@ -272,12 +247,9 @@ class _AdminDeviceListScreenState extends State<AdminDeviceListScreen> {
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(
-                  value: 'delete',
-                  child: TranslatedText(
-                    'Delete',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
+                    value: 'delete',
+                    child: TranslatedText('Delete',
+                        style: TextStyle(color: Colors.red))),
               ],
             ),
           ],

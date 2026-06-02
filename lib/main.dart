@@ -30,8 +30,8 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-import 'package:glucora_ai_companion/providers/admin_provider.dart';
 import 'package:glucora_ai_companion/providers/glucose_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide ChangeNotifierProvider, Consumer, Provider;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -51,7 +51,6 @@ void main() async {
 
   await NotificationService.initialize();
 
-  // Initialize glucose sync service to track BLE readings to Supabase
   GlucoseSyncService.instance.startListening();
 
   final appLinks = AppLinks();
@@ -80,14 +79,13 @@ void main() async {
     await LocationService.initializeService();
   }
 
-  // Initialize localization (loads saved language preference)
   final localizationService = LocalizationService();
   await localizationService.init();
 
   if (localizationService.currentLanguageCode != 'en') {
     await localizationService.translateBatch(AppStrings.getAllStrings());
   }
-  // Handle cold start from deep link
+
   final initialUri = await appLinks.getInitialLink();
   if (initialUri != null) {
     final type = initialUri.queryParameters['type'];
@@ -105,7 +103,11 @@ void main() async {
     }
   }
 
-  runApp(GlucoraApp(localizationService: localizationService));
+  runApp(
+    ProviderScope(
+      child: GlucoraApp(localizationService: localizationService),
+    ),
+  );
 }
 
 class GlucoraApp extends StatelessWidget {
@@ -121,7 +123,6 @@ class GlucoraApp extends StatelessWidget {
           value: localizationService,
         ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => GlucoseProvider()),
       ],
       child: Consumer<ThemeProvider>(
@@ -186,7 +187,6 @@ class _StartupGateState extends State<_StartupGate> {
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
 
-    // ✅ If user is logged in, go to their role screen
     if (user != null) {
       final userMetaRole = user.userMetadata?['role']?.toString();
       final appMetaRole = user.appMetadata['role']?.toString();
