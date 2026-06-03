@@ -101,7 +101,15 @@ class AppStrings {
   static const String switchTheme = 'Switch between light and dark theme';
   static const String language = 'Language';
   static const String chooseLanguage = 'Choose your preferred language';
-  
+  // ==================== FAQS - ADMIN ====================
+static const String adminFaq1Q = 'How do I manage system users?';
+static const String adminFaq1A = 'Navigate to the More tab and select User Management. From there you can add, edit, or deactivate user accounts for doctors, patients, and other admins.';
+static const String adminFaq2Q = 'How do I assign devices to patients?';
+static const String adminFaq2A = 'Go to Device Management under the More tab. Select a device and use the Assign option to link it to a patient. You can also reassign or unassign devices.';
+static const String adminFaq3Q = 'How do I configure alert rules?';
+static const String adminFaq3A = 'Open Alert Rules from the More tab. You can create new rules, set thresholds for glucose levels, and choose notification channels for each alert type.';
+static const String adminFaq4Q = 'How do I manage role permissions?';
+static const String adminFaq4A = 'Access Role Management from the More tab. You can view existing roles, modify their permissions, or create custom roles to control access across the system.';
   // ==================== CONNECTIONS ====================
   static const String connections = 'Connections';
   static const String guardians = 'Guardians';
@@ -204,7 +212,11 @@ class AppStrings {
       medicationsTitle, addMedication, noMedications, dosage,
       frequency, timeOfDay, reminders, medicationName, editMedication,
       deleteMedication, takeNow, nextDose, instructions,
-      
+      // Admin FAQs
+adminFaq1Q, adminFaq1A,
+adminFaq2Q, adminFaq2A,
+adminFaq3Q, adminFaq3A,
+adminFaq4Q, adminFaq4A,
       // Profile Screen
       profileTitle, settings, editProfile, height, weight,
       weeklyReport, historyExport, reportsHistory, faqs, logOut,

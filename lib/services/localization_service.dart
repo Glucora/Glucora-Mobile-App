@@ -33,14 +33,50 @@ const List<GlucoraLocale> kSupportedLocales = [
 
 class LocalizationService extends ChangeNotifier {
   static const String _prefKey = 'selected_language_code';
+  static const String _workingModelsKey = 'working_translation_models';
 
   String _currentLanguageCode = 'en';
   // In-memory layer — fastest possible lookup, lives only for the app session
   final Map<String, Map<String, String>> _translationCache = {};
   bool _isTranslating = false;
+  List<String> _workingModels = [];
+  bool _isTestingModels = false;
 
   // SQLite cache layer — persists across sessions
   final _db = TranslationCacheDb();
+
+  // List of models to try in order (cheapest/fastest first)
+  static const List<String> _fallbackModels = [
+    'openai/gpt-3.5-turbo',           // Fast and cheap
+     'google/gemini-2.0-flash-001',
+    'meta-llama/llama-3-8b-instruct',  // Free tier
+    'mistralai/mistral-7b-instruct',   // Free tier
+    'openai/gpt-4o-mini',              // Good quality
+    'google/gemini-flash-1.5',         // Google's flash model
+    'anthropic/claude-3-haiku',        // Anthropic's cheapest
+    'deepseek/deepseek-chat',          // Very cheap
+    'cohere/command-r-plus',           // Alternative
+     // EXCELLENT FOR REASONING/CODING
+  'deepseek/deepseek-r1:free',
+  
+  // LATEST NVIDIA MODELS (Very fast)
+  'nvidia/nemotron-3-super:free',      // 120B MoE, 1M context [citation:1]
+  'nvidia/nemotron-nano-9b-v2:free',   // Fastest, 100-150 token/s [citation:4]
+  
+  // GOOGLE'S LATEST
+  'google/gemma-4-31b-it:free',        // Updated version [citation:1]
+  
+  // OPENAI'S OPEN-WEIGHT MODELS
+  'openai/gpt-oss-120b:free',          // 117B MoE [citation:1]
+  'openai/gpt-oss-20b:free',           // Lighter version
+  
+  // NVIDIA MULTIMODAL (if you need image/video)
+  'nvidia/nemotron-nano-12b-2-vl:free',
+  
+  // FAST & LIGHTWEIGHT
+  'z-ai/glm-4.5-air:free',  
+  'openrouter/free',   
+  ];
 
   String get currentLanguageCode => _currentLanguageCode;
   bool get isTranslating => _isTranslating;
@@ -56,10 +92,23 @@ class LocalizationService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _currentLanguageCode = prefs.getString(_prefKey) ?? 'en';
 
+    // Load cached working models
+    final workingModelsJson = prefs.getStringList(_workingModelsKey);
+    if (workingModelsJson != null && workingModelsJson.isNotEmpty) {
+      _workingModels = workingModelsJson;
+      debugPrint('[Localization] Loaded working models: $_workingModels');
+    }
+
     // Optionally prune stale entries older than 30 days on startup
     await _db.pruneOlderThan(30);
 
     await _loadCachedTranslations(_currentLanguageCode);
+    
+    // Test models in background (don't block UI)
+    if (_workingModels.isEmpty) {
+      _testAndCacheWorkingModels();
+    }
+    
     notifyListeners();
   }
 
@@ -194,7 +243,55 @@ class LocalizationService extends ChangeNotifier {
     }
   }
 
-  /// Core OpenRouter translation call — only called on cache misses.
+  /// Test all models and cache the working ones
+  Future<void> _testAndCacheWorkingModels() async {
+    if (_isTestingModels) return;
+    _isTestingModels = true;
+
+    debugPrint('[Localization] Testing available models...');
+    final workingModels = <String>[];
+    final apiKey = dotenv.env['OPENROUTERLOC_API_KEY'];
+    
+    if (apiKey == null || apiKey.isEmpty) {
+      debugPrint('[Localization] No API key found, skipping model tests');
+      _isTestingModels = false;
+      return;
+    }
+    
+    final testText = ['Hello'];
+    final testLang = 'es'; // Test with Spanish
+
+    for (final model in _fallbackModels) {
+      try {
+        final result = await _attemptTranslation(model, testText, testLang, apiKey);
+        if (result.isNotEmpty && result['Hello'] != null) {
+          workingModels.add(model);
+          debugPrint('[Localization] ✅ Model works: $model');
+        } else {
+          debugPrint('[Localization] ❌ Model fails: $model');
+        }
+      } catch (e) {
+        debugPrint('[Localization] ❌ Model $model error: $e');
+      }
+      
+      // Small delay to avoid rate limiting
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (workingModels.isNotEmpty) {
+      _workingModels = workingModels;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_workingModelsKey, workingModels);
+      debugPrint('[Localization] Cached working models: $workingModels');
+    } else {
+      debugPrint('[Localization] ⚠️ No working models found, using fallback list');
+      _workingModels = _fallbackModels;
+    }
+
+    _isTestingModels = false;
+  }
+
+  /// Core OpenRouter translation call with model fallback
   Future<Map<String, String>> _translateViaOpenRouter(
     List<String> texts,
     String targetLang,
@@ -205,6 +302,51 @@ class LocalizationService extends ChangeNotifier {
       return {};
     }
 
+    // Use cached working models if available, otherwise use all fallbacks
+    final modelsToTry = _workingModels.isNotEmpty ? _workingModels : _fallbackModels;
+    
+    for (int i = 0; i < modelsToTry.length; i++) {
+      final model = modelsToTry[i];
+      debugPrint('[Localization] 🔄 Trying model: $model (${i + 1}/${modelsToTry.length})');
+      
+      try {
+        final result = await _attemptTranslation(model, texts, targetLang, apiKey);
+        
+        if (result.isNotEmpty) {
+          debugPrint('[Localization] ✅ Success with model: $model');
+          
+          // If this model wasn't in our working cache, add it
+          if (!_workingModels.contains(model)) {
+            _workingModels.add(model);
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setStringList(_workingModelsKey, _workingModels);
+          }
+          
+          return result;
+        }
+      } catch (e) {
+        debugPrint('[Localization] ❌ Model $model failed: $e');
+        
+        // Remove from working models if it fails
+        if (_workingModels.contains(model)) {
+          _workingModels.remove(model);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setStringList(_workingModelsKey, _workingModels);
+        }
+      }
+    }
+
+    debugPrint('[Localization] ❌ All models failed for translation');
+    return {};
+  }
+
+  /// Attempt translation with a specific model
+  Future<Map<String, String>> _attemptTranslation(
+    String model,
+    List<String> texts,
+    String targetLang,
+    String apiKey,
+  ) async {
     final langName = kSupportedLocales
         .firstWhere(
           (l) => l.code == targetLang,
@@ -212,8 +354,10 @@ class LocalizationService extends ChangeNotifier {
         )
         .name;
 
-    final numbered =
-        texts.asMap().entries.map((e) => '${e.key + 1}. ${e.value}').join('\n');
+    final numbered = texts.asMap()
+        .entries
+        .map((e) => '${e.key + 1}. ${e.value}')
+        .join('\n');
 
     final prompt = '''
 You are a medical app translator for a diabetes management app called Glucora.
@@ -232,47 +376,42 @@ Return format:
 {"original text 1": "translated text 1", "original text 2": "translated text 2", ...}
 ''';
 
-    try {
-      final uri = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
+    final uri = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $apiKey',
-              'HTTP-Referer': 'https://glucora.app',
-              'X-Title': 'Glucora App',
-            },
-            body: jsonEncode({
-              'model': 'google/gemini-2.0-flash-001',
-              'messages': [
-                {'role': 'user', 'content': prompt},
-              ],
-              'temperature': 0.1,
-              'max_tokens': 4096,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+    final response = await http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $apiKey',
+            'HTTP-Referer': 'https://glucora.app',
+            'X-Title': 'Glucora App',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {'role': 'user', 'content': prompt},
+            ],
+            'temperature': 0.1,
+            'max_tokens': 4096,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content =
-            data['choices']?[0]?['message']?['content'] as String?;
-        if (content != null) {
-          final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
-          if (jsonMatch != null) {
-            final parsed =
-                jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
-            return parsed.map((k, v) => MapEntry(k, v.toString()));
-          }
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final content = data['choices']?[0]?['message']?['content'] as String?;
+      if (content != null) {
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(content);
+        if (jsonMatch != null) {
+          final parsed = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
+          return parsed.map((k, v) => MapEntry(k, v.toString()));
         }
-      } else {
-        debugPrint(
-            '[Localization] OpenRouter error ${response.statusCode}: ${response.body}');
       }
-    } catch (e) {
-      debugPrint('[Localization] Translation error: $e');
+    } else if (response.statusCode == 404) {
+      debugPrint('[Localization] Model $model not available (404)');
+    } else {
+      debugPrint('[Localization] Model $model error ${response.statusCode}');
     }
 
     return {};

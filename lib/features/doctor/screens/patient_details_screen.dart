@@ -8,6 +8,7 @@
   import 'package:glucora_ai_companion/shared/widgets/profile_picture.dart';
   import 'package:glucora_ai_companion/services/repositories/doctor_repository.dart';
 
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Screen
   // ─────────────────────────────────────────────────────────────────────────────
@@ -400,11 +401,11 @@
               const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           unselectedLabelStyle:
               const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'CGM Trends'),
-            Tab(text: 'Insulin Log'),
-          ],
+        tabs: [
+  Tab(child: TranslatedText('Overview')),
+  Tab(child: TranslatedText('CGM Trends')),
+  Tab(child: TranslatedText('Insulin Log')),
+],
         ),
       );
     }
@@ -487,23 +488,40 @@
                       fontSize: 17, fontWeight: FontWeight.w800)),
             ],
           ),
-          content: RichText(
-            text: TextSpan(
-              style: TextStyle(
-                  fontSize: 14, color: colors.textPrimary, height: 1.5),
-              children: [
-                const TextSpan(
-                    text: 'Are you sure you want to remove '),
-                TextSpan(
-                    text: widget.patientName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700)),
-                const TextSpan(
-                    text:
-                        ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.'),
-              ],
-            ),
+         content: RichText(
+  text: TextSpan(
+    style: TextStyle(
+      fontSize: 14, 
+      color: colors.textPrimary, 
+      height: 1.5
+    ),
+    children: [
+      WidgetSpan(
+        child: TranslatedText(
+          'Are you sure you want to remove ',
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+        ),
+      ),
+      WidgetSpan(
+        child: TranslatedText(
+          widget.patientName,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.red, // Optional: make it stand out
           ),
+        ),
+      ),
+      WidgetSpan(
+        child: TranslatedText(
+          ' from your patient list?\n\nThis will disconnect them from your care and cannot be undone.',
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+        ),
+      ),
+    ],
+  ),
+),
+          
           actionsPadding:
               const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
@@ -1856,7 +1874,7 @@
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label,
+        child: TranslatedText(label,
             style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
