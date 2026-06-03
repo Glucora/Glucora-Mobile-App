@@ -1,10 +1,11 @@
 // lib/features/onboarding/screens/welcome_screen.dart
-import 'dart:math' as math;
+import 'dart:math' as math;   // for math.pi and math.cos/sin
 import 'package:flutter/material.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
+//StatefulWidget because this screen has animations that change over time.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -13,11 +14,13 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen>
+//TickerProviderStateMixin is required when you have multiple AnimationControllers in one widget. It supplies the "vsync" (sync to screen refresh rate) for each controller.
     with TickerProviderStateMixin {
-  late AnimationController _masterController;
-  late AnimationController _floatController;
-  late AnimationController _pulseController;
-  late AnimationController _orbitController;
+      //late lets you declare a variable without initializing it immediately, because the value (vsync: this) only becomes available later in initState().
+  late AnimationController _masterController; // one-shot entry animation
+  late AnimationController _floatController;  // logo floating up/down
+  late AnimationController _pulseController; // background blobs pulsing
+  late AnimationController _orbitController; // particles orbiting
 
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
@@ -38,34 +41,37 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     _masterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1800), //Plays once on load, drives all entry animations
     );
 
     _floatController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 3000), 
+    )..repeat(reverse: true); //Repeats forever, reverses (up → down → up)
+
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 2400), //Repeats forever, reverses (grow → shrink → grow)
     )..repeat(reverse: true);
 
     _orbitController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
-    )..repeat();
+    )..repeat(); //Repeats forever, no reverse (full 360° loop)
 
+//Entry animations driven by the master
+//These all use Interval, which means they only animate during a slice of the master timeline (0.0 to 1.0):
     _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.0, 0.45, curve: Curves.elasticOut),
+        curve: const Interval(0.0, 0.45, curve: Curves.elasticOut), // 0.5 → 1.0, interval 0.0–0.45, elasticOut (bouncy)
       ),
     );
     _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.0, 0.25, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.25, curve: Curves.easeOut), // 0.0 → 1.0, interval 0.0–0.25
       ),
     );
 
@@ -73,13 +79,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         .animate(
           CurvedAnimation(
             parent: _masterController,
-            curve: const Interval(0.3, 0.65, curve: Curves.easeOutCubic),
+            curve: const Interval(0.3, 0.65, curve: Curves.easeOutCubic),// slides in from below, interval 0.3–0.65
           ),
         );
     _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.3, 0.55, curve: Curves.easeOut),
+        curve: const Interval(0.3, 0.55, curve: Curves.easeOut), // 0.0 → 1.0, interval 0.3–0.55
       ),
     );
 
@@ -87,20 +93,20 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _masterController,
-            curve: const Interval(0.45, 0.75, curve: Curves.easeOutCubic),
+            curve: const Interval(0.45, 0.75, curve: Curves.easeOutCubic), // slightly after title
           ),
         );
     _subtitleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.45, 0.65, curve: Curves.easeOut),
+        curve: const Interval(0.45, 0.65, curve: Curves.easeOut), // feature pills fade in, interval 0.6–0.85
       ),
     );
 
     _pillsOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.6, 0.85, curve: Curves.easeOut),
+        curve: const Interval(0.6, 0.85, curve: Curves.easeOut),  // slightly after title
       ),
     );
 
@@ -108,34 +114,34 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         .animate(
           CurvedAnimation(
             parent: _masterController,
-            curve: const Interval(0.7, 1.0, curve: Curves.easeOutCubic),
+            curve: const Interval(0.7, 1.0, curve: Curves.easeOutCubic), // feature pills fade in, interval 0.6–0.85
           ),
         );
     _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _masterController,
-        curve: const Interval(0.7, 0.9, curve: Curves.easeOut),
+        curve: const Interval(0.7, 0.9, curve: Curves.easeOut),// button slides in last, interval 0.7–1.0
       ),
     );
 
-    _float = Tween<double>(begin: -8.0, end: 8.0).animate(
+    _float = Tween<double>(begin: -8.0, end: 8.0).animate( // -8.0 → 8.0 (pixels), easeInOut, forever → logo bobs up/down
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
 
     _pulse = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),  // 0.95 → 1.05 (scale), easeInOut, forever → blobs breathe
     );
 
-    _orbit = Tween<double>(
+    _orbit = Tween<double>( // 0 → 2π (radians), linear, forever → particles rotate
       begin: 0,
       end: 2 * math.pi,
     ).animate(_orbitController);
 
-    _masterController.forward();
+    _masterController.forward(); //This is where all controllers and animations are created and configured. At the end:
   }
 
   @override
-  void dispose() {
+  void dispose() { // dispose controllers when the widget is removed from the tree, to free memory and stop background tickers.
     _masterController.dispose();
     _floatController.dispose();
     _pulseController.dispose();
@@ -153,13 +159,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       body: Stack(
         children: [
           // ── Decorative background blobs ──────────────────────────
-          Positioned(
+          //positions of the 3 big circles 
+          Positioned(  // top-right, partially off screen
             top: -80,
             right: -60,
             child: AnimatedBuilder(
               animation: _pulseController,
               builder: (_, _) => Transform.scale(
-                scale: _pulse.value,
+                scale: _pulse.value, //istening to _pulseController, so they scale with _pulse.value — they "breathe."
                 child: Container(
                   width: 260,
                   height: 260,
@@ -171,13 +178,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
           ),
-          Positioned(
+          Positioned(// mid-left, partially off screen
             bottom: size.height * 0.22,
             left: -80,
             child: AnimatedBuilder(
               animation: _pulseController,
               builder: (_, _) => Transform.scale(
-                scale: 1.1 - (_pulse.value - 0.95),
+                scale: 1.1 - (_pulse.value - 0.95), //istening to _pulseController, so they scale with _pulse.value — they "breathe."
                 child: Container(
                   width: 200,
                   height: 200,
@@ -189,7 +196,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
           ),
-          Positioned(
+          Positioned( // bottom-right, static
             bottom: -40,
             right: -40,
             child: Container(
@@ -207,11 +214,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             animation: _orbit,
             builder: (_, _) {
               return Stack(
-                children: List.generate(5, (i) {
-                  final angle = _orbit.value + (i * 2 * math.pi / 5);
+                children: List.generate(5, (i) { //generates 5 circles
+                  final angle = _orbit.value + (i * 2 * math.pi / 5); //angle of orbiting
                   final radius = 170.0;
                   final cx = size.width / 2 + math.cos(angle) * radius;
-                  final cy = size.height * 0.38 + math.sin(angle) * radius;
+                  final cy = size.height * 0.38 + math.sin(angle) * radius; //They orbit around the logo's center (size.height * 0.38).
                   final particleSize = 4.0 + (i % 3) * 2.0;
                   return Positioned(
                     left: cx - particleSize / 2,
@@ -237,7 +244,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           SafeArea(
             child: Column(
               children: [
-                const Spacer(flex: 2),
+                const Spacer(flex: 2), // pushes content down from the top.
 
                 // Logo with glow ring + float animation
                 AnimatedBuilder(
@@ -247,11 +254,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     _pulseController,
                   ]),
                   builder: (_, _) => Transform.translate(
-                    offset: Offset(0, _float.value),
+                    offset: Offset(0, _float.value), // bobs up/down
                     child: FadeTransition(
-                      opacity: _logoOpacity,
+                      opacity: _logoOpacity,   // entry fade
                       child: ScaleTransition(
-                        scale: _logoScale,
+                        scale: _logoScale,  // entry scale (bouncy)
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -282,7 +289,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                             ),
                             // Logo
-                            ClipRRect(
+                            ClipRRect( //The actual logo image (Image.asset)
                               borderRadius: BorderRadius.circular(32),
                               child: Image.asset(
                                 'assets/images/Glucora_logo.png',
@@ -312,7 +319,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         end: Alignment.centerRight,
                       ).createShader(bounds),
                       child: TranslatedText(
-                        'Welcome to Glucora',
+                        'Welcome to Glucora',  //ShaderMask → LinearGradient(accent → primary)
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
@@ -351,10 +358,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 const SizedBox(height: 36),
 
                 // Feature pills
-                // Replace the existing feature pills section with this:
-
-                // Feature pills - now in a column
-                FadeTransition(
+                FadeTransition( //widgets, fading in together.
                   opacity: _pillsOpacity,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -383,7 +387,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ),
                   ),
                 ),
-                const Spacer(flex: 2),
+                const Spacer(flex: 2), //pushes button to the bottom.
 
                 // Get Started button
                 SlideTransition(
@@ -478,7 +482,7 @@ class _FeaturePill extends StatelessWidget {
 
 // ── Get Started Button ────────────────────────────────────────────────────────
 
-class _GetStartedButton extends StatefulWidget {
+class _GetStartedButton extends StatefulWidget { //StatefulWidget because it has its own press animation.
   final dynamic colors;
   const _GetStartedButton({required this.colors});
 
@@ -498,7 +502,7 @@ class _GetStartedButtonState extends State<_GetStartedButton>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _pressScale = Tween<double>(
+    _pressScale = Tween<double>( //On onTapDown → shrinks to 96%. On onTapUp → springs back, then navigates.
       begin: 1.0,
       end: 0.96,
     ).animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
@@ -517,7 +521,7 @@ class _GetStartedButtonState extends State<_GetStartedButton>
       onTapUp: (_) async {
         await _pressController.reverse();
         if (context.mounted) {
-          Navigator.pushReplacement(
+          Navigator.pushReplacement( //pushReplacement means the Welcome screen is removed from the stack — the user can't go back to it.
             context,
             PageRouteBuilder(
               pageBuilder: (_, animation, _) =>
