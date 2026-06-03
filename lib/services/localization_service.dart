@@ -57,6 +57,26 @@ class LocalizationService extends ChangeNotifier {
     'deepseek/deepseek-chat',          // Very cheap
     'cohere/command-r-plus',           // Alternative
     'openrouter/free',    
+     // EXCELLENT FOR REASONING/CODING
+  'deepseek/deepseek-r1:free',
+  
+  // LATEST NVIDIA MODELS (Very fast)
+  'nvidia/nemotron-3-super:free',      // 120B MoE, 1M context [citation:1]
+  'nvidia/nemotron-nano-9b-v2:free',   // Fastest, 100-150 token/s [citation:4]
+  
+  // GOOGLE'S LATEST
+  'google/gemma-4-31b-it:free',        // Updated version [citation:1]
+  
+  // OPENAI'S OPEN-WEIGHT MODELS
+  'openai/gpt-oss-120b:free',          // 117B MoE [citation:1]
+  'openai/gpt-oss-20b:free',           // Lighter version
+  
+  // NVIDIA MULTIMODAL (if you need image/video)
+  'nvidia/nemotron-nano-12b-2-vl:free',
+  
+  // FAST & LIGHTWEIGHT
+  'z-ai/glm-4.5-air:free',  
+  'openrouter/free',   
   ];
 
   String get currentLanguageCode => _currentLanguageCode;
