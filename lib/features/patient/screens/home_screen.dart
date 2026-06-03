@@ -64,35 +64,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _disconnectSnackbarShown = false;
   bool _hideSensorValuesUntilReconnect = false;
 
-@override
-void initState() {
-  super.initState();
-  
-  // Initialize home data FIRST — this fetches patientProfileId and loads data
-  _initializeHomeData();
-  
-  _startBleHardwareFeed();
-  _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
-    if (mounted) setState(() {});
-  });
-}
-
-Future<void> _initializeHomeData() async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) {
-    if (kDebugMode) print('[HomeScreen] No authenticated user');
-    return;
+  @override
+  void initState() {
+    super.initState();
+    // REMOVED: _initProvider() — homeDataProvider auto-initializes in build()
+    _startBleHardwareFeed();
+    _timeTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
-  
-  // This is the critical call that was missing!
-  await ref.read(homeDataProvider.notifier).init(user.id);
-  
-  // Now sync the loaded data to local state
-  if (mounted) {
-    final state = ref.read(homeDataProvider);
-    _syncFromHomeData(state);
-  }
-}
 
   @override
   void dispose() {
@@ -102,86 +82,79 @@ Future<void> _initializeHomeData() async {
     super.dispose();
   }
 
-  // Future<void> _init() async {
-  //   final user = Supabase.instance.client.auth.currentUser;
-  //   if (user != null) {
-  //     await ref.read(glucoseProvider.notifier).init(user.id);
-  //   }
-  // }
+  // REMOVED: _initProvider() — no longer needed
 
-void _syncFromHomeData(HomeDataState state) {
-  final reading = state.latestReading;
-  final iob = state.latestIob;
-  final carePlan = state.carePlan;
+  void _syncFromHomeData(HomeDataState state) {
+    final reading = state.latestReading;
+    final iob = state.latestIob;
+    final carePlan = state.carePlan;
 
-  if (kDebugMode) {
-    print('[HomeScreen] _syncFromHomeData called');
-    print('[HomeScreen] Latest reading: $reading');
-  }
+    if (kDebugMode) {
+      print('[HomeScreen] _syncFromHomeData called');
+      print('[HomeScreen] Latest reading: $reading');
+    }
 
-  if (reading != null) {
-    final value = double.tryParse(reading['value_mg_dl'].toString());
-    final trend = reading['trend'] ?? 'stable';
-    final updatedAt = reading['recorded_at'] != null
-        ? DateTime.tryParse(reading['recorded_at'])
-        : null;
+    if (reading != null) {
+      final value = double.tryParse(reading['value_mg_dl'].toString());
+      final trend = reading['trend'] ?? 'stable';
+      final updatedAt = reading['recorded_at'] != null
+          ? DateTime.tryParse(reading['recorded_at'])
+          : null;
 
-    _backendGlucoseValue = value;
-    _backendGlucoseTrend = trend;
-    _backendGlucoseUpdatedAt = updatedAt;
+      _backendGlucoseValue = value;
+      _backendGlucoseTrend = trend;
+      _backendGlucoseUpdatedAt = updatedAt;
 
-    if (!_hardwareConnected && !_hideSensorValuesUntilReconnect) {
+      if (!_hardwareConnected && !_hideSensorValuesUntilReconnect) {
+        if (mounted) {
+          setState(() {
+            _glucoseValue = value;
+            _glucoseTrend = trend;
+            _glucoseUpdatedAt = updatedAt;
+            _glucoseLoading = false;
+          });
+        }
+      }
+    } else if (!_hardwareConnected) {
+      if (mounted) {
+        setState(() => _glucoseLoading = false);
+      }
+    }
+
+    if (iob != null) {
+      final iobVal = double.tryParse(iob['total_iob_units'].toString());
+      _backendIobValue = iobVal;
+      if (!_hardwareConnected) {
+        if (mounted) {
+          setState(() {
+            _iobValue = iobVal;
+            _iobLoading = false;
+          });
+        }
+      }
+    } else if (!_hardwareConnected) {
+      if (mounted) {
+        setState(() => _iobLoading = false);
+      }
+    }
+
+    if (carePlan != null) {
+      final doctorProfile = carePlan['doctor_profile'];
+      final min = carePlan['target_glucose_min'];
+      final max = carePlan['target_glucose_max'];
+      final next = carePlan['next_appointment'];
       if (mounted) {
         setState(() {
-          _glucoseValue = value;
-          _glucoseTrend = trend;
-          _glucoseUpdatedAt = updatedAt;
-          _glucoseLoading = false;
+          _doctorName = doctorProfile?['users']?['full_name'] ?? '';
+          _targetRange = (min != null && max != null)
+              ? '$min–$max mg/dL'
+              : '– mg/dL';
+          _nextAppointment = next ?? '–';
         });
       }
     }
-  } else if (!_hardwareConnected) {
-    if (mounted) {
-      setState(() => _glucoseLoading = false);
-    }
   }
 
-  if (iob != null) {
-    final iobVal = double.tryParse(iob['total_iob_units'].toString());
-    _backendIobValue = iobVal;
-    if (!_hardwareConnected) {
-      if (mounted) {
-        setState(() {
-          _iobValue = iobVal;
-          _iobLoading = false;
-        });
-      }
-    }
-  } else if (!_hardwareConnected) {
-    if (mounted) {
-      setState(() => _iobLoading = false);
-    }
-  }
-
-  if (carePlan != null) {
-    final doctorProfile = carePlan['doctor_profile'];
-    final min = carePlan['target_glucose_min'];
-    final max = carePlan['target_glucose_max'];
-    final next = carePlan['next_appointment'];
-    if (mounted) {
-      setState(() {
-        _doctorName = doctorProfile?['users']?['full_name'] ?? '';
-        _targetRange = (min != null && max != null)
-            ? '$min–$max mg/dL'
-            : '– mg/dL';
-        _nextAppointment = next ?? '–';
-      });
-    }
-  }
-
-  // Battery data comes from BLE stream via bleDataProvider, not from repository
-  // The old loadDeviceBattery() call was a no-op — removed
-}
   Future<void> _onRefresh() async {
     await ref.read(homeDataProvider.notifier).refresh();
   }
@@ -306,8 +279,7 @@ void _syncFromHomeData(HomeDataState state) {
 
     final history = <_GlucosePoint>[];
 
-    // Note: glucose logs are now in glucoseProvider, not homeDataProvider
-    // We watch glucoseProvider for chart data
+    // Chart data from glucoseProvider logs
     final glucoseState = ref.read(glucoseProvider);
     for (final log in glucoseState.logs) {
       if (log.isPredicted) continue;
@@ -415,8 +387,11 @@ void _syncFromHomeData(HomeDataState state) {
     final colors = context.colors;
     final homeData = ref.watch(homeDataProvider);
     final bleAsync = ref.watch(bleDataProvider);
-    final glucoseState = ref.watch(glucoseProvider);
 
+    // Sync local state when homeData changes (after auto-init or refresh)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncFromHomeData(homeData);
+    });
 
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -476,131 +451,148 @@ void _syncFromHomeData(HomeDataState state) {
                 ],
               ),
               const SizedBox(height: 20),
-              isLandscape
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _glucoseCard(context),
-                              const SizedBox(height: 12),
-                              if (!_hardwareConnected)
-                                _disconnectedHardwarePlaceholder(context)
-                              else ...[
-                                _statusIndicatorsRow(context),
+              if (homeData.isLoading && homeData.latestReading == null)
+                const Center(child: CircularProgressIndicator())
+              else if (homeData.error != null)
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.error_outline, color: colors.error, size: 48),
+                      const SizedBox(height: 8),
+                      Text('Error: ${homeData.error}', style: TextStyle(color: colors.error)),
+                      TextButton(
+                        onPressed: _onRefresh,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                isLandscape
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _glucoseCard(context),
                                 const SizedBox(height: 12),
-                                _hardwareSnapshotCard(context),
+                                if (!_hardwareConnected)
+                                  _disconnectedHardwarePlaceholder(context)
+                                else ...[
+                                  _statusIndicatorsRow(context),
+                                  const SizedBox(height: 12),
+                                  _hardwareSnapshotCard(context),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AIPredictionScreen(),
-                                  ),
-                                ),
-                                child: _predictionCard(
-                                  context,
-                                  homeData: homeData,
-                                  aiPredictedGlucose: aiPredictedGlucose,
-                                  aiConfidenceScore: aiConfidenceScore,
-                                  aiRiskLevel: aiRiskLevel,
-                                  aiPredictionTime: aiPredictionTime,
-                                  aiPredictedFor: aiPredictedFor,
-                                  aiHorizonMinutes: aiHorizonMinutes,
-                                  aiPredictionLoading: aiPredictionLoading,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const RecommendationsScreen(),
-                                  ),
-                                ),
-                                child: _recommendationsCard(
-                                  context,
-                                  homeData,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
                                       builder: (_) =>
-                                          const PatientCarePlanScreen()),
+                                          const AIPredictionScreen(),
+                                    ),
+                                  ),
+                                  child: _predictionCard(
+                                    context,
+                                    homeData: homeData,
+                                    aiPredictedGlucose: aiPredictedGlucose,
+                                    aiConfidenceScore: aiConfidenceScore,
+                                    aiRiskLevel: aiRiskLevel,
+                                    aiPredictionTime: aiPredictionTime,
+                                    aiPredictedFor: aiPredictedFor,
+                                    aiHorizonMinutes: aiHorizonMinutes,
+                                    aiPredictionLoading: aiPredictionLoading,
+                                  ),
                                 ),
-                                child: _carePlanCard(context),
-                              ),
-                            ],
+                                const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const RecommendationsScreen(),
+                                    ),
+                                  ),
+                                  child: _recommendationsCard(
+                                    context,
+                                    homeData,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            const PatientCarePlanScreen()),
+                                  ),
+                                  child: _carePlanCard(context),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _glucoseCard(context),
-                        const SizedBox(height: 12),
-                        if (!_hardwareConnected)
-                          _disconnectedHardwarePlaceholder(context)
-                        else ...[
-                          _statusIndicatorsRow(context),
-                          const SizedBox(height: 12),
-                          _hardwareSnapshotCard(context),
                         ],
-                        const SizedBox(height: 16),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AIPredictionScreen(),
+                      )
+                    : Column(
+                        children: [
+                          _glucoseCard(context),
+                          const SizedBox(height: 12),
+                          if (!_hardwareConnected)
+                            _disconnectedHardwarePlaceholder(context)
+                          else ...[
+                            _statusIndicatorsRow(context),
+                            const SizedBox(height: 12),
+                            _hardwareSnapshotCard(context),
+                          ],
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AIPredictionScreen(),
+                              ),
+                            ),
+                            child: _predictionCard(
+                              context,
+                              homeData: homeData,
+                              aiPredictedGlucose: aiPredictedGlucose,
+                              aiConfidenceScore: aiConfidenceScore,
+                              aiRiskLevel: aiRiskLevel,
+                              aiPredictionTime: aiPredictionTime,
+                              aiPredictedFor: aiPredictedFor,
+                              aiHorizonMinutes: aiHorizonMinutes,
+                              aiPredictionLoading: aiPredictionLoading,
                             ),
                           ),
-                          child: _predictionCard(
-                            context,
-                            homeData: homeData,
-                            aiPredictedGlucose: aiPredictedGlucose,
-                            aiConfidenceScore: aiConfidenceScore,
-                            aiRiskLevel: aiRiskLevel,
-                            aiPredictionTime: aiPredictionTime,
-                            aiPredictedFor: aiPredictedFor,
-                            aiHorizonMinutes: aiHorizonMinutes,
-                            aiPredictionLoading: aiPredictionLoading,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RecommendationsScreen(),
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RecommendationsScreen(),
+                              ),
                             ),
+                            child: _recommendationsCard(context, homeData),
                           ),
-                          child: _recommendationsCard(context, homeData),
-                        ),
-                        const SizedBox(height: 16),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PatientCarePlanScreen(),
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PatientCarePlanScreen(),
+                              ),
                             ),
+                            child: _carePlanCard(context),
                           ),
-                          child: _carePlanCard(context),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
               const SizedBox(height: 30),
             ],
           ),
@@ -608,6 +600,8 @@ void _syncFromHomeData(HomeDataState state) {
       ),
     );
   }
+
+  // ── Widget methods remain the same, just update signatures ──
 
   Widget _disconnectedHardwarePlaceholder(BuildContext context) {
     final colors = context.colors;

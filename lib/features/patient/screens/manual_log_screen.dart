@@ -41,7 +41,8 @@ class _ManualLogScreenState extends ConsumerState<ManualLogScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => _init());
+    // REMOVED: Future.microtask(() => _init());
+    // Provider now auto-initializes in build() — no need to call init() from widget
   }
 
   @override
@@ -51,12 +52,7 @@ class _ManualLogScreenState extends ConsumerState<ManualLogScreen> {
     super.dispose();
   }
 
-  Future<void> _init() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      await ref.read(glucoseProvider.notifier).init(user.id);
-    }
-  }
+  // REMOVED: _init() method — no longer needed
 
   String? _validateGlucose(String? value) {
     if (value == null || value.trim().isEmpty) return 'Enter a value';
@@ -425,7 +421,7 @@ class _ManualLogScreenState extends ConsumerState<ManualLogScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 30),
                 child: Center(
                   child: TranslatedText(
-                    'No logs yet.\\nEnter a reading above.',
+                    'No logs yet.\nEnter a reading above.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 13, color: colors.textSecondary),

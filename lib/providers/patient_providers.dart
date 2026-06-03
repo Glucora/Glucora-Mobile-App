@@ -10,7 +10,6 @@ import 'package:glucora_ai_companion/services/repositories/iob_repository.dart';
 import 'package:glucora_ai_companion/services/repositories/care_plan_repository.dart';
 import 'package:glucora_ai_companion/services/repositories/recommendation_repository.dart';
 import 'package:glucora_ai_companion/services/repositories/patient_repository.dart';
-import 'package:glucora_ai_companion/services/repositories/device_repository.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_service.dart';
 import 'package:glucora_ai_companion/services/ble/ble_hardware_data.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -55,17 +54,23 @@ class GlucoseNotifier extends Notifier<GlucoseState> {
   @override
   GlucoseState build() {
     _repo = GlucoseRepository(Supabase.instance.client);
-    return const GlucoseState();
+    // Auto-initialize when provider is first watched
+    _initialize();
+    return const GlucoseState(isLoading: true);
   }
 
-  Future<void> init(String userId) async {
-    try {
-      _patientProfileId = await _repo.getPatientProfileId(userId);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
+  Future<void> _initialize() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      state = state.copyWith(isLoading: false, error: 'Not authenticated');
       return;
     }
-
+    try {
+      _patientProfileId = await _repo.getPatientProfileId(user.id);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return;
+    }
     await loadLogs();
     await loadLatestReading();
   }
@@ -167,15 +172,21 @@ class FoodLogNotifier extends Notifier<FoodLogState> {
   @override
   FoodLogState build() {
     _repo = FoodLogRepository(Supabase.instance.client);
-    return const FoodLogState();
+    _initialize();
+    return const FoodLogState(isLoading: true);
   }
 
-  Future<void> init(String userId) async {
+  Future<void> _initialize() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      state = state.copyWith(isLoading: false, error: 'Not authenticated');
+      return;
+    }
     final glucoseRepo = GlucoseRepository(Supabase.instance.client);
     try {
-      _patientProfileId = await glucoseRepo.getPatientProfileId(userId);
+      _patientProfileId = await glucoseRepo.getPatientProfileId(user.id);
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
       return;
     }
     await load();
@@ -275,15 +286,21 @@ class MedicationNotifier extends Notifier<MedicationState> {
   @override
   MedicationState build() {
     _repo = MedicationRepository(Supabase.instance.client);
-    return const MedicationState();
+    _initialize();
+    return const MedicationState(isLoading: true);
   }
 
-  Future<void> init(String userId) async {
+  Future<void> _initialize() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      state = state.copyWith(isLoading: false, error: 'Not authenticated');
+      return;
+    }
     final glucoseRepo = GlucoseRepository(Supabase.instance.client);
     try {
-      _patientProfileId = await glucoseRepo.getPatientProfileId(userId);
+      _patientProfileId = await glucoseRepo.getPatientProfileId(user.id);
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
       return;
     }
     await load();
@@ -411,19 +428,24 @@ class HomeDataNotifier extends Notifier<HomeDataState> {
     _carePlanRepo = CarePlanRepository(Supabase.instance.client);
     _recommendationRepo = RecommendationRepository(Supabase.instance.client);
     _glucoseRepo = GlucoseRepository(Supabase.instance.client);
-    return const HomeDataState();
+    _initialize();
+    return const HomeDataState(isLoading: true);
   }
 
-  Future<void> init(String userId) async {
-    state = state.copyWith(isLoading: true, clearError: true);
-    try {
-      _patientProfileId = await _glucoseRepo.getPatientProfileId(userId);
-      await refresh();
-    } catch (e) {
-      state = state.copyWith(error: e.toString(), isLoading: false);
+  Future<void> _initialize() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      state = state.copyWith(isLoading: false, error: 'Not authenticated');
+      return;
     }
+    try {
+      _patientProfileId = await _glucoseRepo.getPatientProfileId(user.id);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return;
+    }
+    await refresh();
   }
-
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
@@ -431,13 +453,16 @@ class HomeDataNotifier extends Notifier<HomeDataState> {
         throw Exception('Patient profile id not set');
       }
 
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not authenticated');
+
       final results = await Future.wait([
-        _glucoseRepo.getLatestReading(_patientProfileId!),
-        _predictionRepo.getLatest(),
-        _iobRepo.getLatest(_patientProfileId!),
-        _carePlanRepo.getRaw(_patientProfileId!),
-        _recommendationRepo.getLatest(patientProfileId: _patientProfileId.toString()),
-        _recommendationRepo.getUnreadCount(),
+        _glucoseRepo.getLatestReading(_patientProfileId!),     // int — correct
+        _predictionRepo.getLatest(),                              // uses auth UUID internally — correct
+        _iobRepo.getLatest(_patientProfileId!),                  // int — correct
+        _carePlanRepo.getRaw(_patientProfileId!),                // int — correct
+        _recommendationRepo.getLatest(patientProfileId: userId), // ← FIX: was _patientProfileId.toString() (int), now userId (UUID)
+        _recommendationRepo.getUnreadCount(),                    // uses auth UUID internally — correct
       ]);
 
       state = state.copyWith(
@@ -495,7 +520,14 @@ class PatientProfileNotifier extends Notifier<PatientProfile?> {
   PatientProfile? build() {
     _repo = PatientRepository(Supabase.instance.client);
     ref.onDispose(() => _channel?.unsubscribe());
+    _initialize();
     return null;
+  }
+
+  Future<void> _initialize() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    await load(user.id);
   }
 
   Future<void> load(String userId) async {

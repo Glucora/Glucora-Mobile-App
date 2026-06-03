@@ -25,7 +25,6 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => _init());
   }
 
   @override
@@ -37,9 +36,6 @@ class _MedicationScreenState extends ConsumerState<MedicationScreen> {
     super.dispose();
   }
 
-  Future<void> _init() async {
-    await ref.read(medicationProvider.notifier).load();
-  }
 
   Future<void> _saveMedication(
     List<TimeOfDay> reminders,
