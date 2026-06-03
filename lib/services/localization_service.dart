@@ -56,7 +56,6 @@ class LocalizationService extends ChangeNotifier {
     'anthropic/claude-3-haiku',        // Anthropic's cheapest
     'deepseek/deepseek-chat',          // Very cheap
     'cohere/command-r-plus',           // Alternative
-    'openrouter/free',    
      // EXCELLENT FOR REASONING/CODING
   'deepseek/deepseek-r1:free',
   
