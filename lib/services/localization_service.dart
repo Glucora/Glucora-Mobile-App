@@ -55,6 +55,7 @@ class LocalizationService extends ChangeNotifier {
     'anthropic/claude-3-haiku',        // Anthropic's cheapest
     'deepseek/deepseek-chat',          // Very cheap
     'cohere/command-r-plus',           // Alternative
+    'openrouter/free',    
   ];
 
   String get currentLanguageCode => _currentLanguageCode;
