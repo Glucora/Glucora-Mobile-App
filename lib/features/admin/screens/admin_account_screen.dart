@@ -33,7 +33,7 @@ class _AdminAccountScreenState extends State<AdminAccountScreen> {
 
   RealtimeChannel? _profileChannel;
 
-  static const List<FaqEntry> _faqs = [
+  static final List<FaqEntry> _faqs = [
     FaqEntry(
       'How do I manage system users?',
       'Navigate to the More tab and select User Management. From there you can add, edit, or deactivate user accounts for doctors, patients, and other admins.',
