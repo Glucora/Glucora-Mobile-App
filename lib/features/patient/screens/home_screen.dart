@@ -1240,7 +1240,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final colors = context.colors;
     final displayValue =
-        aiPredictedGlucose ?? _hardwarePredictionValue ?? 135.0;
+        aiPredictedGlucose ?? _hardwarePredictionValue ?? 0.0;
     final chartSeries = _buildChartSeries(
       provider,
       horizonMinutes: aiHorizonMinutes,
