@@ -21,7 +21,7 @@ class AIRecommendation {
 
 class AIService {
   static final String _apiKey = dotenv.env['OPENROUTER_API_KEY']!;
-  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions'; //he URL is OpenRouter's chat endpoint.
 
   // Fallback list — tries each in order until one works
  static const List<String> _models = [
