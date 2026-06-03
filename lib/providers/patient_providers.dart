@@ -218,10 +218,11 @@ class FoodLogNotifier extends Notifier<FoodLogState> {
       if (_patientProfileId == null) {
         throw Exception('Patient profile id not set');
       }
+      // In patient_providers.dart — FoodLogNotifier.insert()
       await _repo.insert(
         name: name,
         calories: calories,
-        carbsG: carbsG,
+        carbsG: carbsG,      // ← Make sure these are passed
         proteinG: proteinG,
         fatG: fatG,
         mealType: mealType ?? '',

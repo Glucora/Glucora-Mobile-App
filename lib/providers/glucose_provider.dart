@@ -189,9 +189,9 @@ class GlucoseProvider extends ChangeNotifier {
         patientProfileId: patientProfileId!,
         name: name,
         calories: calories,
-        carbs: carbs,
-        protein: protein,
-        fat: fat,
+        carbsG: carbs,
+        proteinG: protein,
+        fatG: fat,
         mealType: mealType,
       );
       await loadFoodLogs();
