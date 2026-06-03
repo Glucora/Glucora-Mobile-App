@@ -48,6 +48,7 @@ class LocalizationService extends ChangeNotifier {
   // List of models to try in order (cheapest/fastest first)
   static const List<String> _fallbackModels = [
     'openai/gpt-3.5-turbo',           // Fast and cheap
+     'google/gemini-2.0-flash-001',
     'meta-llama/llama-3-8b-instruct',  // Free tier
     'mistralai/mistral-7b-instruct',   // Free tier
     'openai/gpt-4o-mini',              // Good quality
