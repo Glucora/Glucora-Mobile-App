@@ -1,24 +1,22 @@
-// lib\features\patient\screens\medication_screen.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/services/notifications_service.dart';
-import 'package:glucora_ai_companion/providers/glucose_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:glucora_ai_companion/providers/patient_providers.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 import 'package:glucora_ai_companion/core/models/medication_model.dart';
 
-class MedicationScreen extends StatefulWidget {
+class MedicationScreen extends ConsumerStatefulWidget {
   const MedicationScreen({super.key});
 
   @override
-  State<MedicationScreen> createState() => _MedicationScreenState();
+  ConsumerState<MedicationScreen> createState() => _MedicationScreenState();
 }
 
-class _MedicationScreenState extends State<MedicationScreen> {
+class _MedicationScreenState extends ConsumerState<MedicationScreen> {
   final _nameCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _freqCtrl = TextEditingController();
@@ -40,16 +38,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
   }
 
   Future<void> _init() async {
-    final provider = context.read<GlucoseProvider>();
-    if (provider.patientProfileId == null) {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) await provider.init(user.id);
-    } else {
-      await provider.loadMedications();
-    }
+    await ref.read(medicationProvider.notifier).load();
   }
-
-  // ── Save medication ────────────────────────────────────────────────────────
 
   Future<void> _saveMedication(
     List<TimeOfDay> reminders,
@@ -64,36 +54,29 @@ class _MedicationScreenState extends State<MedicationScreen> {
     _savingNotifier.value = true;
 
     try {
-      final provider = context.read<GlucoseProvider>();
-
-      final medId = await provider.insertMedication(
-        name: name,
-        notes: _notesCtrl.text.trim().isEmpty
-            ? null
-            : _notesCtrl.text.trim(),
-        frequency: int.tryParse(_freqCtrl.text.trim()),
+      await ref.read(medicationProvider.notifier).insert(
+        name,
+        _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        int.tryParse(_freqCtrl.text.trim()),
       );
 
-      if (medId == null) throw Exception('Failed to create medication');
+      // insert may not return the new id, try to locate the created medication
+      final meds = ref.read(medicationProvider).medications;
+      final matches = meds.where((m) => m.name == name).toList();
+      if (matches.isEmpty) throw Exception('Failed to create medication');
+      final medId = matches.map((m) => m.id).reduce((a, b) => a > b ? a : b);
 
+      // Schedule notifications for reminders
       for (final time in reminders) {
         final hh = time.hour.toString().padLeft(2, '0');
         final mm = time.minute.toString().padLeft(2, '0');
         final remindAt = '$hh:$mm:00';
-
-        final reminderId = await provider.insertMedicationReminder(
-          medId: medId,
+        final notificationId = (medId * 1000) + reminders.indexOf(time);
+        await NotificationService.scheduleReminder(
+          id: notificationId,
+          medName: name,
           remindAt: remindAt,
         );
-
-        if (reminderId != null) {
-          final notificationId = (medId * 1000) + reminderId;
-          await NotificationService.scheduleReminder(
-            id: notificationId,
-            medName: name,
-            remindAt: remindAt,
-          );
-        }
       }
 
       _nameCtrl.clear();
@@ -101,7 +84,6 @@ class _MedicationScreenState extends State<MedicationScreen> {
       _freqCtrl.clear();
 
       if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-      await provider.loadMedications();
     } catch (e) {
       if (kDebugMode) print('SAVE ERROR: $e');
       if (mounted) {
@@ -118,18 +100,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     }
   }
 
-  // ── Toggle ─────────────────────────────────────────────────────────────────
-
   Future<void> _toggleMedication(
       int medId, bool current, Medication med) async {
-    final provider = context.read<GlucoseProvider>();
     if (current) {
-      final reminders =
-          await provider.getMedicationReminders(medId);
-      final ids = reminders
-          .map((r) => (medId * 1000) + (r['id'] as int))
-          .toList();
-      await NotificationService.cancelAll(ids);
+      for (final r in med.reminders) {
+        await NotificationService.cancelReminder((med.id * 1000) + r.id);
+      }
     } else {
       for (final r in med.reminders) {
         await NotificationService.scheduleReminder(
@@ -139,22 +115,15 @@ class _MedicationScreenState extends State<MedicationScreen> {
         );
       }
     }
-    await provider.toggleMedication(medId, current);
+    await ref.read(medicationProvider.notifier).toggle(medId, current);
   }
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
-
-  Future<void> _deleteMedication(int medId) async {
-    final provider = context.read<GlucoseProvider>();
-    final reminders = await provider.getMedicationReminders(medId);
-    final ids = reminders
-        .map((r) => (medId * 1000) + (r['id'] as int))
-        .toList();
-    await NotificationService.cancelAll(ids);
-    await provider.deleteMedication(medId);
+  Future<void> _deleteMedication(int medId, List<MedicationReminder> reminders) async {
+    for (final r in reminders) {
+      await NotificationService.cancelReminder((medId * 1000) + r.id);
+    }
+    await ref.read(medicationProvider.notifier).delete(medId);
   }
-
-  // ── Add sheet ──────────────────────────────────────────────────────────────
 
   void _showAddSheet(BuildContext context) {
     final colors = context.colors;
@@ -251,13 +220,11 @@ class _MedicationScreenState extends State<MedicationScreen> {
                       GestureDetector(
                         onTap: () async {
                           final currentFreq =
-                              int.tryParse(_freqCtrl.text.trim()) ??
-                                  0;
+                              int.tryParse(_freqCtrl.text.trim()) ?? 0;
                           if (currentFreq <= 0) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content:
-                                      Text('Enter frequency first'),
+                                  content: Text('Enter frequency first'),
                                   duration: Duration(seconds: 2)),
                             );
                             return;
@@ -284,8 +251,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color:
-                                colors.primary.withValues(alpha: 0.1),
+                            color: colors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -295,8 +261,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                               const SizedBox(width: 4),
                               Builder(builder: (context) {
                                 final currentFreq = int.tryParse(
-                                        _freqCtrl.text.trim()) ??
-                                    0;
+                                        _freqCtrl.text.trim()) ?? 0;
                                 return Text(
                                   currentFreq > 0
                                       ? 'Add time (${reminders.length}/$currentFreq)'
@@ -322,8 +287,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children:
-                          reminders.asMap().entries.map((entry) {
+                      children: reminders.asMap().entries.map((entry) {
                         final i = entry.key;
                         final t = entry.value;
                         return Container(
@@ -368,8 +332,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                             ? null
                             : () {
                                 final currentFreq = int.tryParse(
-                                        _freqCtrl.text.trim()) ??
-                                    0;
+                                        _freqCtrl.text.trim()) ?? 0;
                                 if (currentFreq > 0 &&
                                     reminders.length != currentFreq) {
                                   ScaffoldMessenger.of(context)
@@ -378,8 +341,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                       content: Text(
                                           'Add $currentFreq reminder${currentFreq > 1 ? 's' : ''} to match frequency — you have ${reminders.length}'),
                                       backgroundColor: Colors.orange,
-                                      duration:
-                                          const Duration(seconds: 3),
+                                      duration: const Duration(seconds: 3),
                                     ),
                                   );
                                   return;
@@ -416,135 +378,121 @@ class _MedicationScreenState extends State<MedicationScreen> {
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final state = ref.watch(medicationProvider);
 
-    return Consumer<GlucoseProvider>(
-      builder: (context, provider, _) {
-        final activeMeds =
-            provider.medications.where((m) => m.isActive).toList();
-        final inactiveMeds =
-            provider.medications.where((m) => !m.isActive).toList();
+    final activeMeds = state.medications.where((m) => m.isActive).toList();
+    final inactiveMeds = state.medications.where((m) => !m.isActive).toList();
 
-        return SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 20, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TranslatedText('Medications',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textPrimary)),
-                        Text('${activeMeds.length} active',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: colors.textSecondary)),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () => _showAddSheet(context),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                            color: colors.primary,
-                            borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.add_rounded,
-                            color: Colors.white, size: 22),
-                      ),
-                    ),
+                    TranslatedText('Medications',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary)),
+                    Text('${activeMeds.length} active',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary)),
                   ],
                 ),
-              ),
-              Expanded(
-                child: provider.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : provider.errorMessage != null
-                        ? Center(
-                            child: TranslatedText(
-                              provider.errorMessage!,
-                              style:
-                                  const TextStyle(color: Colors.red),
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: provider.loadMedications,
-                            child: SingleChildScrollView(
-                              physics:
-                                  const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  if (provider.medications.isEmpty)
-                                    Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            top: 80),
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                                Icons
-                                                    .medication_liquid_rounded,
-                                                size: 56,
-                                                color:
-                                                    colors.textSecondary),
-                                            const SizedBox(height: 12),
-                                            TranslatedText(
-                                                'No medications yet.\nTap + to add one.',
-                                                textAlign:
-                                                    TextAlign.center,
-                                                style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: colors
-                                                        .textSecondary)),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  else ...[
-                                    if (activeMeds.isNotEmpty) ...[
-                                      _sectionLabel('Active', colors),
-                                      const SizedBox(height: 10),
-                                      ...activeMeds.map((m) =>
-                                          _medCard(context, m)),
-                                    ],
-                                    if (inactiveMeds.isNotEmpty) ...[
-                                      const SizedBox(height: 20),
-                                      _sectionLabel(
-                                          'Inactive', colors),
-                                      const SizedBox(height: 10),
-                                      ...inactiveMeds.map((m) =>
-                                          _medCard(context, m)),
-                                    ],
-                                  ],
-                                  const SizedBox(height: 30),
-                                ],
-                              ),
-                            ),
-                          ),
-              ),
-            ],
+                GestureDetector(
+                  onTap: () => _showAddSheet(context),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                        color: colors.primary,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.add_rounded,
+                        color: Colors.white, size: 22),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          Expanded(
+            child: state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : state.error != null
+                    ? Center(
+                        child: TranslatedText(
+                          state.error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () => ref.read(medicationProvider.notifier).load(),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              if (state.medications.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 80),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                            Icons
+                                                .medication_liquid_rounded,
+                                            size: 56,
+                                            color: colors.textSecondary),
+                                        const SizedBox(height: 12),
+                                        TranslatedText(
+                                            'No medications yet.\\nTap + to add one.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                color: colors
+                                                    .textSecondary)),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else ...[
+                                if (activeMeds.isNotEmpty) ...[
+                                  _sectionLabel('Active', colors),
+                                  const SizedBox(height: 10),
+                                  ...activeMeds.map((m) =>
+                                      _medCard(context, m)),
+                                ],
+                                if (inactiveMeds.isNotEmpty) ...[
+                                  const SizedBox(height: 20),
+                                  _sectionLabel('Inactive', colors),
+                                  const SizedBox(height: 10),
+                                  ...inactiveMeds.map((m) =>
+                                      _medCard(context, m)),
+                                ],
+                              ],
+                              const SizedBox(height: 30),
+                            ],
+                          ),
+                        ),
+                      ),
+          ),
+        ],
+      ),
     );
   }
-
-  // ── Widgets ────────────────────────────────────────────────────────────────
 
   Widget _sectionLabel(String label, GlucoraColors colors) =>
       TranslatedText(label,
@@ -605,8 +553,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                               color: med.isActive
                                   ? colors.textPrimary
                                   : colors.textSecondary)),
-                      if (med.notes != null &&
-                          med.notes!.isNotEmpty) ...[
+                      if (med.notes != null && med.notes!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         TranslatedText(med.notes!,
                             style: TextStyle(
@@ -744,7 +691,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _deleteMedication(med.id);
+              _deleteMedication(med.id, med.reminders);
             },
             child: TranslatedText('Remove',
                 style: TextStyle(color: colors.error)),

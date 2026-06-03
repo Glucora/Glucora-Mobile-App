@@ -1,4 +1,4 @@
-// main.dart — Updated with LocalizationService and Welcome Screen
+// main.dart — Updated: GlucoseProvider removed, Riverpod ready for patient side
 import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +30,6 @@ import 'features/onboarding/screens/who_are_we_screen.dart';
 import 'features/onboarding/screens/welcome_screen.dart';
 import 'package:glucora_ai_companion/features/onboarding/screens/onboarding_language_screen.dart';
 import 'package:glucora_ai_companion/features/auth/screens/reset_password_screen.dart';
-import 'package:glucora_ai_companion/providers/glucose_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide ChangeNotifierProvider, Consumer, Provider;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -123,7 +122,7 @@ class GlucoraApp extends StatelessWidget {
           value: localizationService,
         ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => GlucoseProvider()),
+        // GlucoseProvider removed — patient side now uses Riverpod notifiers
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

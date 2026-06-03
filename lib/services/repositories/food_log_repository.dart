@@ -28,7 +28,7 @@ class FoodLogRepository extends BaseRepository {
     double? carbs,
     double? protein,
     double? fat,
-    required String mealType,
+    required String mealType, double? carbsG, double? proteinG, double? fatG,
   }) async {
     await db.from('food_logs').insert({
       'patient_id': patientProfileId,
