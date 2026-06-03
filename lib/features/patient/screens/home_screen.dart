@@ -1,3 +1,25 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// FILE: lib/features/patient/screens/home_screen.dart
+// ═══════════════════════════════════════════════════════════════════════════════
+// OVERVIEW:
+// This is the main patient dashboard — the app's home screen. It displays
+// real-time glucose readings (from BLE hardware or backend fallback), insulin
+// on board (IOB), device battery, AI glucose predictions with mini chart,
+// health recommendations, and care plan overview. The screen supports both
+// portrait and landscape orientations with adaptive layouts.
+//
+// DATA SOURCES:
+// - BLE hardware (primary): Real-time glucose, IOB, battery, predictions
+// - Supabase backend (fallback): Last known readings when hardware disconnects
+// - AI backend: Glucose predictions with confidence scores and risk levels
+//
+// KEY FEATURES:
+// - Pull-to-refresh loads all data sources
+// - Hardware disconnect detection with reconnection prompt
+// - Custom painted glucose history + prediction chart
+// - Responsive layout (portrait = stacked, landscape = side-by-side columns)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -16,8 +38,22 @@ import 'package:glucora_ai_companion/core/theme/color_extension.dart';
 import 'package:glucora_ai_companion/core/theme/app_theme.dart';
 import 'package:glucora_ai_companion/shared/widgets/translated_text.dart';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL: _timeTicker
+// PURPOSE: A global Timer that ticks every 30 seconds to trigger UI rebuilds.
+//          This ensures "time ago" displays (like "5 min ago") stay current
+//          without needing individual timers per widget. The timer is created
+//          in initState and cancelled in dispose.
+// ═══════════════════════════════════════════════════════════════════════════════
 Timer? _timeTicker;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// WIDGET: HomeScreen (StatefulWidget)
+// PURPOSE: Creates the state object for the main dashboard. This is the entry
+//          point for patients after login. The state holds all dashboard data
+//          including glucose values, IOB, battery, hardware connection status,
+//          and BLE history for the chart.
+// ═══════════════════════════════════════════════════════════════════════════════
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,12 +61,36 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE: _HomeScreenState
+// PURPOSE: Manages all mutable state for the Home dashboard. The state is
+//          organized by data domain (care plan, glucose, IOB, battery, hardware).
+//          Each domain maintains both "current display" values and "backend
+//          fallback" values so the UI can seamlessly switch when hardware
+//          disconnects.
+// ═══════════════════════════════════════════════════════════════════════════════
 class _HomeScreenState extends State<HomeScreen> {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Care Plan State
+  // PURPOSE: Stores the patient's care plan information for display in the
+  //          care plan card. These are populated from GlucoseProvider.carePlanRaw
+  //          during _syncFromProvider(). Default values show "–" until data loads.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // Care plan
   String _doctorName = '';
   String _targetRange = '– mg/dL';
   String _nextAppointment = '–';
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Glucose State
+  // PURPOSE: Tracks the current glucose reading with dual-source support:
+  //          - _glucoseValue: What's currently displayed (hardware or backend)
+  //          - _backendGlucoseValue: Last known value from Supabase (fallback)
+  //          - _glucoseTrend: Direction (stable/up/down) for trend arrow icon
+  //          - _glucoseUpdatedAt: When the reading was received (for "time ago")
+  //          - _glucoseLoading: Shows spinner during initial load
+  //          When hardware disconnects, _glucoseValue falls back to the backend value.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // Glucose
   double? _glucoseValue;
   double? _backendGlucoseValue;
@@ -40,15 +100,49 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _backendGlucoseUpdatedAt;
   bool _glucoseLoading = true;
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Insulin On Board (IOB) State
+  // PURPOSE: Tracks active insulin in the patient's system. Like glucose, it
+  //          maintains both a display value and a backend fallback. IOB is
+  //          critical for preventing insulin stacking (taking too much insulin
+  //          while previous doses are still active).
+  // ═══════════════════════════════════════════════════════════════════════════════
   // IOB
   double? _iobValue;
   double? _backendIobValue;
   bool _iobLoading = true;
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Device Battery State
+  // PURPOSE: Tracks the connected glucose sensor/pump battery health.
+  //          The battery value can come from either BLE hardware advertisement
+  //          or the device repository in Supabase. Displayed as a percentage
+  //          with a color-coded progress bar (green >50%, yellow >20%, red <20%).
+  // ═══════════════════════════════════════════════════════════════════════════════
   // Battery
   String? _batteryHealth;
   bool _batteryLoading = true;
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: BLE Hardware State
+  // PURPOSE: Manages the Bluetooth Low Energy connection to the glucose
+  //          monitoring hardware. This is the primary data source for glucose,
+  //          IOB, battery, and predictions. Key fields:
+  //          - _bleHardwareService: Singleton service that manages BLE scanning,
+  //            connection, and data streaming
+  //          - _bleDataSub: StreamSubscription that listens to hardware data
+  //          - _hardwareDeviceName: Name of the connected BLE device
+  //          - _hardwareBatteryPercent: Battery level from hardware advertisement
+  //          - _hardwarePredictionValue: AI prediction from hardware
+  //          - _hardwareLatestGlucoseValue: Most recent glucose from hardware
+  //          - _bleHistory: Rolling 1-hour window of glucose points for the chart
+  //          - _hardwareConnected: Whether a device is currently connected
+  //          - _hadHardwareConnection: True if we EVER connected (used to detect
+  //            disconnects vs. never connected)
+  //          - _disconnectSnackbarShown: Prevents showing disconnect snackbar multiple times
+  //          - _hideSensorValuesUntilReconnect: When true, blanks out sensor values
+  //            after disconnect to prevent showing stale data
+  // ═══════════════════════════════════════════════════════════════════════════════
   // BLE hardware
   final BleHardwareService _bleHardwareService = BleHardwareService.instance;
   StreamSubscription<BleHardwareData>? _bleDataSub;
@@ -64,6 +158,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _disconnectSnackbarShown = false;
   bool _hideSensorValuesUntilReconnect = false;
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // LIFECYCLE: initState()
+  // PURPOSE: Called once when the widget is first built. Initializes three things:
+  //          1. Provider data: Fetches patient profile and all related data from Supabase
+  //          2. BLE hardware: Starts scanning/connecting to the glucose device
+  //          3. Time ticker: Creates a 30-second timer to refresh "time ago" text
+  //          The order matters: provider init happens first so we have fallback
+  //          data ready before hardware connects.
+  // ═══════════════════════════════════════════════════════════════════════════════
   @override
   void initState() {
     super.initState();
@@ -74,6 +177,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // LIFECYCLE: dispose()
+  // PURPOSE: Called when the widget is permanently removed. Cleans up ALL resources
+  //          to prevent memory leaks:
+  //          1. Cancels the BLE data stream subscription (stops receiving data)
+  //          2. Stops the BLE hardware service (stops scanning/connecting)
+  //          3. Cancels the global time ticker timer
+  //          Failing to cancel subscriptions causes memory leaks and keeps
+  //          background processes running after the screen is gone.
+  // ═══════════════════════════════════════════════════════════════════════════════
   @override
   void dispose() {
     _bleDataSub?.cancel();
@@ -82,6 +195,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _initProvider()
+  // PURPOSE: Initializes the GlucoseProvider for the current authenticated user.
+  //          If patientProfileId is null (first visit), calls provider.init()
+  //          which fetches the profile and loads all data. Otherwise, just
+  //          syncs from the already-loaded provider data. After initialization,
+  //          _syncFromProvider() copies provider data into local state for display.
+  // ═══════════════════════════════════════════════════════════════════════════════
   Future<void> _initProvider() async {
     final provider = context.read<GlucoseProvider>();
     final user = Supabase.instance.client.auth.currentUser;
@@ -94,6 +215,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _syncFromProvider(provider);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _syncFromProvider()
+  // PURPOSE: Copies data from GlucoseProvider into local state variables.
+  //          This decouples the UI from directly accessing the provider during
+  //          every build, and enables the dual-source (hardware + backend) pattern.
+  //          The method handles:
+  //          - Latest glucose reading (value, trend, timestamp)
+  //          - Latest IOB value
+  //          - Care plan data (doctor name, target range, appointment)
+  //          - Device battery health
+  //          Debug prints log the sync details in development builds.
+  //          If hardware is NOT connected, display values fall back to backend data.
+  // ═══════════════════════════════════════════════════════════════════════════════
   void _syncFromProvider(GlucoseProvider provider) {
     final reading = provider.latestReading;
     final iob = provider.latestIob;
@@ -165,7 +299,14 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
-    // Battery from device repository
+    // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Device Battery State
+  // PURPOSE: Tracks the connected glucose sensor/pump battery health.
+  //          The battery value can come from either BLE hardware advertisement
+  //          or the device repository in Supabase. Displayed as a percentage
+  //          with a color-coded progress bar (green >50%, yellow >20%, red <20%).
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // Battery from device repository
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId != null) {
       provider.loadDeviceBattery(userId).then((battery) {
@@ -188,6 +329,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _onRefresh()
+  // PURPOSE: Pull-to-refresh handler. Reloads ALL data sources in parallel:
+  //          - Latest glucose reading from Supabase
+  //          - Full glucose log history
+  //          - Latest AI prediction
+  //          - Latest IOB value
+  //          - Care plan data
+  //          - Recommendations (limited to 3 for preview)
+  //          After all loads complete, syncs the new data into local state.
+  //          Future.wait() runs all loads concurrently for speed.
+  // ═══════════════════════════════════════════════════════════════════════════════
   Future<void> _onRefresh() async {
     final provider = context.read<GlucoseProvider>();
     await Future.wait([
@@ -201,6 +354,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _syncFromProvider(provider);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _startBleHardwareFeed()
+  // PURPOSE: Establishes the BLE data stream connection. This is the core of
+  //          real-time glucose monitoring. The method:
+  //          1. Cancels any existing subscription (prevents duplicate listeners)
+  //          2. Listens to BleHardwareService.dataStream for incoming data
+  //          3. On each data packet, updates local state with new values
+  //          4. Appends glucose values to _bleHistory for chart rendering
+  //          5. Detects disconnections and shows reconnection prompts
+  //          6. Manages the "hide values until reconnect" state for stale data
+  //          The stream provides: glucose, prediction, IOB, battery, connection status
+  // ═══════════════════════════════════════════════════════════════════════════════
   Future<void> _startBleHardwareFeed() async {
     _bleDataSub?.cancel();
 
@@ -292,6 +457,17 @@ class _HomeScreenState extends State<HomeScreen> {
     await _bleHardwareService.start();
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _appendBleHistory()
+  // PURPOSE: Maintains a rolling 1-hour window of glucose data points from the
+  //          BLE hardware for chart rendering. The algorithm:
+  //          1. If the new value is the same as the last one within 20 seconds,
+  //             update the timestamp of the existing point (prevents duplicate points)
+  //          2. Otherwise, add a new _GlucosePoint with current time and value
+  //          3. Remove any points older than 1 hour to keep the chart performant
+  //          This ensures the chart always shows the most recent hour of data
+  //          without growing unbounded.
+  // ═══════════════════════════════════════════════════════════════════════════════
   void _appendBleHistory(double value) {
     final now = DateTime.now();
     if (_bleHistory.isNotEmpty) {
@@ -309,6 +485,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _bleHistory.removeWhere((point) => point.time.isBefore(cutoff));
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _buildChartSeries()
+  // PURPOSE: Builds the data structure needed by the custom chart painter.
+  //          Combines two data sources into a unified timeline:
+  //          1. Supabase logs: Historical glucose readings from the past hour
+  //          2. BLE history: Real-time glucose points from hardware
+  //          Then adds prediction points (from hardware or AI) extending into
+  //          the future by horizonMinutes. The result is a _GlucoseChartSeries
+  //          containing history points and prediction points for the painter.
+  //          Debug prints help diagnose chart data issues during development.
+  // ═══════════════════════════════════════════════════════════════════════════════
   _GlucoseChartSeries _buildChartSeries(
     GlucoseProvider provider, {
     required int horizonMinutes,
@@ -402,6 +589,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return _GlucoseChartSeries(history: history, predictions: predictions);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // METHOD: _showHardwareDisconnectedSnackBar()
+  // PURPOSE: Displays a persistent SnackBar when BLE hardware disconnects.
+  //          Includes an action button that navigates to the Bluetooth pairing
+  //          screen for easy reconnection. The snackbar lasts 12 seconds and
+  //          is only shown once per disconnect event (tracked by flag).
+  // ═══════════════════════════════════════════════════════════════════════════════
   void _showHardwareDisconnectedSnackBar() {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -422,8 +616,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: UI Helpers
+  // PURPOSE: Small utility methods used across multiple widgets in this screen.
+  //          Keeping them as private methods keeps the build method clean and
+  //          ensures consistent behavior (e.g., time formatting, color coding).
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  // METHOD: _timeAgo()
+  // PURPOSE: Formats a DateTime into a human-readable relative time string:
+  //          "just now", "5 min ago", "2h ago", or "1d ago". Returns "–" for null.
+  //          Used by the glucose card to show when the last reading was received.
   String _timeAgo(DateTime? dt) {
     if (dt == null) return '–';
     final diff = DateTime.now().difference(dt.toLocal());
@@ -433,6 +637,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${diff.inDays}d ago';
   }
 
+  // METHOD: _glucoseColor()
+  // PURPOSE: Returns a color based on glucose level for status indication:
+  //          - <70 mg/dL: Yellow (hypoglycemia / low)
+  //          - >180 mg/dL: Red (hyperglycemia / high)
+  //          - 70-180 mg/dL: Primary theme color (in target range)
+  //          Used by the glucose card's status dot and trend icon background.
   Color _glucoseColor(GlucoraColors colors) {
     if (_glucoseValue == null) return colors.primary;
     if (_glucoseValue! < 70) return const Color(0xFFEFDD16);
@@ -440,6 +650,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return colors.primary;
   }
 
+  // METHOD: _parseBatteryPercent()
+  // PURPOSE: Parses a battery percentage string (e.g., "85%") into a normalized
+  //          double (0.0 to 1.0). Returns null for invalid input. The normalized
+  //          value is used by LinearProgressIndicator which expects 0.0-1.0 range.
   double? _parseBatteryPercent(String? raw) {
     if (raw == null) return null;
     final cleaned = raw.replaceAll('%', '').trim();
@@ -448,6 +662,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return (parsed.clamp(0, 100)) / 100.0;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Build Method
+  // PURPOSE: Renders the complete dashboard. The layout adapts to orientation:
+  //          - Portrait: Single column with stacked cards
+  //          - Landscape: Two columns (glucose/IOB/battery left, predictions/recs/care right)
+  //          The build method uses Consumer<GlucoseProvider> to reactively rebuild
+  //          when provider data changes. It extracts prediction data and builds
+  //          the chart series, then delegates to sub-widget builders for each card.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -648,6 +871,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Disconnected Hardware Placeholder
+  // PURPOSE: Shown when no BLE hardware is connected. Displays a friendly
+  //          message and a "Get started" button that navigates to the Bluetooth
+  //          pairing screen. This replaces the hardware-specific cards
+  //          (IOB, battery, hardware snapshot) when no device is paired.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Disconnected placeholder ───────────────────────────────────────────────
 
   Widget _disconnectedHardwarePlaceholder(BuildContext context) {
@@ -697,6 +927,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Glucose Card Widget
+  // PURPOSE: The primary dashboard card showing the current glucose level.
+  //          Features:
+  //          - Color-coded status dot (green=in range, yellow=low, red=high)
+  //          - Trend arrow icon (up/down/stable) inside the dot
+  //          - Glucose value in large bold text
+  //          - "Last updated" timestamp with "time ago" formatting
+  //          - Legend row showing Normal/Low/High color indicators
+  //          When hardware disconnects and values are hidden, shows a Bluetooth
+  //          disabled icon instead of the trend arrow.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Glucose card ──────────────────────────────────────────────────────────
 
 
@@ -843,6 +1085,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ],
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Status Indicators Row (IOB + Battery)
+  // PURPOSE: Two side-by-side cards showing:
+  //          - IOB (Insulin On Board): Active insulin with tap-to-expand detail sheet
+  //          - Sensor Battery: Battery percentage with color-coded progress bar
+  //          When hardware disconnects, both show "–" and hide the progress bar.
+  //          The battery card shows different icons based on level (alert for <20%).
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── IOB + Battery row ─────────────────────────────────────────────────────
 
   Widget _statusIndicatorsRow(BuildContext context) {
@@ -1225,6 +1475,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: AI Prediction Card
+  // PURPOSE: Displays the AI glucose prediction with rich information:
+  //          - Large predicted value with mg/dL unit
+  //          - Percentage change from current glucose (with up/down arrow)
+  //          - Risk level badge (LOW/MEDIUM/HIGH) with color coding
+  //          - Confidence score as a progress bar
+  //          - Generation time ("5 min ago")
+  //          - Custom painted mini chart showing history + prediction
+  //          - Legend explaining chart lines
+  //          Tapping the card navigates to the full AIPredictionScreen.
+  //          The prediction can come from either hardware or the AI backend.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Prediction card ───────────────────────────────────────────────────────
 
   Widget _predictionCard(
@@ -1499,6 +1762,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Recommendations Card
+  // PURPOSE: Shows up to 3 AI-generated health recommendations as a preview.
+  //          Each recommendation is displayed as a bullet point. Tapping the card
+  //          navigates to the full RecommendationsScreen. Includes a medical
+  //          disclaimer at the bottom. If no recommendations exist, shows
+  //          "No recommendations available".
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Recommendations card ──────────────────────────────────────────────────
 
   Widget _recommendationsCard(BuildContext context, GlucoseProvider provider) {
@@ -1616,6 +1887,15 @@ class _HomeScreenState extends State<HomeScreen> {
     ],
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Care Plan Card
+  // PURPOSE: A compact overview card showing the patient's care plan summary:
+  //          - Doctor's name
+  //          - Target glucose range
+  //          - Next appointment date
+  //          Features a colored left accent bar for visual distinction.
+  //          Tapping navigates to the full PatientCarePlanScreen.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Care plan card ────────────────────────────────────────────────────────
 
   Widget _carePlanCard(BuildContext context) {
@@ -1715,6 +1995,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION: Chart Painter
+// PURPOSE: CustomPainter that renders a glucose history + prediction chart.
+//          This is a low-level Flutter API that draws directly to a Canvas.
+//          The chart shows:
+//          - Horizontal grid lines (3 levels)
+//          - Time axis labels (120m, 90m, 60m, 30m, Now, 15m, 30m)
+//          - Vertical "Now" divider line
+//          - Hypoglycemia threshold line at 70 mg/dL (yellow dashed)
+//          - Hyperglycemia threshold line at 180 mg/dL (red dashed)
+//          - Gray line for historical glucose readings
+//          - Primary-colored line with fill for predicted future readings
+//          - Endpoint dot highlighting the prediction target
+//          The painter handles coordinate mapping from glucose values (Y axis)
+//          and time (X axis) to pixel positions on the canvas.
+// ═══════════════════════════════════════════════════════════════════════════════
 // ── Chart painter (unchanged) ─────────────────────────────────────────────────
 
 class ChartPainter extends CustomPainter {
@@ -1922,6 +2218,7 @@ class ChartPainter extends CustomPainter {
     return midX + (midX * ratio.clamp(0.0, 1.0));
   }
 
+  // ignore: unused_element
   String _formatTime(DateTime time) {
     final diff = time.difference(now);
     final minutes = diff.inMinutes.abs();
@@ -1981,6 +2278,12 @@ class ChartPainter extends CustomPainter {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA CLASS: _GlucosePoint
+// PURPOSE: Immutable data class representing a single glucose reading at a
+//          specific time. Used by the chart painter and BLE history.
+//          Implements == and hashCode for proper list comparison in shouldRepaint.
+// ═══════════════════════════════════════════════════════════════════════════════
 class _GlucosePoint {
   final DateTime time;
   final double value;
@@ -1996,6 +2299,11 @@ class _GlucosePoint {
   int get hashCode => Object.hash(time, value);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA CLASS: _GlucoseChartSeries
+// PURPOSE: Container for the two data series needed by the chart painter:
+//          history (past readings) and predictions (future forecast).
+// ═══════════════════════════════════════════════════════════════════════════════
 class _GlucoseChartSeries {
   final List<_GlucosePoint> history;
   final List<_GlucosePoint> predictions;

@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// FILE: lib/features/patient/screens/manual_log_screen.dart
+// PURPOSE: Screen for manually logging glucose readings with validation,
+//          unit conversion (mmol/L ↔ mg/dL), and recent log history.
+
 // lib\features\patient\screens\manual_log_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +20,18 @@ class ManualLogScreen extends StatefulWidget {
 }
 
 class _ManualLogScreenState extends State<ManualLogScreen> {
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: UI State & Form Controllers
+  // PURPOSE: Manages user input fields, selected unit/meal time, and
+  //          async operation flags (saving, error states).
+  // ── UI state & form controllers ───────────────────────────────────────
+  // Responsible for:
+  // - letting the user enter a glucose reading + unit + meal time
+  // - validating input and converting mmol/L → mg/dL for storage
+  // - saving to Supabase via GlucoseProvider, and showing confirmation/snackbars
+  // - rendering recent logs and supporting delete + undo.
+  // Holds the current user input and UI flags (saving, errors, etc.).
   final _glucoseCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String _mealTime = 'Before Meal';
@@ -33,6 +50,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     'Other',
   ];
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: T1D Clinical Ranges
+  // PURPOSE: Defines ADA Standards of Care thresholds for Type 1 Diabetes
+  //          glucose targets and safe input boundaries.
   // ── T1D ranges ────────────────────────────────────────────────────────────
   // Source: ADA Standards of Care for Type 1 Diabetes
   //   mg/dL : target 70–180, safe input range 20–600
@@ -70,6 +92,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     }
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Input Validation
+  // PURPOSE: Validates glucose values against clinically safe ranges based
+  //          on the currently selected unit (mg/dL or mmol/L).
   // ── Validation ────────────────────────────────────────────────────────────
 
   String? _validateGlucose(String? value) {
@@ -91,6 +118,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
   double _toMgDl(double value) =>
       _unit == 'mmol/L' ? value * 18.0182 : value;
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Save Log
+  // PURPOSE: Persists a validated glucose reading to Supabase via GlucoseProvider,
+  //          converts units to mg/dL for storage, and shows confirmation UI.
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
@@ -158,6 +190,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     }
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Delete with Undo
+  // PURPOSE: Removes a log entry with an undo snackbar that re-inserts
+  //          the original data if the user taps "Undo".
   // ── Delete with undo ──────────────────────────────────────────────────────
 
   Future<void> _deleteLog(BuildContext ctx, GlucoseLog log) async {
@@ -192,6 +229,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     );
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Build Method
+  // PURPOSE: Renders the full manual log UI including input form, unit
+  //          selector, meal time chips, and recent logs list.
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -536,6 +578,11 @@ class _ManualLogScreenState extends State<ManualLogScreen> {
     );
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Log Tile Widget
+  // PURPOSE: Displays a single glucose log entry with status color coding
+  //          (low/high/in-range), meal time badge, and notes.
   // ── Log tile ──────────────────────────────────────────────────────────────
 
   Widget _logTile(BuildContext context, GlucoseLog log,

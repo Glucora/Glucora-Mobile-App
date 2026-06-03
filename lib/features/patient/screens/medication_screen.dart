@@ -1,3 +1,9 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// FILE: lib/features/patient/screens/medication_screen.dart
+// PURPOSE: Screen for managing patient medications with active/inactive states,
+//          reminder scheduling, and local notification integration.
+// ═══════════════════════════════════════════════════════════════════════════════
+
 // lib\features\patient\screens\medication_screen.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,17 +25,34 @@ class MedicationScreen extends StatefulWidget {
 }
 
 class _MedicationScreenState extends State<MedicationScreen> {
+
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Form State & Controllers
+  // PURPOSE: Manages input fields for medication name, notes, frequency,
+  //          and a ValueNotifier to prevent double-submit during save.
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ── Form/state for medication logging/reminders ───────────────────
+  // Stores controller values for the add-medication sheet and a notifier
+  // used to disable the save button while async work is running.
+
   final _nameCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _freqCtrl = TextEditingController();
   final _savingNotifier = ValueNotifier<bool>(false);
 
+  // Initializes local controller state and triggers the first medication load.
+  // This ensures the screen has data (from Supabase through GlucoseProvider)
+  // as soon as it appears, without blocking the first frame.
   @override
   void initState() {
     super.initState();
     Future.microtask(() => _init());
   }
 
+  // Disposes controllers/notifiers to prevent memory leaks.
+  // Flutter may keep the widget alive across navigation; disposing is required
+  // when the widget is removed from the tree.
   @override
   void dispose() {
     _nameCtrl.dispose();
@@ -39,6 +62,11 @@ class _MedicationScreenState extends State<MedicationScreen> {
     super.dispose();
   }
 
+  // Loads medications for the current user.
+  // - If patientProfileId is not set, it initializes the provider using
+  //   the Supabase auth user id.
+  // - Otherwise it directly loads existing medications from the backend.
+  // This method is called once after the widget is created.
   Future<void> _init() async {
     final provider = context.read<GlucoseProvider>();
     if (provider.patientProfileId == null) {
@@ -49,8 +77,25 @@ class _MedicationScreenState extends State<MedicationScreen> {
     }
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Save Medication
+  // PURPOSE: Persists a new medication with its reminder times to Supabase,
+  //          schedules local notifications, and refreshes the medication list.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Save medication ────────────────────────────────────────────────────────
 
+  // Persists a newly created medication and schedules its reminder notifications.
+  // Responsibilities:
+  // 1) Validate basic input (medication name) and guard against double-submit
+  //    using _savingNotifier.
+  // 2) Insert medication row via GlucoseProvider.insertMedication.
+  // 3) For each selected reminder TimeOfDay:
+  //    - convert to HH:MM:00 string (DB format)
+  //    - insert a reminder row via insertMedicationReminder
+  //    - schedule a local notification via NotificationService.scheduleReminder
+  //      using a deterministic notification id.
+  // 4) Clear input controllers, close the bottom sheet, and refresh medications.
   Future<void> _saveMedication(
     List<TimeOfDay> reminders,
     BuildContext sheetContext,
@@ -118,6 +163,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     }
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Toggle Medication Active State
+  // PURPOSE: Enables/disables a medication and correspondingly schedules
+  //          or cancels its reminder notifications.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Toggle ─────────────────────────────────────────────────────────────────
 
   Future<void> _toggleMedication(
@@ -142,6 +193,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     await provider.toggleMedication(medId, current);
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Delete Medication
+  // PURPOSE: Removes a medication and cancels all associated reminder
+  //          notifications before deleting from the database.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Delete ─────────────────────────────────────────────────────────────────
 
   Future<void> _deleteMedication(int medId) async {
@@ -154,6 +211,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     await provider.deleteMedication(medId);
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Add Medication Bottom Sheet
+  // PURPOSE: Modal form for creating medications with name, notes, frequency,
+  //          and time picker for reminder scheduling.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Add sheet ──────────────────────────────────────────────────────────────
 
   void _showAddSheet(BuildContext context) {
@@ -416,6 +479,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     );
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Build Method
+  // PURPOSE: Renders the medication list split into active and inactive sections
+  //          with add button, loading states, and pull-to-refresh.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
@@ -544,6 +613,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
     );
   }
 
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SECTION: Reusable Widgets
+  // PURPOSE: Shared UI components for section labels, medication cards with
+  //          reminder chips, delete confirmation dialog, and form fields.
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ── Widgets ────────────────────────────────────────────────────────────────
 
   Widget _sectionLabel(String label, GlucoraColors colors) =>
