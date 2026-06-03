@@ -89,12 +89,17 @@ class RecommendationsScreen extends StatefulWidget {
 }
 
 class _RecommendationsScreenState extends State<RecommendationsScreen> {
-  bool _refreshing = false;
-  String? _error;
+  bool _refreshing = false; // controls loading spinner
+  String? _error;  // holds error message if something fails
 
   @override
   void initState() {
     super.initState();
+    //microtask delays _init() by one frame — this is important because you can't safely call context.read() synchronously inside initState(). It's a standard Flutter pattern.
+//_init() does two things:
+
+//Checks if the provider already has a logged-in user, if not it fetches from Supabase Auth
+//Then immediately calls _refreshFromAPI() — so every time this screen opens, fresh AI recommendations are fetched
     Future.microtask(() => _init());
   }
 
@@ -127,6 +132,7 @@ Future<void> _refreshFromAPI() async {
         return;
       }
       final predictedGlucose = currentGlucose + 15;
+      //Calls your AI service with both values and gets back a list of recommendations.
       final aiRecs = await AIService.getRecommendations(
         currentGlucose: currentGlucose,
         predictedGlucose: predictedGlucose,
@@ -168,7 +174,7 @@ if (mounted) setState(() {});
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-     final provider = context.watch<GlucoseProvider>(); // ✅ watch, not Consumer
+     final provider = context.watch<GlucoseProvider>();  //to make the provider build automatically
   final cards = provider.recommendations
       .map((r) => _RecCard.fromRow(r))
       .toList();
