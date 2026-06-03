@@ -27,6 +27,15 @@ class AIService {
  static const List<String> _models = [
   // BEST ALL-ROUNDER - Updated Llama
   'meta-llama/llama-3.3-70b-instruct:free',
+    'openai/gpt-3.5-turbo',           // Fast and cheap
+     'google/gemini-2.0-flash-001',
+    'meta-llama/llama-3-8b-instruct',  // Free tier
+    'mistralai/mistral-7b-instruct',   // Free tier
+    'openai/gpt-4o-mini',              // Good quality
+    'google/gemini-flash-1.5',         // Google's flash model
+    'anthropic/claude-3-haiku',        // Anthropic's cheapest
+    'deepseek/deepseek-chat',          // Very cheap
+    'cohere/command-r-plus',           // Alternative
   
   // EXCELLENT FOR REASONING/CODING
   'deepseek/deepseek-r1:free',
